@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include <math.h>
+#include <stdlib.h>
 
 #include "hal/DOM_MB_hal.h"
 #include "hal/DOM_MB_fpga.h"
@@ -41,13 +42,13 @@ int hv_gain_cal(calib_data *dom_calib) {
     float charges[GAIN_CAL_TRIG_CNT];
 
     /* Charge histograms for each HV */
-    float hist_y[GAIN_CAL_HV_CNT][GAIN_CAL_BINS];
+    float **hist_y = malloc(GAIN_CAL_HV_CNT*sizeof(float*));
 
     /* Actual x-values for each histogram */
-    float hist_x[GAIN_CAL_HV_CNT][GAIN_CAL_BINS];
+    float **hist_x = malloc(GAIN_CAL_HV_CNT*sizeof(float*));
 
     /* Fit parameters for each SPE spectrum */
-    float fit_params[GAIN_CAL_HV_CNT][SPE_FIT_PARAMS];
+    float **fit_params = malloc(GAIN_CAL_HV_CNT*sizeof(float*));
 
     /* Log(gain) values for each voltage with a good SPE fit */
     float log_gain[GAIN_CAL_HV_CNT];
@@ -59,7 +60,11 @@ int hv_gain_cal(calib_data *dom_calib) {
     int spe_cnt = 0;
 
     /* Peak to valley data -- allocate space for GAIN_CAL_HV_CNT pairs */
-    pv_dat pv_data[GAIN_CAL_HV_CNT]; 
+    static pv_dat pv_data[GAIN_CAL_HV_CNT];
+
+    /* Charge histogram data */
+    static hv_histogram hv_hist_data[GAIN_CAL_HV_CNT];
+    dom_calib->num_histos = GAIN_CAL_HV_CNT;
 
 #ifdef DEBUG
     printf("Performing HV gain calibration (using ATWD%d)...\r\n", atwd);
@@ -114,12 +119,22 @@ int hv_gain_cal(calib_data *dom_calib) {
     /* Loop over HV settings */
     for (hv_idx = 0; hv_idx < GAIN_CAL_HV_CNT; hv_idx++) {
         
+        /* malloc current hv_idx */
+        fit_params[hv_idx] = malloc(GAIN_CAL_BINS*sizeof(float));
+        hist_x[hv_idx] = malloc(GAIN_CAL_BINS*sizeof(float));
+        hist_y[hv_idx] = malloc(GAIN_CAL_BINS*sizeof(float));
+
         /* Set high voltage and give it time to stabilize */
         hv = (hv_idx * GAIN_CAL_HV_INC) + GAIN_CAL_HV_LOW;      
 
 #ifdef DEBUG
         printf(" Setting HV to %d V\r\n", hv);
 #endif
+
+        /* Add hv setting to histogram struct */
+        hv_hist_data[hv_idx].voltage = hv;
+        hv_hist_data[hv_idx].bin_count = GAIN_CAL_BINS;
+        hv_hist_data[hv_idx].convergent = 0;
 
         halWriteActiveBaseDAC(hv * 2);
         halUSleep(5000000);
@@ -260,7 +275,13 @@ int hv_gain_cal(calib_data *dom_calib) {
 	/* Fit histograms */
 	int fiterr;
 	fiterr = spe_fit(hist_x[hv_idx], hist_y[hv_idx], GAIN_CAL_BINS, fit_params[hv_idx], GAIN_CAL_TRIG_CNT );
-    
+
+        /* Record fit params */
+        hv_hist_data[hv_idx].fit = fit_params[hv_idx];
+
+        /* Record histogram */
+        hv_hist_data[hv_idx].x_data = hist_x[hv_idx];
+        hv_hist_data[hv_idx].y_data = hist_y[hv_idx];
     /* If no error in fit, record gain and P/V */
     if (!fiterr) {
 
@@ -280,7 +301,10 @@ int hv_gain_cal(calib_data *dom_calib) {
 
 #ifdef DEBUG
                 printf("New gain point: log(V) %.6g log(gain) %.6g\r\n", log_hv[spe_cnt], log_gain[spe_cnt]);
-#endif          
+#endif         
+                /* note fit convergence */
+                hv_hist_data[hv_idx].convergent = 1; 
+               
                 pv_data[spe_cnt].pv = pv_ratio;
                 pv_data[spe_cnt].voltage = hv;
                 
@@ -310,6 +334,9 @@ int hv_gain_cal(calib_data *dom_calib) {
     /* Add P/V data to calib struct */
     dom_calib->num_pv = spe_cnt;
     dom_calib->pv_data = pv_data;
+
+    /* Add histos to calib struct */
+    dom_calib->histogram_data = hv_hist_data;
 
     if (spe_cnt >= 2) {
         /* Fit log(hv) vs. log(gain) */

@@ -234,6 +234,22 @@ int write_pv_dat( pv_dat *pv_data, char *bin_data, int offset ) {
     return bytes_written;
 }
 
+/* Writes a histogram to binary format */
+int write_histogram(hv_histogram *hist, char *bin_data, int offset) {
+    int bytes_written = get_bytes_from_short(hist->voltage, bin_data, offset);
+    bytes_written += get_bytes_from_short(hist->convergent, bin_data, offset + bytes_written);
+    int i;
+    for (i = 0; i < 5; i++) {
+        bytes_written += get_bytes_from_float(hist->fit[i], bin_data, offset + bytes_written);
+    }
+    bytes_written += get_bytes_from_short(hist->bin_count, bin_data, offset + bytes_written);
+    for (i = 0; i < GAIN_CAL_BINS; i++) {
+        bytes_written += get_bytes_from_float(hist->x_data[i], bin_data, offset + bytes_written);
+        bytes_written += get_bytes_from_float(hist->y_data[i], bin_data, offset + bytes_written);
+    }
+    return bytes_written;
+} 
+
 /* Writes a dom_calib srtuct to binary format given byte array and pos */
 
 int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
@@ -334,6 +350,17 @@ int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
         for ( i = 0; i < cal->num_pv; i++ ) {   
             offset += write_pv_dat( &cal->pv_data[i], bin_data, offset );
         }
+
+        /* Write number of histos */
+        offset += get_bytes_from_short(cal->num_histos, bin_data, offset );
+        
+        //---------
+
+        /* Write each histo */
+        for (i = 0; i < cal->num_histos; i++) {
+            offset += write_histogram(&cal->histogram_data[i], bin_data, offset);
+        }
+
     }
 
     return offset;
@@ -410,10 +437,20 @@ int save_results(calib_data dom_calib) {
     /* Calculate record length */
     short r_size = DEFAULT_RECORD_LENGTH;
     if ( dom_calib.hv_gain_valid ) {
-        r_size += 12;
-        r_size += 2;
-        r_size += dom_calib.num_pv * 8;
+        r_size += 12; //log-log fit
+        r_size += 2;  //#pv points
+        r_size += dom_calib.num_pv * 8; //pv points
+        r_size += 2;  //#histos
+        r_size += dom_calib.num_histos * GAIN_CAL_BINS * 8; //histos
+        r_size += dom_calib.num_histos * 20; //fits;
+        r_size += dom_calib.num_histos * 2; //voltages;
+        r_size += dom_calib.num_histos * 2; //bin counts;
+        r_size += dom_calib.num_histos * 2; //convergent bits
     }
+
+#ifdef DEBUG
+    printf("rsize is %d\r\n", r_size);  //-----------fix
+#endif
 
     char binary_data[r_size];
 
