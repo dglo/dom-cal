@@ -45,14 +45,14 @@ public class DOMCalRecordFactory {
         String domId = "";
         String s1 = Integer.toHexString( bb.getInt() );
 
-        while ( s1.length() < 8 ) {
-            domId = "0" + domId;
+        while ( s1.length() < 4 ) {
+            s1 = "0" + s1;
         }
 
         String s2 = Integer.toHexString( bb.getInt() );
 
         while ( s2.length() < 8 ) {
-            domId = "0" + domId;
+            s2 = "0" + s2;
         }
 
         domId += s1;
