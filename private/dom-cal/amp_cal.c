@@ -106,12 +106,8 @@ int amp_cal(calib_data *dom_calib) {
     float mean, var, pulser_v;
     for (ch = 0; ch < 3; ch++) {
         /* Use pulser calibration to convert pulser amplitude to V */
-
-        /* pulser_v = (dom_calib->pulser_calib.slope * pulser_settings[ch]) + 
-           dom_calib->pulser_calib.y_intercept; */
-
-        /* FIX ME: Pulser amplitude in volts */
-        pulser_v = pulser_settings[ch] * 0.0000946 + 0.000275;
+        pulser_v = (dom_calib->pulser_calib.slope * pulser_settings[ch]) + 
+            dom_calib->pulser_calib.y_intercept;
 
         /* Find gain and error */
         meanVarFloat(peaks[ch], AMP_CAL_TRIG_CNT, &mean, &var);
