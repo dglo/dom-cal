@@ -59,6 +59,7 @@ typedef struct {
     float* fit;
     float pv;
     float noise_rate;
+    float pmt_baseline;
     short is_filled;
 } hv_histogram;
 

@@ -143,6 +143,9 @@ void init_dom(void) {
     /* Make sure pulser is off */
     hal_FPGA_TEST_disable_pulser();
 
+    /* Set disc value for gain cal */
+    halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, GAIN_CAL_DISC_DAC);
+
 }
 
 
@@ -230,6 +233,7 @@ int write_value_error( value_error *val_er, char *bin_data, int offset ) {
 int write_histogram(hv_histogram *hist, char *bin_data, int offset) {
     int bytes_written = get_bytes_from_short(hist->voltage, bin_data, offset);
     bytes_written += get_bytes_from_float(hist->noise_rate, bin_data, offset + bytes_written);
+    bytes_written += get_bytes_from_float(hist->pmt_baseline, bin_data, offset + bytes_written);
     short filled = hist->is_filled;
     bytes_written += get_bytes_from_short(filled, bin_data, offset + bytes_written);
     bytes_written += get_bytes_from_short(filled ? hist->convergent : 0, bin_data, offset + bytes_written);
@@ -433,6 +437,7 @@ int save_results(calib_data dom_calib) {
     r_size += dom_calib.num_histos * 2; //convergent bits
     r_size += dom_calib.num_histos * 4; //PV data
     r_size += dom_calib.num_histos * 4; //Noise rate
+    r_size += dom_calib.num_histos * 4; //PMT baseline
     r_size += dom_calib.num_histos * 2; //is_filled flag
 
     char binary_data[r_size];

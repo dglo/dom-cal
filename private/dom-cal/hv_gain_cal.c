@@ -245,6 +245,9 @@ int hv_gain_cal(calib_data *dom_calib) {
         /* get final baseline value */
         baseline /= (128 * BASELINE_TRIG_CNT);
 
+        /* add baseline value to output */
+        hv_hist_data[hv_idx].pmt_baseline = baseline;
+
 #ifdef DEBUG
         printf("PMT baseline is %f\r\n", baseline);
 #endif
