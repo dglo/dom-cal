@@ -7,7 +7,7 @@
 
 /* Version of calibration program */
 #define MAJOR_VERSION 0
-#define MINOR_VERSION 3
+#define MINOR_VERSION 4
 
 /* Default ATWD DAC settings */
 #define ATWD_SAMPLING_SPEED_DAC 850

@@ -29,9 +29,10 @@ int amp_cal(calib_data *dom_calib) {
     float bias_v, peak_v;
     
     /* Pulser amplitude settings for each channel */
-    /* const int pulser_settings[3] = {50, 200, 1000}; */
-    const int pulser_settings[3] = {400, 800, 1000};
-    
+    const int pulser_settings[3] = {AMP_CAL_PULSER_AMP_0, 
+                                    AMP_CAL_PULSER_AMP_1, 
+                                    AMP_CAL_PULSER_AMP_2 };
+
     /* Channel readout buffers for each channel and bin */
     /* This test only uses ATWD A */
     short channels[3][128];
@@ -85,6 +86,9 @@ int amp_cal(calib_data *dom_calib) {
                 peak_v = (float)(channels[ch][bin]) * dom_calib->atwd0_gain_calib[ch][bin].slope
                     + dom_calib->atwd0_gain_calib[ch][bin].y_intercept;
 
+                /* Also subtract out bias voltage */
+                peak_v -= bias_v;
+
                 /* Note "peak" is actually a minimum */
                 if (bin == 0) {
                     peaks[ch][trig] = peak_v;
@@ -94,34 +98,33 @@ int amp_cal(calib_data *dom_calib) {
                         peak_v : peaks[ch][trig];
                 }
             }
-
+            /* FIX ME: TEMP */
             printf("Trig %d peak %.4f\r\n", trig, peaks[ch][trig]);
         }
     }
 
-    /* FIX ME: Pulser amplitude in volts */
-    float pulser_v = 1.0;
 
-    /* FIX ME: Find mean and error */
-    float mean, var, gain, error;
+    float mean, var, pulser_v;
     for (ch = 0; ch < 3; ch++) {
-        meanVarFloat(peaks[ch], AMP_CAL_TRIG_CNT, &mean, &var);
-        gain = mean / pulser_v;
-        error = sqrt(var)/(pulser_v*sqrt(AMP_CAL_TRIG_CNT));
+        /* Use pulser calibration to convert pulser amplitude to V */
 
-        dom_calib->amplifier_calib[ch].value = gain;
-        dom_calib->amplifier_calib[ch].error = error;
-        
-#ifdef DEBUG
-        printf(" Channel %d: gain %.6g, error %.6g\r\n", ch, gain, error);
-#endif
+        /* pulser_v = (dom_calib->pulser_calib.slope * pulser_settings[ch]) + 
+           dom_calib->pulser_calib.y_intercept; */
+
+        /* FIX ME: Pulser amplitude in volts */
+        pulser_v = pulser_settings[ch] * 0.0000946 + 0.000275;
+
+        /* Find gain and error */
+        meanVarFloat(peaks[ch], AMP_CAL_TRIG_CNT, &mean, &var);
+        dom_calib->amplifier_calib[ch].value = mean / pulser_v;
+        dom_calib->amplifier_calib[ch].error =  sqrt(var)/(pulser_v*sqrt(AMP_CAL_TRIG_CNT));
+
     }
 
     /* Turn off the pulser */
     hal_FPGA_TEST_disable_pulser();
 
-    /* FIX ME: put results into structure */    
-      
+    /* FIX ME: return real error code */
     return 0;
 
 }
