@@ -26,7 +26,7 @@
 #define GAIN_CAL_HV_CNT           8
 
 /* Histogram info */
-#define GAIN_CAL_BINS           100
+#define GAIN_CAL_BINS           250
 
 /* Integration window on either side of peak */
 /* 8 bins *after* peak in time, 4 bins before peak */
