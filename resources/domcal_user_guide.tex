@@ -8,20 +8,40 @@
                                                                                 
 \baselineskip=16pt
 \def\Z{{\bf Z}}
-                                                                                
+
 \newcommand{\infinity}{\infty}
-                                                                                
+
 \title{DOM-Cal Users' Guide}
 \author{John Kelley and Jim Braun}
 \maketitle
-                                                                                
+
 \newpage
 
 \section{Purpose}
 %introduction
 
+DOM-Cal is stand-alone application which runs directly on the DOM mainboard
+and calibrates the DOM front-end electronics.  The calibration constants
+obtained with DOM-Cal allow one to translate the DOM's digital output
+into voltage and time waveforms.  Furthermore, DOM-Cal's high-voltage
+calibration measures the PMT gain at various voltage settings.  
+
 \section{DOM-Cal}
 %description, guide to using dom-cal
+
+The DOM-Cal application resides on the DOM flash filesystem as the file
+\$domcal.  The application can be run directly from the iceboot
+command-line, using the command 
+
+\begin{verbatim}
+> s" domcal" find if exec endif
+\end{verbatim}
+
+The application will then ask the user for the date (the DOM has no concept
+of the date or time of day), and if a high-voltage gain calibration is to
+be performed (in which case the PMT high voltage will be enabled).  
+
+DOM-Cal can also be run through a Java interface; see section \ref{java}.
 
 \subsection{Pulser Calibration}
 
@@ -32,7 +52,37 @@ produces a linear relation between DAC setting and pulse amplitude in Volts.
 
 \subsection{ATWD Calibraton}
 
+The two Analog Transient Waveform Digitizers (ATWDs) function as the
+primary signal digitizers for the DOMs.  The output of the ATWD consists of
+128 samples of the input signal voltage, with each sample level being an
+integer from 0 to 1023.  
+
+The ATWD calibration produces a set of 768 (2x3x128) linear fits, one for
+each ATWD (0 and 1), channel (0, 1, and 2), and sample bin (0-127).  These
+fits translate the ATWD level to an input voltage, before any
+channel-specific amplification.  Because the fit parameters vary for each
+sample bin, the unique pedestal pattern of each ATWD is automatically taken
+care of.  
+
+The calibration uses the ATWD front-end bias voltage
+(DOM\_HAL\_DAC\_PMT\_FE\_PEDESTAL) to vary the baseline voltage of the
+ATWD, independent of any channel amplification.  CPU-triggered waveforms
+are recorded for a number of different bias voltages, and using a known
+relationship between the bias DAC setting and true bias voltage, fits for all
+of the ATWD bins are calculated.
+
 \subsection{Amplifier Calibration}
+
+Each of the three signal channels of the ATWDs has a given amplification of
+the input voltage: nominally 16x for channel 0, 2x for channel 1, and 0.25x
+for channel 2.  The amplifier calibration determines the mean gain factors
+for each channel, along with the standard error of each gain.
+
+The calibration uses the pulser to produce reasonably-sized waveforms for
+each channel.  The maxima of a number of discriminator-triggered waveforms
+are recorded, and using the pulser calibration and the ATWD calibration
+previously obtained, translated to a voltage.  The mean gain and the error
+on this mean are then calculated.
 
 \subsection{ATWD Frequency Calibration}
 
@@ -40,6 +90,29 @@ ATWD frequency is controlled by DAC settings DOM\_HAL\_DAC\_ATWD0\_TRIGGER\_BIAS
 DOM\_HAL\_DAC\_ATWD1\_TRIGGER\_BIAS ( DACs 0 and 4, respectively ).  ATWD frequency
 calibration produces a linear relation between DAC setting and ratio between ATWD
 frequency and the mainboard ~20MHz oscillator.
+
+\subsection{High Voltage Gain Calibration}
+
+As an option, DOM-Cal can calibrate the gain of the PMT as a function of
+the high voltage.  DOM-Cal will return a linear fit of $\log(gain)$ versus
+$\log(voltage)$.  Additionally, DOM-Cal returns the peak-to-valley ratio at
+each of the voltage settings at which a good charge histogram was achieved.  
+
+To find the gain at a particular high voltage, a number of
+discriminator-triggered waveforms are taken.  Using the results of the
+previous calibrations, the waveform is integrated, and the charge in pC is
+recorded in a histogram.
+
+The histogram is fit via nonlinear (Levenberg-Marquardt) regression to the
+functional form $A\ e^{-Bx}\ +\ C\ e^{-E(x-D)^2}$.  The single
+photoelectron (SPE) peak (and thus the gain) is reasonably approximated by
+the parameter $D$, while the valley between the noise peak and the SPE peak
+is found via iterative (Newton-Raphson) search.  A few heuristics are used
+to determine if the fit is sane, and only then is the extracted data used
+for the rest of the calibration.
+
+After the gain is obtained for each high voltage setting, a linear
+regression is performed on $\log(HV)$ vs $\log(gain)$.
 
 \subsection{DOM-Cal Output}
 
@@ -80,7 +153,8 @@ FADC calibration gain & Short & \\
 \hline
 FE pulser calibration & LinearFit & Calibration of internal pulser \\
 \hline
-ATWD gain calibration & LinearFit[2][3][128] & Calibration of atwd 0-1, channels 0-2, bins 0-127,
+ATWD gain calibration & LinearFit[2][3][128] & Calibration of 
+ATWD 0-1, channels 0-2, bins 0-127,
 such that member 128 is atwd 0, channel 0, bin 127,
 and member 129 is atwd 0, channel 1, bin 0, etc. \\
 \hline
@@ -111,7 +185,7 @@ R-squared & Float & Quality of fit \\
 \end{table}
 
 \section{Java Interface to DOM-Cal}
-
+\label{sec:java}
 DOM-Cal may be easily accessed through the icecube.daq.domcal java package found
 in the dom-cal project.  Implimentations to read binary calibration data from a DOM
 or initiate a calibration cycle and read back calibration data are available.  DOM
