@@ -43,11 +43,20 @@ public class DOMCalRecordFactory {
         bb.getShort();
 
         String domId = "";
-        domId += Integer.toHexString( bb.getInt() );
-        domId += Integer.toHexString( bb.getInt() );
-        while ( domId.length() != 12 ) {
-            domId = "0" + domId;
+        String s1 = Integer.toHexString( bb.getInt() );
+
+        while ( s1.length() < 4 ) {
+            s1 = "0" + s1;
         }
+
+        String s2 = Integer.toHexString( bb.getInt() );
+
+        while ( s2.length() < 8 ) {
+            s2 = "0" + s2;
+        }
+
+        domId += s1;
+        domId += s2;
 
         float temperature = bb.getFloat();
 
@@ -92,9 +101,31 @@ public class DOMCalRecordFactory {
         atwdFrequencyCalibration[0] = LinearFitFactory.parseLinearFit( bb );
         atwdFrequencyCalibration[1] = LinearFitFactory.parseLinearFit( bb );
 
+        short hvCalValidShort = bb.getShort();
+        boolean hvCalValid = ( hvCalValidShort == 0 ) ? false : true;
+
+        LinearFit hvGainFit = null;
+        short numPVPts = 0;
+        float[] pv = null;
+        float[] pvVoltage = null;
+
+        if ( hvCalValid ) {
+            
+            hvGainFit = LinearFitFactory.parseLinearFit( bb );
+            
+            numPVPts = bb.getShort();
+            pv = new float[numPVPts];
+            pvVoltage = new float[numPVPts];
+
+            for ( int i = 0; i < numPVPts; i++ ) {
+                pv[i] = bb.getFloat();
+                pvVoltage[i] = bb.getFloat();
+            }
+        }
+
         return new DefaultDOMCalRecord( pulserCalibration, atwdCalibration, atwdFrequencyCalibration,
                 amplifierCalibration, amplifierCalibrationError, temperature, year, month, day, domId, dacValues,
-                                                                                     adcValues, fadcValues, version );
+                                           adcValues, fadcValues, version, hvCalValid, hvGainFit, numPVPts, pv, pvVoltage );
     }
     
     private static class DefaultDOMCalRecord implements DOMCalRecord {
@@ -119,11 +150,20 @@ public class DOMCalRecordFactory {
         private short[] fadcValues;
         
         private short version;
+
+        private boolean hvCalValid;
+
+        private LinearFit hvGainCal;
+
+        private short numPVPts;
+        private float[] pvData;
+        private float[] pvVoltageData;
         
         public DefaultDOMCalRecord( LinearFit pulserCalibration, LinearFit[][][] atwdCalibration, LinearFit[] 
                  atwdFrequencyCalibration, float[] amplifierCalibration, float[] amplifierCalibrationError, float
                  temperature, short year, short month, short day, String domId, short[] dacValues, short[] adcValues,
-                                                                                  short[] fadcValues, short version ) {
+                 short[] fadcValues, short version, boolean hvCalValid, LinearFit hvGainCal, short numPVPts,
+                                                                                  float[] pvData, float[] pvVoltageData ) {
 
             this.pulserCalibration = pulserCalibration;
             this.atwdCalibration = atwdCalibration;
@@ -139,6 +179,11 @@ public class DOMCalRecordFactory {
             this.adcValues = adcValues;
             this.fadcValues = fadcValues;
             this.version = version;
+            this.hvCalValid = hvCalValid;
+            this.hvGainCal = hvGainCal;
+            this.numPVPts = numPVPts;
+            this.pvData = pvData;
+            this.pvVoltageData = pvVoltageData;
 
         }
 
@@ -222,7 +267,27 @@ public class DOMCalRecordFactory {
             }
             return atwdCalibration[atwd][channel][bin];
         }
+
+        public boolean isHvCalValid() {
+            return hvCalValid;
+        }
+
+        public LinearFit getHvGainCal() {
+            return hvGainCal;
+        }
+
+        public short getNumPVPts() {
+            return numPVPts;
+        }
+
+        public float getPVValue( int iter ) {
+            return pvData[iter];
+        }
+
+        public float getPVVoltageData( int iter ) {
+            return pvVoltageData[iter];
+        }
+
     }
-    
-    
+        
 }

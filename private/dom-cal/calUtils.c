@@ -20,7 +20,7 @@
  *
  */
 
-float getCalibV(short val, calib_data dom_calib, int atwd, int ch, int bin, short bias_dac) {
+float getCalibV(short val, calib_data dom_calib, int atwd, int ch, int bin, float bias_v) {
 
     float v;
 
@@ -35,7 +35,7 @@ float getCalibV(short val, calib_data dom_calib, int atwd, int ch, int bin, shor
     }
         
     /* Also subtract out bias voltage */
-    v -= biasDAC2V(bias_dac);
+    v -= bias_v;
     
     /* Correct for channel amplification with amplifier calibration data */
     v /= dom_calib.amplifier_calib[ch].value;
@@ -75,6 +75,17 @@ float getCalibFreq(int atwd, calib_data dom_calib, short sampling_dac) {
  */
 float temp2K(short temp) {
     return (temp/256.0 + 273.16);
+}
+
+/*---------------------------------------------------------------------------*/
+/*
+ * discDAC2V
+ *
+ * Converts the discriminator DAC setting to volts (using bias DAC too).
+ *
+ */
+float discDAC2V(int disc_dac, int bias_dac) {
+    return (0.0000244 * (0.4 * disc_dac - 0.1 * bias_dac) * 5.0);
 }
 
 /*---------------------------------------------------------------------------*/

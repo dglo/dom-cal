@@ -15,7 +15,7 @@
 #
 CALOBJS  = atwd_cal.o amp_cal.o atwd_freq_cal.o pulser_cal.o hv_gain_cal.o
 
-EXOBJS = calUtils.o
+EXOBJS = calUtils.o spefit.o lmfit.o
 KOBJS = ../lib/crt0.o ../lib/libkernel.a
 FSOBJS = ../iceboot/fis.o ../iceboot/flashdrv.o
 

@@ -53,7 +53,7 @@ int atwd_cal(calib_data *dom_calib) {
 
         /* Set the FE bias level */
         halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, bias);
-        halUSleep(250000);
+        halUSleep(DAC_SET_WAIT);
         
         /* Initialize the pedestal array */
         for(atwd=0; atwd<2; atwd++)
@@ -93,10 +93,9 @@ int atwd_cal(calib_data *dom_calib) {
                 }
             
                 /* Sum the waveform */
-                for(atwd=0; atwd<2; atwd++)
-                    for(ch=0; ch<3; ch++)
-                        for(bin=0; bin<cnt; bin++)
-                            atwd_pedestal[atwd][ch][bin][bias_idx] += channels[ch][bin];  
+                for(ch=0; ch<3; ch++)
+                    for(bin=0; bin<cnt; bin++)
+                        atwd_pedestal[atwd][ch][bin][bias_idx] += channels[ch][bin];  
 
             }
         }

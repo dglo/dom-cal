@@ -121,7 +121,7 @@ void get_date(calib_data *dom_calib) {
 void init_dom(void) {
 
     /* Make sure HV is off */
-#ifdef REV3HAL
+#if defined DOMCAL_REV2 || defined DOMCAL_REV3
     halDisablePMT_HV();
 #else
     halPowerDownBase();
@@ -226,9 +226,17 @@ int write_value_error( value_error *val_er, char *bin_data, int offset ) {
     return bytes_written;
 }
 
+/* Writes a pv_dat struct to binary format given byte array and pos */
+                                                                                      
+int write_pv_dat( pv_dat *pv_data, char *bin_data, int offset ) {
+    int bytes_written = get_bytes_from_float( pv_data->pv, bin_data, offset );
+    bytes_written += get_bytes_from_float( pv_data->voltage, bin_data, offset + 4 );
+    return bytes_written;
+}
+
 /* Writes a dom_calib srtuct to binary format given byte array and pos */
 
-int write_dom_calib( calib_data *cal, char *bin_data ) {
+int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
 
     int offset = 0;
     int i;
@@ -238,8 +246,7 @@ int write_dom_calib( calib_data *cal, char *bin_data ) {
     offset += get_bytes_from_short( vers, bin_data, offset );
 
     /* Write record length */
-    short length = RECORD_LENGTH;
-    offset += get_bytes_from_short( length, bin_data, offset );
+    offset += get_bytes_from_short( size, bin_data, offset );
 
     /* Write date */
     offset += get_bytes_from_short( cal->day, bin_data, offset );  
@@ -311,6 +318,24 @@ int write_dom_calib( calib_data *cal, char *bin_data ) {
     offset += write_fit( &cal->atwd0_freq_calib, bin_data, offset );
     offset += write_fit( &cal->atwd1_freq_calib, bin_data, offset );
 
+    /* Write HV gain cal isValid */
+    offset += get_bytes_from_short( cal->hv_gain_valid, bin_data, offset );
+
+    /* Write HV gain cal data if necessary */
+    if ( cal->hv_gain_valid ) {
+        
+        /* Write HV gain fit */
+        offset += write_fit( &cal->hv_gain_calib, bin_data, offset );
+
+        /* Write num P/V points returned */
+        offset += get_bytes_from_short( cal->num_pv, bin_data, offset );
+
+        /* Write each P/V point */
+        for ( i = 0; i < cal->num_pv; i++ ) {   
+            offset += write_pv_dat( &cal->pv_data[i], bin_data, offset );
+        }
+    }
+
     return offset;
 }
 
@@ -373,22 +398,37 @@ int save_results(calib_data dom_calib) {
                    dom_calib.atwd1_freq_calib.y_intercept,
                    dom_calib.atwd1_freq_calib.r_squared);
 
+    if (dom_calib.hv_gain_valid) {
+        printf("HV Gain: m=%.6g b=%.6g r^2=%.6g\r\n",
+               dom_calib.hv_gain_calib.slope,
+               dom_calib.hv_gain_calib.y_intercept,
+               dom_calib.hv_gain_calib.r_squared);
+    }
+
 #endif
 
-    char binary_data[RECORD_LENGTH];
+    /* Calculate record length */
+    short r_size = DEFAULT_RECORD_LENGTH;
+    if ( dom_calib.hv_gain_valid ) {
+        r_size += 12;
+        r_size += 2;
+        r_size += dom_calib.num_pv * 8;
+    }
+
+    char binary_data[r_size];
 
     /* Convert DOM calibration data to binary format */
-    int b_write = write_dom_calib( &dom_calib, binary_data );
+    int b_write = write_dom_calib( &dom_calib, binary_data, r_size );
 #ifdef DEBUG
     printf( "Writing %d bytes to flash....", b_write );
 #endif
-    if ( !( b_write == RECORD_LENGTH ) ) {
+    if ( !( b_write == r_size ) ) {
         err = FAILED_BINARY_CONVERSION;
     }
 
     /* Write to flash */
     const char name[11] = "calib_data";
-    if ( fisCreate( name, binary_data, RECORD_LENGTH ) != 0 ) {
+    if ( fisCreate( name, binary_data, r_size ) != 0 ) {
         err = FAILED_FLASH_WRITE;
     }
 
@@ -402,7 +442,7 @@ int main(void) {
     int err = 0;
     calib_data dom_calib;
     char buf[100];
-    int doHVCal = 0;
+    int doHVCal;
 
 #ifdef DEBUG
     printf("Welcome to domcal version %d.%d\r\n", 
@@ -412,21 +452,25 @@ int main(void) {
     /* Get the date from the user */
     get_date(&dom_calib);
     
-    /* DISABLED */
     /* Ask user if they want an HV calibration */
-    /* printf("Do you want to perform an HV gain calibration (y/n)? ");
-       fflush(stdout);
-       getstr(buf);
-       printf("\r\n");
-    */
+    printf("Do you want to perform an HV gain calibration (y/n)? ");
+    fflush(stdout);
+    getstr(buf);
+    printf("\r\n");
 
     /* Sometimes when telnetting there is an extraneous newline */
-    /* doHVCal = ((buf[0] == 'y') || (buf[0] == 'Y') ||
+    doHVCal = ((buf[0] == 'y') || (buf[0] == 'Y') ||
                (buf[0] == '\n' && ((buf[1] == 'y') || (buf[1] == 'Y'))));
-    */
 
-    if (doHVCal)
+    if (doHVCal) {
+#ifdef DEBUG
         printf("*** HIGH VOLTAGE WILL BE ACTIVATED ***\r\n");
+#endif
+    }
+    dom_calib.hv_gain_valid = doHVCal;
+
+    /* Init # P/V points returned to zero */
+    dom_calib.num_pv = 0;
 
     /* Initialize DOM state: DACs, HV setting, pulser, etc. */
     init_dom();
@@ -441,7 +485,7 @@ int main(void) {
      *  - sampling speed calibration
      *  - HV gain calibration
      */
-    /* FIX ME: return real error codes or something */
+    /* FIX ME: return real error codes */
     pulser_cal(&dom_calib);
     atwd_cal(&dom_calib);
     amp_cal(&dom_calib);
@@ -470,6 +514,7 @@ int main(void) {
     /* Reboot the DOM */
     halUSleep( 250000 );
     halBoardReboot();
-
-    return 0;
+    
+    /* Should never return */
+    return -1;
 }

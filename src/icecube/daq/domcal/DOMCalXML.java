@@ -16,9 +16,9 @@ import java.io.PrintWriter;
 
 public class DOMCalXML {
 
-    public static void format( DOMCalRecord rec, PrintWriter out ) {
+    public static void format( String version, DOMCalRecord rec, PrintWriter out ) {
         
-        out.print( "<domcal version=\"" + DOMCal.VERSION + "\">\n" );
+        out.print( "<domcal version=\"" + version + "\">\n" );
 	out.print("  <date>" + rec.getMonth() + "-" + rec.getDay() + "-" + rec.getYear() + "</date>\n" );
         out.print("  <domid>" + rec.getDomId() + "</domid>\n" );
         out.print("  <temperature format=\"Kelvin\">" + rec.getTemperature() + "</temperature>\n");
@@ -57,6 +57,19 @@ public class DOMCalXML {
             out.print("  <atwdfreq chip=\"" + i + "\">\n");
             format( rec.getATWDFrequencyCalibration( i ), out );
             out.print("  </atwdfreq>\n");
+        }
+
+        if ( rec.isHvCalValid() ) {
+            
+            out.print("  <hvGainCal>\n");
+            format( rec.getHvGainCal(), out );
+            out.print("  </hvGainCal>\n");
+
+            for ( int i = 0; i < rec.getNumPVPts(); i++ ) {
+                out.print( "  <pv voltage=\"" + rec.getPVVoltageData( i ) + "\">" +
+                                                rec.getPVValue( i ) + "</pv>\n");
+            }
+
         }
         out.print("</domcal>\n");
     }
