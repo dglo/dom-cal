@@ -68,7 +68,7 @@ public class DOMCalCom {
         long startTime = System.currentTimeMillis();
         String out = "";
         while ( !out.endsWith( terminator ) ) {
-            if ( System.currentTimeMillis - startTime > timeout ) {
+            if ( System.currentTimeMillis() - startTime > timeout ) {
                 throw new IOException( "Timeout reached" );
             }
             int avail = in.available();
