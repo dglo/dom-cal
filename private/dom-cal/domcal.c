@@ -121,7 +121,7 @@ void get_date(calib_data *dom_calib) {
 void init_dom(void) {
 
     /* Make sure HV is off */
-#ifdef REV3HAL
+#if defined DOMCAL_REV2 || defined DOMCAL_REV3
     halDisablePMT_HV();
 #else
     halPowerDownBase();
