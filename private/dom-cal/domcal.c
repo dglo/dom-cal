@@ -456,7 +456,6 @@ int save_results(calib_data dom_calib) {
     r_size += dom_calib.num_histos * 2; //convergent bits
     r_size += dom_calib.num_histos * 4; //PV data
     r_size += dom_calib.num_histos * 4; //Noise rate
-    r_size += dom_calib.num_histos * 4; //PMT baseline
     r_size += dom_calib.num_histos * 2; //is_filled flag
     r_size += dom_calib.num_histos * 2 * 3 * 4; //hv_baselines
     r_size += dom_calib.num_histos * 2; //baseline voltages

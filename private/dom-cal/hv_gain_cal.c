@@ -182,9 +182,13 @@ int hv_gain_cal(calib_data *dom_calib) {
             continue;
         }
 
-        /* retrieve baseline vals vor atwd/hv_idx */
-        float *baseline = (atwd == 0) ? dom_calib->baseline_data[hv_idx].atwd0_hv_baseline :
-                                            dom_calib->baseline_data[hv_idx].atwd1_hv_baseline;
+        /* retrieve baseline vals vor atwd/hv_idx, correct for amp gain */
+        
+        float baseline[3];
+        int i;
+        for (i = 0; i < 3; i++) baseline[i] = (atwd == 0) ? 
+                   dom_calib->baseline_data[hv_idx].atwd0_hv_baseline[i] / dom_calib->amplifier_calib[i].value :
+                   dom_calib->baseline_data[hv_idx].atwd1_hv_baseline[i] / dom_calib->amplifier_calib[i].value;
 
         /* Number of points with negative charge */
         int bad_trig = 0;
@@ -267,7 +271,7 @@ int hv_gain_cal(calib_data *dom_calib) {
             /* True charge, in pC = 1/R_ohm * sum(V) * 1e12 / (freq_mhz * 1e6) */
             /* FE sees a 50 Ohm load */
             charges[trig] = 0.02 * 1e6 * vsum / freq;
- 
+
             if (charges[trig] < 0) {
                 trig--;
                 if (++bad_trig > GAIN_CAL_TRIG_CNT) break;

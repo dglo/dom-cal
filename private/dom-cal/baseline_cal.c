@@ -112,10 +112,6 @@ void getBaseline(calib_data *dom_calib, float max_var, float base[2][3]) {
                         
                         if (wf_bad_cnt > BASELINE_CAL_TRIG_CNT) {
                             
-                            /* FIX ME DEBUG */
-                            for (bin = 0; bin < cnt; bin++)
-                                printf("%d %g\r\n", bin, true_wf[0][bin]);
-                            
 #ifdef DEBUG
                             printf("Too many bad waveforms... scaling variance up!\r\n");
 #endif
@@ -147,8 +143,9 @@ void getBaseline(calib_data *dom_calib, float max_var, float base[2][3]) {
         /* Get the average baseline waveform */
         for (ch = 0; ch < 3; ch++) {
             
-            for(bin = 0; bin < cnt; bin++)
+            for(bin = 0; bin < cnt; bin++) {
                 baseline[atwd][ch][bin] /= (float)BASELINE_CAL_TRIG_CNT;
+            }
             
             /* Just get the mean */
             /* Don't use first 3 samples -- "nook" in baseline is not understood */
