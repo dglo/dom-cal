@@ -120,7 +120,8 @@ int hv_gain_cal(calib_data *dom_calib) {
 #ifdef DEBUG
         printf("All-zero HV ID!  No HV base attached; aborting gain calibration.\r\n");
 #endif
-        dom_calib->hv_gain_valid = 0;        
+        dom_calib->hv_gain_valid = 0;
+        dom_calib->num_histos = 0;        
         return 0;
     }
 
