@@ -89,8 +89,13 @@ int hv_amp_cal(calib_data *dom_calib) {
     hv_baselines *hv_baseline = NULL;
    
     int i;
-    for(i = 0; i < calib_data->num_histos; i++) {
-        if (calib_data->baseline_data[i].voltage == hv) hv_baselines = baseline_data[i];
+    for(i = 0; i < dom_calib->num_histos; i++) {
+        if (dom_calib->baseline_data[i].voltage == hv) {
+            hv_baseline = &dom_calib->baseline_data[i];
+ 
+            /* FIX ME DEBUG */
+            printf("Found baseline at %d volts \n", dom_calib->baseline_data[i].voltage);
+        }
     }
 
     if (hv_baseline == NULL) {
@@ -136,12 +141,9 @@ int hv_amp_cal(calib_data *dom_calib) {
                 trig--;
                 continue;
             }
-            
+
             /* OK -- we have a reasonable muon pulse */
             
-            /* FIX ME */
-            printf("Yay! Just got trigger %d \n", trig);
-
             /* Find and record peak.  Make sure it is in range */ 
             for (bin=AMP_CAL_START_BIN; bin<cnt; bin++) {
 
@@ -150,18 +152,18 @@ int hv_amp_cal(calib_data *dom_calib) {
                 if (atwd == 0) {
                     peak_v = (float)(channels[ch][bin]) * dom_calib->atwd0_gain_calib[ch][bin].slope
                         + dom_calib->atwd0_gain_calib[ch][bin].y_intercept
-                        - hv_baseline->atwd0_baseline[ch];
+                        - hv_baseline->atwd0_hv_baseline[ch];
                     hpeak_v = (float)(channels[ch-1][bin]) * dom_calib->atwd0_gain_calib[ch-1][bin].slope
                         + dom_calib->atwd0_gain_calib[ch-1][bin].y_intercept
-                        - hv_baseline->atwd0_baseline[ch-1];
+                        - hv_baseline->atwd0_hv_baseline[ch-1];
                 }
                 else {
                     peak_v = (float)(channels[ch][bin]) * dom_calib->atwd1_gain_calib[ch][bin].slope
                         + dom_calib->atwd1_gain_calib[ch][bin].y_intercept
-                        - hv_baseline->atwd1_baseline[ch];
+                        - hv_baseline->atwd1_hv_baseline[ch];
                     hpeak_v = (float)(channels[ch-1][bin]) * dom_calib->atwd1_gain_calib[ch-1][bin].slope
                         + dom_calib->atwd1_gain_calib[ch-1][bin].y_intercept
-                        - hv_baseline->atwd1_baseline[ch-1];
+                        - hv_baseline->atwd1_hv_baseline[ch-1];
                 }
 
                 /* Also subtract out bias voltage */
@@ -169,7 +171,7 @@ int hv_amp_cal(calib_data *dom_calib) {
                 hpeak_v -= bias_v;
 
                 /* Note "peak" is actually a minimum */
-                if (bin == 0) {
+                if (bin == AMP_CAL_START_BIN) {
                     peaks[ch][trig] = peak_v;
                     hpeaks[ch-1][trig] = hpeak_v;
                 }
@@ -182,6 +184,12 @@ int hv_amp_cal(calib_data *dom_calib) {
             }
         }
     }
+
+    /* FIX ME DEBUG */
+    //for (bin = 0; bin < AMP_CAL_TRIG_CNT; bin++) {
+    //    printf("bin %d, peak_v[1], %f, hpeak_v[0], %f \n", bin, peaks[1][bin], hpeaks[0][bin]);
+    //}
+
 
 
     float mean, var;
@@ -198,13 +206,14 @@ int hv_amp_cal(calib_data *dom_calib) {
 
         /* FIX ME */
         printf("Old gain for ch %d: %g\r\n", ch, dom_calib->amplifier_calib[ch].value);
-
+        printf("Old error for ch %d: %g\r\n", ch, dom_calib->amplifier_calib[ch].error);
 
         dom_calib->amplifier_calib[ch].value = mean;
         dom_calib->amplifier_calib[ch].error = var;
 
         /* FIX ME */
         printf("Gain for ch %d: %g\r\n", ch, (mean));
+        printf("Error for ch %d: %g\r\n", ch, (var));
 
     }
 

@@ -117,7 +117,7 @@ int amp_cal(calib_data *dom_calib) {
                 peak_v -= bias_v;
 
                 /* Note "peak" is actually a minimum */
-                if (bin == 0) {
+                if (bin == AMP_CAL_START_BIN) {
                     peaks[ch][trig] = peak_v;
                 }
                 else {
