@@ -33,7 +33,9 @@ int atwd_cal(calib_data *dom_calib) {
      */
     float atwd_pedestal[2][3][128][BIAS_CNT];
 
+#ifdef DEBUG
     printf("Performing ATWD calibration...\r\n");
+#endif
 
     /* Save DACs that we modify */
     short origBiasDAC  = halReadDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL);
@@ -48,8 +50,6 @@ int atwd_cal(calib_data *dom_calib) {
     /* Loop over several FE bias levels */
     bias_idx = 0;
     for (bias = BIAS_LOW; bias <= BIAS_HIGH; bias += BIAS_STEP) {
-
-        printf(" setting FE bias DAC to %d\r\n", bias);
 
         /* Record the bias level, in volts, for the fit */
         biases[bias_idx] = biasDAC2V(bias);

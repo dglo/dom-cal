@@ -38,7 +38,9 @@ int amp_cal(calib_data *dom_calib) {
     /* Peak arrays for each channel, in Volts */
     float peaks[3][AMP_CAL_TRIG_CNT];
 
+#ifdef DEBUG
     printf("Performing amplifier calibration...\r\n");
+#endif
 
     /* Save DACs that we modify */
     short origBiasDAC = halReadDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL);
@@ -59,10 +61,7 @@ int amp_cal(calib_data *dom_calib) {
     /* Loop over channels and pulser settings for each channel */
     for (ch = 0; ch < 3; ch++) {
 
-        printf(" measuring amplification of channel %d\r\n", ch);
-
         /* Set the pulser amplitude */
-        printf("  setting pulser to %d\r\n", pulser_settings[ch]);
         halWriteDAC(DOM_HAL_DAC_INTERNAL_PULSER, pulser_settings[ch]);
 
         /* Wait just a bit */
@@ -100,8 +99,6 @@ int amp_cal(calib_data *dom_calib) {
                         peak_v : peaks[ch][trig];
                 }
             }
-            /* FIX ME: TEMP */
-            printf("Trig %d peak %.4f\r\n", trig, peaks[ch][trig]);
         }
     }
 

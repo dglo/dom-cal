@@ -67,7 +67,7 @@ void get_date(calib_data *dom_calib) {
     year = month = 0;
     while ((year < 2004) || (year > 2050)) {
         printf("Enter year (2004-...): ");
-        /* More robust than scanf with %d */
+        fflush(stdout);    
         getstr(buf);
         year = atoi(buf);
     }
@@ -75,6 +75,7 @@ void get_date(calib_data *dom_calib) {
     /* Get month */
     while ((month < 1) || (month > 12)) {
         printf("Enter month (1-12): ");
+        fflush(stdout);
         getstr(buf);
         month = atoi(buf);
     }
@@ -98,6 +99,7 @@ void get_date(calib_data *dom_calib) {
         }
         
         printf("Enter day (1-%d): ", day_max);
+        fflush(stdout);
         getstr(buf);
         day = atoi(buf);
 
