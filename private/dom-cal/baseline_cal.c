@@ -108,8 +108,6 @@ void getBaseline(calib_data *dom_calib, float max_var, float base[2][3]) {
                     if (var > max_var) {
                         wf_bad = 1;
                         wf_bad_cnt++;
-                        printf("Bad variance count %d : %g\r\n", wf_bad_cnt, var);
-                        
                         if (wf_bad_cnt > BASELINE_CAL_TRIG_CNT) {
                             
 #ifdef DEBUG
@@ -137,9 +135,6 @@ void getBaseline(calib_data *dom_calib, float max_var, float base[2][3]) {
         
         /* Get average variance of channel 0 */
         var_avg /= (float)BASELINE_CAL_TRIG_CNT;
-#ifdef DEBUG
-        printf("Average variance: atwd %d ch 0: %g\r\n", atwd, var_avg);
-#endif
         /* Get the average baseline waveform */
         for (ch = 0; ch < 3; ch++) {
             
@@ -150,8 +145,6 @@ void getBaseline(calib_data *dom_calib, float max_var, float base[2][3]) {
             /* Just get the mean */
             /* Don't use first 3 samples -- "nook" in baseline is not understood */
             meanVarFloat(baseline[atwd][ch]+3, cnt-3, &(base[atwd][ch]), &var);
-            printf("Mean = %g\r\n", base[atwd][ch]);
-            
         }    
     }               
 }

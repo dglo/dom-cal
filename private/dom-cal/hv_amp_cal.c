@@ -41,8 +41,6 @@ int hv_amp_cal(calib_data *dom_calib) {
     /* Peak arrays for higher gain channels, for later comparison, in Volts */
     float hpeaks[3][AMP_CAL_TRIG_CNT];
 
-    
-
 #ifdef DEBUG
     printf("Performing HV amplifier calibration (using ATWD%d)...\r\n", atwd);
 #endif
@@ -185,13 +183,6 @@ int hv_amp_cal(calib_data *dom_calib) {
         }
     }
 
-    /* FIX ME DEBUG */
-    //for (bin = 0; bin < AMP_CAL_TRIG_CNT; bin++) {
-    //    printf("bin %d, peak_v[1], %f, hpeak_v[0], %f \n", bin, peaks[1][bin], hpeaks[0][bin]);
-    //}
-
-
-
     float mean, var;
     for (ch = 1; ch < 3; ch++) {
         /* Divide by peaks in higher gain ch to get amp ratio */
@@ -205,16 +196,19 @@ int hv_amp_cal(calib_data *dom_calib) {
         meanVarFloat(peaks[ch], AMP_CAL_TRIG_CNT, &mean, &var);
 
         /* FIX ME */
+#ifdef DEBUG
         printf("Old gain for ch %d: %g\r\n", ch, dom_calib->amplifier_calib[ch].value);
         printf("Old error for ch %d: %g\r\n", ch, dom_calib->amplifier_calib[ch].error);
+#endif
 
         dom_calib->amplifier_calib[ch].value = mean;
         dom_calib->amplifier_calib[ch].error = var;
 
         /* FIX ME */
+#ifdef DEBUG
         printf("Gain for ch %d: %g\r\n", ch, (mean));
         printf("Error for ch %d: %g\r\n", ch, (var));
-
+#endif
     }
 
     /* Put the DACs back to original state */

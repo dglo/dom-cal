@@ -140,9 +140,6 @@ int amp_cal(calib_data *dom_calib) {
         dom_calib->amplifier_calib[ch].value = mean / pulser_v;
         dom_calib->amplifier_calib[ch].error =  sqrt(var)/(pulser_v*sqrt(AMP_CAL_TRIG_CNT));
 
-        /* FIX ME */
-        printf("Gain for ch %d: %g\r\n", ch, (mean/pulser_v));
-
     }
 
     /* Put the DACs back to original state */
