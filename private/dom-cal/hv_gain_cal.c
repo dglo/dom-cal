@@ -183,8 +183,8 @@ int hv_gain_cal(calib_data *dom_calib) {
         }
 
         /* retrieve baseline vals vor atwd/hv_idx */
-        float* baseline = atwd == 0 ? calib_data->baseline_data.atwd0_hv_baseline :
-                                           calib_data->baseline_data.atwd1_hv_baseline;
+        float *baseline = (atwd == 0) ? dom_calib->baseline_data[hv_idx].atwd0_hv_baseline :
+                                            dom_calib->baseline_data[hv_idx].atwd1_hv_baseline;
 
         /* Number of points with negative charge */
         int bad_trig = 0;

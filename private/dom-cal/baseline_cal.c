@@ -239,13 +239,15 @@ int hv_baseline_cal(calib_data *dom_calib) {
        
         /* Store results */
         hv_base_data[hv_idx].voltage = hv; 
+        int ch;
         for (ch = 0; ch < 3; ch++) {
-            hv_base_data[hv_idx].atwd0_hv_baseline[ch] = baselines[0][ch];
-            hv_base_data[hv_idx].atwd1_hv_baseline[ch] = baselines[1][ch];
+            hv_base_data[hv_idx].atwd0_hv_baseline[ch] = baselines[hv_idx][0][ch];
+            hv_base_data[hv_idx].atwd1_hv_baseline[ch] = baselines[hv_idx][1][ch];
         }
-        calib_data->hv_baselines = hv_base_data;
 
     }
+
+    dom_calib->baseline_data = hv_base_data;
 
     return 0;
 
