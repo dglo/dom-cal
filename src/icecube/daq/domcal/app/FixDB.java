@@ -26,6 +26,7 @@ public class FixDB
     private static final String[] paramVals = new String[] {
         "intercept",
         "slope",
+        "exponential amplitude",
     };
 
     /**
