@@ -278,12 +278,12 @@ public class HVHistogramGrapher implements Runnable {
                 int endX = 299;
                 int startY = (int)(fit.getYIntercept() + startX*fit.getSlope());
                 //find where line reaches 51
-                while (startY < 51 && startX < endX) {
+                while (startY > 249 && startX < endX) {
                     startX++;
                     startY = (int)(fit.getYIntercept() + startX*fit.getSlope());
                 }
                 int endY = (int)(fit.getYIntercept() + endX*fit.getSlope());
-                while (endY > 299 && startX < endX) {
+                while (endY < 0 && startX < endX) {
                     endX--;
                     endY = (int)(fit.getYIntercept() + endX*fit.getSlope());
                 }
@@ -502,7 +502,7 @@ public class HVHistogramGrapher implements Runnable {
 
         public void addBr() {
             if (out == null) throw new IllegalStateException("Output is null");
-            out.println("</tr><br>");
+            out.println("</tr>");
         }
 
         public void addImg(String path) {
