@@ -480,7 +480,7 @@ public class CalibratorComparator
         if (v1 != h2.getVoltage()) {
             if (verbose) {
                 System.err.println("Histogram#" + num + " voltage mismatch (" +
-                                   v1 + " != " + h2.getVoltage());
+                                   v1 + " != " + h2.getVoltage() + ")");
                                    
             }
             return (h2.getVoltage() - v1);
@@ -505,7 +505,7 @@ public class CalibratorComparator
         if (p1 < p2 - delta || p1 > p2 + delta) {
             if (verbose) {
                 System.err.println("Histogram#" + num + " PV mismatch (" + p1 +
-                                   " != " + p2);
+                                   " != " + p2 + ")");
             }
             return (p1 < p2 - delta ? 1 : -1);
         }
@@ -516,7 +516,7 @@ public class CalibratorComparator
             if (verbose) {
                 System.err.println("Histogram#" + num +
                                    " noise rate mismatch (" + n1 + " != " +
-                                   n2);
+                                   n2 + ")");
             }
             return (n1 < n2 - delta ? 1 : -1);
         }
@@ -572,7 +572,7 @@ public class CalibratorComparator
                     System.err.println("Histogram#" + num + " \"" +
                                        HVHistogram.getParameterName(i) +
                                        "\" mismatch (" + hp1[i] + " != " +
-                                       hp2[i]);
+                                       hp2[i] + ")");
                 }
                 return (hp1[i] < hp2[i] - delta ? 1 : -1);
             }
@@ -650,7 +650,8 @@ public class CalibratorComparator
             if (x1[i] < x2[i] - delta || x1[i] > x2[i] + delta) {
                 if (verbose) {
                     System.err.println("Histogram#" + num + " charge#" + i +
-                                       " mismatch (" + x1[i] + " != " + x2[i]);
+                                       " mismatch (" + x1[i] + " != " + x2[i] +
+                                       ")");
                 }
                 return (x1[i] < x2[i] - delta ? 1 : -1);
             }
@@ -658,7 +659,8 @@ public class CalibratorComparator
             if (y1[i] < y2[i] - delta || y1[i] > y2[i] + delta) {
                 if (verbose) {
                     System.err.println("Histogram#" + num + " count#" + i +
-                                       " mismatch (" + y1[i] + " != " + y2[i]);
+                                       " mismatch (" + y1[i] + " != " + y2[i] +
+                                       ")");
                 }
                 return (y1[i] < y2[i] - delta ? 1 : -1);
             }
