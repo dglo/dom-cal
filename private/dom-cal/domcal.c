@@ -70,6 +70,7 @@ void get_date(calib_data *dom_calib) {
         fflush(stdout);    
         getstr(buf);
         year = atoi(buf);
+        printf("\r\n");
     }
     
     /* Get month */
@@ -78,6 +79,7 @@ void get_date(calib_data *dom_calib) {
         fflush(stdout);
         getstr(buf);
         month = atoi(buf);
+        printf("\r\n");
     }
 
     /* Get day of the month */
@@ -102,6 +104,7 @@ void get_date(calib_data *dom_calib) {
         fflush(stdout);
         getstr(buf);
         day = atoi(buf);
+        printf("\r\n");
 
         day_ok = ((day >= 1) && (day <= day_max));
     }
