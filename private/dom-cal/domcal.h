@@ -29,7 +29,7 @@
 #endif
 
 /* Wait time after setting a DAC */
-#define DAC_SET_WAIT            5000000
+#define DAC_SET_WAIT            250000
 
 /* Error codes */
 #define FAILED_BINARY_CONVERSION -1;

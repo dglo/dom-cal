@@ -35,7 +35,7 @@ int atwd_freq_cal(calib_data *dom_calib) {
 
     /* ATWD sampling speeds to be tested */
     short speed_settings[NUMBER_OF_SPEED_SETTINGS] = 
-               { 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000 };
+               { 750, 1000, 1250, 1500, 1750, 2000, 2250, 2500 };
     
     /* Select oscillator analog mux input */
     halSelectAnalogMuxInput( DOM_HAL_MUX_OSC_OUTPUT );
