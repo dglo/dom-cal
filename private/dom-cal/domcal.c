@@ -12,7 +12,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <ctype.h>
 
 #include "hal/DOM_MB_hal.h"
 #include "hal/DOM_MB_fpga.h"
@@ -183,12 +182,12 @@ int get_bytes_from_float( float f, char *c, int offset ) {
 /* Routine to write a 4 byte memory image of a in into
  * an array of bytes at the specified offset
  */
-int get_bytes_from_long( long d, char *c, int offset ) {
+int get_bytes_from_int( int d, char *c, int offset ) {
     int i;
-    for ( i = 0; i < sizeof( long ); i++ ) {
+    for ( i = 0; i < sizeof( int ); i++ ) {
         c[offset + i] = *( ( char* )&d + i );
     }
-    return sizeof( long );
+    return sizeof( int );
 }
 
 /* Routine to write a 2 byte memory image of a short into
@@ -249,14 +248,14 @@ int write_dom_calib( calib_data *cal, char *bin_data ) {
     char *id = cal->dom_id;
     char id_lo[9];
     char id_hi[5];
-    long val_lo, val_hi;
+    unsigned int val_lo, val_hi;
 
     strncpy(id_hi, id, 4);
     strncpy(id_lo, &(id[4]), 8);
-    val_lo = strtol(id_lo, NULL, 16);
-    val_hi = strtol(id_hi, NULL, 16);
-    offset += get_bytes_from_long( val_lo, bin_data, offset);
-    offset += get_bytes_from_long( val_hi, bin_data, offset);
+    val_lo = (unsigned int) strtoul(id_lo, NULL, 16);
+    val_hi = (unsigned int) strtoul(id_hi, NULL, 16);
+    offset += get_bytes_from_int( val_lo, bin_data, offset);
+    offset += get_bytes_from_int( val_hi, bin_data, offset);
 
     /* Write Kelvin temperature */
     offset += get_bytes_from_float( cal->temp, bin_data, offset );
@@ -285,12 +284,12 @@ int write_dom_calib( calib_data *cal, char *bin_data ) {
     /* Write ATWD gain calibration */
     int j;
     for ( i = 0; i < 3; i++ ) {
-        for ( j = 0; j < 3; j++ ) {
+        for ( j = 0; j < 128; j++ ) {
             offset += write_fit( &( cal->atwd0_gain_calib[i][j] ), bin_data, offset );
         }
     }
     for ( i = 0; i < 3; i++ ) {
-        for ( j = 0; j < 3; j++ ) {
+        for ( j = 0; j < 128; j++ ) {
             offset += write_fit( &( cal->atwd1_gain_calib[i][j] ), bin_data, offset );
         }
     }
