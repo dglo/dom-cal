@@ -30,6 +30,9 @@ public class DOMCal implements Runnable {
     
     /* Timeout waiting for response, in seconds */
     public static final int TIMEOUT = 200;
+   
+    /* DOMCal version ID */
+    public static final String VERSION = "1.1";
 
     private static Logger logger = Logger.getLogger( "domcal" );
 
