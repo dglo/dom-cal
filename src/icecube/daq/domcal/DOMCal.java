@@ -25,7 +25,7 @@ import java.sql.*;
 public class DOMCal implements Runnable {
     
     /* Timeout waiting for response, in seconds */
-    public static final int TIMEOUT = 2400;
+    public static final int TIMEOUT = 5400;
    
     private static Logger logger = Logger.getLogger( DOMCal.class );
     private static List threads = new LinkedList();
