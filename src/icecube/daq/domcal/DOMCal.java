@@ -222,6 +222,11 @@ public class DOMCal implements Runnable {
             double inter = fit.getYIntercept();
             int hv = new Double(Math.pow(10.0, (7.0 - inter) / slope)).intValue();
 
+            if (hv > 2000 || hv < 0) {
+                logger.error("Bad HV calibration for DOM " + domId + " HV=" + hv);
+                return;
+            }
+
             try {
                 String url = calProps.getProperty("icecube.daq.domcal.db.url",
                         "jdbc:mysql://localhost/fat");
