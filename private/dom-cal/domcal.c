@@ -542,6 +542,7 @@ int main(void) {
     atwd_freq_cal(&dom_calib);
     if (doHVCal) {
         hv_baseline_cal(&dom_calib);
+        hv_amp_cal(&dom_calib);
         hv_gain_cal(&dom_calib);
     }
 
