@@ -174,6 +174,7 @@ public class DOMCal implements Runnable {
             rec = DOMCalRecordFactory.parseDomCalRecord( ByteBuffer.wrap( binaryData ) );
         } catch ( Exception e ) {
             logger.error( "Error parsing test output" );
+            e.printStackTrace();
             die( e );
             return;
         }
