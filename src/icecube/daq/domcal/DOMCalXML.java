@@ -16,9 +16,9 @@ import java.io.PrintWriter;
 
 public class DOMCalXML {
 
-    public static void format( DOMCalRecord rec, PrintWriter out ) {
+    public static void format( String version, DOMCalRecord rec, PrintWriter out ) {
         
-        out.print( "<domcal version=\"" + DOMCal.VERSION + "\">\n" );
+        out.print( "<domcal version=\"" + version + "\">\n" );
 	out.print("  <date>" + rec.getMonth() + "-" + rec.getDay() + "-" + rec.getYear() + "</date>\n" );
         out.print("  <domid>" + rec.getDomId() + "</domid>\n" );
         out.print("  <temperature format=\"Kelvin\">" + rec.getTemperature() + "</temperature>\n");

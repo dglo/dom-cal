@@ -26,15 +26,13 @@ import java.util.GregorianCalendar;
 import java.util.Iterator;
 import java.util.List;
 import java.util.LinkedList;
+import java.util.StringTokenizer;
 
 public class DOMCal implements Runnable {
     
     /* Timeout waiting for response, in seconds */
     public static final int TIMEOUT = 1200;
    
-    /* DOMCal version ID */
-    public static final String VERSION = "2.0";
-
     private static Logger logger = Logger.getLogger( DOMCal.class );
     private static List threads = new LinkedList();
     
@@ -43,6 +41,7 @@ public class DOMCal implements Runnable {
     private String outDir;
     private boolean calibrate;
     private boolean calibrateHv;
+    private String version;
 
     public DOMCal( String host, int port, String outDir ) {
         this.host = host;
@@ -53,6 +52,7 @@ public class DOMCal implements Runnable {
         }
         this.calibrate = false;
         this.calibrateHv = false;
+        this.version = "Unknown";
     }
 
     public DOMCal( String host, int port, String outDir, boolean calibrate ) {
@@ -64,6 +64,7 @@ public class DOMCal implements Runnable {
         }
         this.calibrate = calibrate;
         this.calibrateHv = false;
+        this.version = "Unknown";
     }
 
     public DOMCal( String host, int port, String outDir, boolean calibrate, boolean calibrateHv ) {
@@ -75,6 +76,7 @@ public class DOMCal implements Runnable {
         }
         this.calibrate = calibrate;
         this.calibrateHv = calibrateHv;
+        this.version = "Unknown";
     }
 
     public void run() {
@@ -118,7 +120,11 @@ public class DOMCal implements Runnable {
                 int day = cal.get( Calendar.DAY_OF_MONTH );
                 int month = cal.get( Calendar.MONTH ) + 1;
                 int year = cal.get( Calendar.YEAR );
-                com.receive( ": " );
+                StringTokenizer st = new StringTokenizer( com.receive( ": " ),
+                           "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ \">\r\n" );
+                if ( st.hasMoreTokens() ) {
+                    version = st.nextToken();
+                }
                 com.send( "" + year + "\r" );
                 com.receive( ": " );
                 com.send( "" + month + "\r" );
@@ -181,7 +187,7 @@ public class DOMCal implements Runnable {
 
         try {
             PrintWriter out = new PrintWriter( new FileWriter( outDir + "domcal_" + domId + ".xml", false ), false );
-            DOMCalXML.format( rec, out );
+            DOMCalXML.format( version, rec, out );
             out.flush();
             out.close();
         } catch ( IOException e ) {
