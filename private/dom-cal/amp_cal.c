@@ -9,8 +9,6 @@
  */
 
 #include <stdio.h>
-#include <string.h>
-#include <unistd.h>
 #include <math.h>
 
 #include "hal/DOM_MB_hal.h"
@@ -41,6 +39,10 @@ int amp_cal(calib_data *dom_calib) {
     float peaks[3][AMP_CAL_TRIG_CNT];
 
     printf("Performing amplifier calibration...\r\n");
+
+    /* Save DACs that we modify */
+    short origBiasDAC = halReadDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL);
+    short origDiscDAC = halReadDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH);
 
     /* Set discriminator and bias level */
     halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, AMP_CAL_PEDESTAL_DAC);   
@@ -120,6 +122,10 @@ int amp_cal(calib_data *dom_calib) {
         dom_calib->amplifier_calib[ch].error =  sqrt(var)/(pulser_v*sqrt(AMP_CAL_TRIG_CNT));
 
     }
+
+    /* Put the DACs back to original state */
+    halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, origBiasDAC);   
+    halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, origDiscDAC);
 
     /* Turn off the pulser */
     hal_FPGA_TEST_disable_pulser();

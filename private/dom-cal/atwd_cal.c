@@ -8,8 +8,6 @@
  */
 
 #include <stdio.h>
-#include <string.h>
-#include <unistd.h>
 
 #include "hal/DOM_MB_hal.h"
 #include "hal/DOM_MB_fpga.h"
@@ -37,8 +35,11 @@ int atwd_cal(calib_data *dom_calib) {
 
     printf("Performing ATWD calibration...\r\n");
 
+    /* Save DACs that we modify */
+    short origBiasDAC  = halReadDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL);
+    short origClampDAC = halReadDAC(DOM_HAL_DAC_FE_AMP_LOWER_CLAMP);
+
     /* Turn off clamping amplifier */
-    /* FIX ME -- DOES THIS EVEN WORK? */    
     halWriteDAC(DOM_HAL_DAC_FE_AMP_LOWER_CLAMP, 0);
 
     /* Trigger both ATWDs */
@@ -105,8 +106,11 @@ int atwd_cal(calib_data *dom_calib) {
                            &(dom_calib->atwd1_gain_calib[ch][bin])); 
         }
     }
-                
-    /* FIX ME: turn clamping back on? */
+
+    /* Return DOM to previous state */
+    halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, origBiasDAC);
+    halWriteDAC(DOM_HAL_DAC_FE_AMP_LOWER_CLAMP, origClampDAC);
+
     /* FIX ME: return real error code? */
     return 0;
 
