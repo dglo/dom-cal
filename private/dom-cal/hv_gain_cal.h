@@ -9,6 +9,13 @@
 #define GAIN_CAL_DISC_DAC       505
 #endif
 
+/* Which ATWD to use */
+#ifdef DOMCAL_REV4
+#define GAIN_CAL_ATWD             1
+#else
+#define GAIN_CAL_ATWD             0
+#endif
+
 /* How many SPE waveforms to histogram */
 #define GAIN_CAL_TRIG_CNT      1000
 

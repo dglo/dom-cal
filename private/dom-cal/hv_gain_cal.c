@@ -30,8 +30,11 @@ int hv_gain_cal(calib_data *dom_calib) {
     int ch, bin, trig, peak_idx;
     float bin_v, peak_v, vsum;
 
+    /* Which ATWD to use */
+    short atwd = GAIN_CAL_ATWD;
+
     /* Channel readout buffers for each channel and bin */
-    /* This test only uses ATWD A, ch0 and ch1 */
+    /* This test only uses a single ATWD, ch0 and ch1 */
     short channels[2][128];
     
     /* Charge arrays for each waveform */
@@ -59,7 +62,7 @@ int hv_gain_cal(calib_data *dom_calib) {
     pv_dat pv_data[GAIN_CAL_HV_CNT]; 
 
 #ifdef DEBUG
-    printf("Performing HV gain calibration...\r\n");
+    printf("Performing HV gain calibration (using ATWD%d)...\r\n", atwd);
 #endif
 
     /* Save DACs that we modify */
@@ -77,14 +80,19 @@ int hv_gain_cal(calib_data *dom_calib) {
 
     /* Select something static into channel 3 */
     halSelectAnalogMuxInput(DOM_HAL_MUX_FLASHER_LED_CURRENT);
-    
-    /* Trigger ATWD B only */
-    trigger_mask = HAL_FPGA_TEST_TRIGGER_ATWD1;
+
+    /* Trigger one ATWD only */
+    trigger_mask = (atwd == 0) ? HAL_FPGA_TEST_TRIGGER_ATWD0 : HAL_FPGA_TEST_TRIGGER_ATWD1;
 
     /* Get calibrated sampling frequency */
     float freq;
-    short samp_dac = halReadDAC(DOM_HAL_DAC_ATWD1_TRIGGER_BIAS);
-    freq = getCalibFreq(0, *dom_calib, samp_dac);
+    short samp_dac;
+    if (atwd == 0)
+        samp_dac = halReadDAC(DOM_HAL_DAC_ATWD0_TRIGGER_BIAS);
+    else
+        samp_dac = halReadDAC(DOM_HAL_DAC_ATWD1_TRIGGER_BIAS);
+
+    freq = getCalibFreq(atwd, *dom_calib, samp_dac);
 
     /* Give user a final warning */
 #ifdef DEBUG
@@ -128,9 +136,16 @@ int hv_gain_cal(calib_data *dom_calib) {
             while (!hal_FPGA_TEST_readout_done(trigger_mask));
 
             /* Read out one waveform from channels 0 and 1 */
-            hal_FPGA_TEST_readout(NULL, NULL, NULL, NULL,
-                                  channels[0], channels[1], NULL, NULL, 
-                                  cnt, NULL, 0, trigger_mask);            
+            if (atwd == 0) {
+                hal_FPGA_TEST_readout(channels[0], channels[1], NULL, NULL, 
+                                      NULL, NULL, NULL, NULL,
+                                      cnt, NULL, 0, trigger_mask);
+            }
+            else {
+                hal_FPGA_TEST_readout(NULL, NULL, NULL, NULL,
+                                      channels[0], channels[1], NULL, NULL,
+                                      cnt, NULL, 0, trigger_mask);
+            }
 
             /* Make sure we aren't in danger of saturating channel 0 */            
             /* If so, switch to channel 1 */
@@ -144,16 +159,28 @@ int hv_gain_cal(calib_data *dom_calib) {
 
             /* Find the peak */
             peak_idx = 0;
-            peak_v = (float)channels[ch][0] * dom_calib->atwd1_gain_calib[ch][0].slope
-                + dom_calib->atwd1_gain_calib[ch][0].y_intercept;
+            if (atwd == 0) {
+                peak_v = (float)channels[ch][0] * dom_calib->atwd0_gain_calib[ch][0].slope
+                    + dom_calib->atwd0_gain_calib[ch][0].y_intercept;
+            }
+            else {
+                peak_v = (float)channels[ch][0] * dom_calib->atwd1_gain_calib[ch][0].slope
+                    + dom_calib->atwd1_gain_calib[ch][0].y_intercept;
+            }
 
             for (bin=0; bin<cnt; bin++) {
 
                 /* Use calibration to convert to V */
                 /* Don't need to subtract out bias or correct for amplification to find */
                 /* peak location -- but without correction, it is really a minimum */
-                bin_v = (float)channels[ch][bin] * dom_calib->atwd1_gain_calib[ch][bin].slope
-                    + dom_calib->atwd1_gain_calib[ch][bin].y_intercept;
+                if (atwd == 0) {
+                    bin_v = (float)channels[ch][bin] * dom_calib->atwd0_gain_calib[ch][bin].slope
+                        + dom_calib->atwd0_gain_calib[ch][bin].y_intercept;
+                }
+                else {
+                    bin_v = (float)channels[ch][bin] * dom_calib->atwd1_gain_calib[ch][bin].slope
+                        + dom_calib->atwd1_gain_calib[ch][bin].y_intercept;
+                }
 
                 if (bin_v < peak_v) {
                     peak_idx = bin;
@@ -170,7 +197,7 @@ int hv_gain_cal(calib_data *dom_calib) {
             vsum = 0;
 
             for (bin = int_min; bin <= int_max; bin++)
-                vsum += getCalibV(channels[ch][bin], *dom_calib, 1, ch, bin, bias_v);
+                vsum += getCalibV(channels[ch][bin], *dom_calib, atwd, ch, bin, bias_v);
 
             /* True charge, in pC = 1/R_ohm * sum(V) * 1e12 / (freq_mhz * 1e6) */
             /* FE sees a 50 Ohm load */

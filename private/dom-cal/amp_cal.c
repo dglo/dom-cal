@@ -42,7 +42,7 @@ int amp_cal(calib_data *dom_calib) {
     float peaks[3][AMP_CAL_TRIG_CNT];
 
 #ifdef DEBUG
-    printf("Performing amplifier calibration...\r\n");
+    printf("Performing amplifier calibration (using ATWD%d)...\r\n", atwd);
 #endif
 
     /* Save DACs that we modify */

@@ -3,7 +3,11 @@
  */
 
 /* Which ATWD to use */
+#ifdef DOMCAL_REV4
 #define AMP_CAL_ATWD              1
+#else
+#define AMP_CAL_ATWD              0
+#endif
 
 /* Specific DAC values for this test */
 #ifdef DOMCAL_REV5
@@ -15,6 +19,7 @@
 #define AMP_CAL_DISC_DAC        650
 #define AMP_CAL_SAMPLING_DAC   2047
 #endif
+
 /* How many pulser waveforms to measure */
 #define AMP_CAL_TRIG_CNT        250
 
