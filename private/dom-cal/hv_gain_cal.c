@@ -182,15 +182,9 @@ int hv_gain_cal(calib_data *dom_calib) {
             continue;
         }
 
-        /* ok to fill histogram with data */
-        hv_hist_data[hv_idx].is_filled = 1;
-        
         /* Number of points with negative charge */
         int bad_trig = 0;
 
-        /* maximum allowed negative charge points before failing */
-        int max_bad_trig = GAIN_CAL_TRIG_CNT * 3;
-        
         for (trig=0; trig<(int)GAIN_CAL_TRIG_CNT; trig++) {
                 
             /* Warm up the ATWD */
@@ -272,19 +266,26 @@ int hv_gain_cal(calib_data *dom_calib) {
  
             if (charges[trig] < 0) {
                 trig--;
-                if (++bad_trig > max_bad_trig) return NEG_WF;
+                if (++bad_trig > GAIN_CAL_TRIG_CNT) break;
             }
 
         } /* End trigger loop */
 
+        /* Check histogram trigger count -- < GAIN_CAL_TRIG_CNT ==> error, skip voltage */
+        if (trig < GAIN_CAL_TRIG_CNT) {
+#ifdef DEBUG
+            printf("Aborted histogram -- too much bad data -- skipping voltage %d\r\n", hv);
+#endif
+            continue;
+        }
+    
+        /* histogram has data */
+        hv_hist_data[hv_idx].is_filled = 1;
+
         /* Create histogram of charge values */
         /* Heuristic maximum for histogram */
-        /* 
-         * KDH - scale by 0.5 - noted that histos were compressed
-         * s.t. interesting features were lost.
-         */
 	   
-        int hist_max = ceil(0.5*pow(10.0, 6.37*log10(hv*2)-21.0));
+        int hist_max = ceil(pow(10.0, 6.37*log10(hv*2)-21.0));
         int hbin;
 
         /* Initialize histogram */
@@ -342,6 +343,7 @@ int hv_gain_cal(calib_data *dom_calib) {
             
             /* If PV is too high, we don't have true peak and valley */
             if ((pv_ratio > 0.0) && (pv_ratio < GAIN_CAL_MAX_SANE_PV)) {
+
                 log_hv[spe_cnt] = log10(hv);
                 log_gain[spe_cnt] = log10(fit_params[hv_idx][3] / Q_E) - 12.0;
 
