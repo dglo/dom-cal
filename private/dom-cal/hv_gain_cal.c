@@ -164,8 +164,12 @@ int hv_gain_cal(calib_data *dom_calib) {
             /* Now integrate around the peak to get the charge */
             /* FIX ME: increase sampling speed? */
             /* FIX ME: use time window instead? */
+            int int_min, int_max;
+            int_min = (peak_idx - INT_WIN_MIN >= 0) ? peak_idx - INT_WIN_MIN : 0;
+            int_max = (peak_idx + INT_WIN_MAX <= cnt-1) ? peak_idx + INT_WIN_MAX : cnt-1;
             vsum = 0;
-            for (bin = peak_idx-4; ((bin <= peak_idx+8) && (bin < cnt)); bin++)
+
+            for (bin = int_min; bin <= int_max; bin++)
                 vsum += getCalibV(channels[ch][bin], *dom_calib, 1, ch, bin, bias_v);
 
             /* True charge, in pC = 1/R_ohm * sum(V) * 1e12 / (freq_mhz * 1e6) */
@@ -194,21 +198,29 @@ int hv_gain_cal(calib_data *dom_calib) {
 
         /* Initialize histogram */
         for(hbin=0; hbin < GAIN_CAL_BINS; hbin++) {
-	    hist_x[hv_idx][hbin] = (float)hbin * hist_max / GAIN_CAL_BINS;
-	    hist_y[hv_idx][hbin] = 0.0;
-	}
+            hist_x[hv_idx][hbin] = (float)hbin * hist_max / GAIN_CAL_BINS;
+            hist_y[hv_idx][hbin] = 0.0;
+        }
 
         /* Fill histogram -- histogram minimum is 0.0 */
+        int hist_under, hist_over;
+        hist_under = hist_over = 0;
         for(trig=0; trig < GAIN_CAL_TRIG_CNT; trig++) {
 
             hbin = charges[trig] * GAIN_CAL_BINS / hist_max;
             
             /* Do NOT use an overflow bin; will screw up fit */
-            if (hbin < GAIN_CAL_BINS)
+            if ((hbin >= 0) && (hbin < GAIN_CAL_BINS))
                 hist_y[hv_idx][hbin] += 1;
+            else if (hbin < 0)
+                hist_under++;
+            else
+                hist_over++;
         }
 
 #ifdef DEBUG
+        printf("Histogram points out of range: under %d, over %d\r\n", 
+               hist_under, hist_over);
         printf("Histogram:\r\n");
         for(hbin=0; hbin < GAIN_CAL_BINS; hbin++) 
             printf("%d %g %g\r\n", hbin, hist_x[hv_idx][hbin], hist_y[hv_idx][hbin]);
