@@ -24,7 +24,8 @@ import java.io.FileWriter;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.Iterator;
-import java.util.HashSet;
+import java.util.List;
+import java.util.LinkedList;
 
 public class DOMCal implements Runnable {
     
@@ -35,12 +36,12 @@ public class DOMCal implements Runnable {
     public static final String VERSION = "1.1";
 
     private static Logger logger = Logger.getLogger( "domcal" );
-
+    private static List threads = new LinkedList();
+    
     private String host;
     private int port;
     private String outDir;
     private boolean calibrate;
-    private static HashSet threads;
 
     public DOMCal( String host, int port, String outDir ) {
         this.host = host;
@@ -50,7 +51,6 @@ public class DOMCal implements Runnable {
             this.outDir += "/";
         }
         this.calibrate = false;
-        threads = new HashSet();
     }
 
     public DOMCal( String host, int port, String outDir, boolean calibrate ) {
@@ -61,7 +61,6 @@ public class DOMCal implements Runnable {
             this.outDir += "/";
         }
         this.calibrate = calibrate;
-        threads = new HashSet();
     }
 
     public void run() {
