@@ -17,6 +17,7 @@ CALOBJS  = atwd_cal.o amp_cal.o atwd_freq_cal.o pulser_cal.o
 
 EXOBJS = calUtils.o
 KOBJS = ../lib/crt0.o ../lib/libkernel.a
+FSOBJS = ../iceboot/fis.o ../iceboot/flashdrv.o
 
 #CFILES   = domcal.c calUtils.c $(CALOBJS:.o=.c)
 ALLOBJS  = domcal.o calUtils.o $(CALOBJS)
@@ -28,7 +29,7 @@ clean:
 
 domcal.elf: domcal.o $(EXOBJS) $(CALOBJS) $(LIBHAL)
 	$(LD) --script=$(KERNELX) -o domcal.elf \
-	$(KOBJS) domcal.o $(CALOBJS) $(EXOBJS) $(LIBHAL) $(SYSLIBS)
+	$(KOBJS) $(FSOBJS) domcal.o $(CALOBJS) $(EXOBJS) $(LIBHAL) $(SYSLIBS)
 
 ../bin/%.bin.gz: %.bin; gzip -c $< > $@
 

@@ -16,7 +16,7 @@
 #include "hal/DOM_MB_fpga.h"
 
 /* Needed for flash filesystem write routine */
-#include "iceboot/fis.h"
+#include "../iceboot/fis.h"
 
 #include "domcal.h"
 #include "calUtils.h"
@@ -268,10 +268,10 @@ int save_results(calib_data dom_calib) {
     }
 
     /* Write to flash */
-    /*const char name[10] = "calib_data";
+    const char name[10] = "calib_data";
     if ( fisCreate( name, binary_data, RECORD_LENGTH ) != 0 ) {
         err = FAILED_FLASH_WRITE;
-    }*/
+    }
 
     return err;
 }
