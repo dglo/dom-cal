@@ -49,7 +49,7 @@ public class DOMCalDH {
 
     private DOMCalDH(Properties props) {
         this.props = props;
-        String cexec = props.getProperty("calibrate", "none");
+        String cexec = props.getProperty("icecube.domcal.calibrate", "none");
         if (cexec.equalsIgnoreCase("analogfe")) {
             afecal = true;
         } else if (cexec.equalsIgnoreCase("pmtgain")) {
@@ -83,7 +83,7 @@ public class DOMCalDH {
             else if (arg.equals("-gaincal"))
                 props.setProperty("calibrate", "pmtgain");
             else if (arg.equals("-outDir")) {
-                props.setProperty("outputDirectory", args[iarg++]);
+                props.setProperty("icecube.domcal.outputDirectory", args[iarg++]);
             } else {
                 // interpret as a domhub name
                 hubs.add(arg);
