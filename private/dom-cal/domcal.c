@@ -406,11 +406,9 @@ int main(void) {
         printf("Calibration completed successfully.\r\n");
 #endif
    
-    /* Reboot the DOM -- DOESN'T SEEM TO WORK */
+    /* Reboot the DOM */
+    halUSleep( 250000 );
     halBoardReboot();
-
-    /* hal_FPGA_TEST_request_reboot();
-    while (!hal_FPGA_TEST_is_reboot_granted()); */
 
     return 0;
 }
