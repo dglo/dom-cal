@@ -294,12 +294,10 @@ public class HVHistogramGrapher implements Runnable {
             if (histos[i].isConvergent()) {
                 int xCenter = getXPixel(histos[i].getVoltage());
                 int yCenter = getYPixel((int)(1e-12 * histos[i].getFitParams()[3] / EC));
-                if (xCenter > 296) xCenter = 296;
-                if (xCenter < 53) xCenter = 53;
-                if (yCenter > 246) yCenter = 246;
-                if (yCenter < 3) yCenter = 3;
-                g.drawLine(xCenter - 3, yCenter, xCenter + 3, yCenter);
-                g.drawLine(xCenter, yCenter - 3, xCenter, yCenter + 3);
+                if (!(xCenter > 296 || xCenter < 53 || yCenter > 246 || yCenter < 3)) {
+                    g.drawLine(xCenter - 3, yCenter, xCenter + 3, yCenter);
+                    g.drawLine(xCenter, yCenter - 3, xCenter, yCenter + 3);
+                }
                 xData[convIndx] = xCenter;
                 yData[convIndx] = yCenter;
                 convIndx++;
@@ -321,13 +319,13 @@ public class HVHistogramGrapher implements Runnable {
                 int startX = 51;
                 int endX = 299;
                 int startY = (int)(fit.getYIntercept() + startX*fit.getSlope());
-                //find where line reaches 51
-                while (startY > 249 && startX < endX) {
+                //select only X range where Y values are on graph
+                while ((startY > 249 || startY < 0) && startX < endX) {
                     startX++;
                     startY = (int)(fit.getYIntercept() + startX*fit.getSlope());
                 }
                 int endY = (int)(fit.getYIntercept() + endX*fit.getSlope());
-                while (endY < 0 && startX < endX) {
+                while ((endY < 0 || endY > 249) && startX < endX) {
                     endX--;
                     endY = (int)(fit.getYIntercept() + endX*fit.getSlope());
                 }
@@ -366,6 +364,10 @@ public class HVHistogramGrapher implements Runnable {
         BufferedImage bi = new BufferedImage(300, 300, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = bi.createGraphics();
 
+        //want white background
+        g.setColor(Color.WHITE);
+        g.fillRect(0, 0, bi.getWidth(), bi.getHeight());
+
         g.setColor(Color.BLUE);
         //fill histogram
         for (int i = 0; i < 250; i++) {
@@ -395,7 +397,7 @@ public class HVHistogramGrapher implements Runnable {
             fitPrevious = fitY;
         }
 
-        g.setColor(Color.WHITE);
+        g.setColor(Color.BLACK);
         //draw axes
         g.drawLine(50, 249, 299, 249);
         g.drawLine(50, 0, 50, 249);
