@@ -35,7 +35,7 @@ public class HVHistogramGrapher implements Runnable {
 
     public static final double EC = 1.6022e-19;
 
-    public static short[] VOLTAGES = {1200, 1300, 1400, 1500, 1600, 17000, 1800, 1900};
+    public static short[] VOLTAGES = {1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900};
 
     private String inDir;
     private String outDir;
@@ -136,7 +136,7 @@ public class HVHistogramGrapher implements Runnable {
                 }
             }
             try {
-                String loc = graphHV((HVHistogram[])hTable.values().toArray(), domId);
+                String loc = graphHV(hTable, domId);
                 doc.addImg(loc);
                 sumDoc.addSizedImg(loc, 100, 100);
             } catch (IOException e) {
@@ -177,7 +177,7 @@ public class HVHistogramGrapher implements Runnable {
         return outHttp;
     }
 
-    private String graphHV(HVHistogram[] histos, String domId) throws IOException {
+    private String graphHV(Hashtable histos, String domId) throws IOException {
         String outName = domId + "_hv" + ".jpeg";
         String outFile = outDir + (outDir.endsWith("/") ? "" : "/") + outName;
         String outHttp = htmlRoot + (htmlRoot.endsWith("/") ? "" : "/") + outName;
@@ -191,7 +191,11 @@ public class HVHistogramGrapher implements Runnable {
         return outHttp;
     }
 
-    private BufferedImage createSummaryImage(HVHistogram[] histos) {
+    private BufferedImage createSummaryImage(Hashtable histTable) {
+        Object[] obj = histTable.values().toArray();
+        HVHistogram[] histos = new HVHistogram[obj.length];
+        for (int i = 0; i < obj.length; i++) histos[i] = (HVHistogram)obj[i];
+
         BufferedImage bi = new BufferedImage(300, 300, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = bi.createGraphics();
 
