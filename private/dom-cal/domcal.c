@@ -397,7 +397,7 @@ int main(void) {
     calib_data dom_calib;
     
 #ifdef DEBUG
-    printf("Hello, world!  This is domcal version %d.%d\r\n", 
+    printf("Welcome to domcal version %d.%d\r\n", 
            MAJOR_VERSION, MINOR_VERSION);
 #endif
 
@@ -437,7 +437,7 @@ int main(void) {
 
 #ifdef DEBUG
     if (!err) 
-        printf("Calibration completed successfully.\r\n");
+        printf("Calibration completed successfully.  Rebooting...\r\n");
 #endif
    
     /* Reboot the DOM */
