@@ -5,6 +5,7 @@
 	</packages>
 	<uses>
 		<libs>
+                        domhub-common.jar
                 </libs>
 		<tools>
 			log4j.jar
