@@ -55,7 +55,7 @@ int amp_cal(calib_data *dom_calib) {
     /* Turn on the pulser */
     hal_FPGA_TEST_enable_pulser();
 
-    /* Trigger ATWD A only */
+    /* Trigger ATWD B only */
     trigger_mask = HAL_FPGA_TEST_TRIGGER_ATWD1;
 
     /* Loop over channels and pulser settings for each channel */
