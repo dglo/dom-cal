@@ -9,20 +9,28 @@
  * be incremented when changing structure of binary output
  */
 #define MAJOR_VERSION 2
-#define MINOR_VERSION 0
+#define MINOR_VERSION 1
 
 /* Default number of bytes in binary output */
 #define DEFAULT_RECORD_LENGTH 9386
 
 /* Default ATWD DAC settings */
+#ifdef DOMCAL_REV5
+#define ATWD_SAMPLING_SPEED_DAC  850
+#define ATWD_RAMP_TOP_DAC       2300
+#define ATWD_RAMP_BIAS_DAC       350
+#define ATWD_ANALOG_REF_DAC     2250
+#define ATWD_PEDESTAL_DAC       2130
+#else
 #define ATWD_SAMPLING_SPEED_DAC 850
 #define ATWD_RAMP_TOP_DAC       2097
 #define ATWD_RAMP_BIAS_DAC      3000
 #define ATWD_ANALOG_REF_DAC     2048
 #define ATWD_PEDESTAL_DAC       1925
+#endif
 
 /* Mainboard oscillator frequency into ATWD channel 3, in MHz */
-#ifdef REV3HAL
+#if defined DOMCAL_REV2 || defined DOMCAL_REV3
 #define DOM_CLOCK_FREQ          40.0
 #else
 #define DOM_CLOCK_FREQ          20.0

@@ -2,11 +2,12 @@
  * hv_gain_cal header file
  */
 
-/* Maximum allowed temperature to run calibration, in K */
-#define GAIN_CAL_MAX_TEMP       250
-
 /* Specific DAC values for this test */
+#ifdef DOMCAL_REV5
+#define GAIN_CAL_DISC_DAC       556
+#else
 #define GAIN_CAL_DISC_DAC       505
+#endif
 
 /* How many SPE waveforms to histogram */
 #define GAIN_CAL_TRIG_CNT      1000

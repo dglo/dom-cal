@@ -93,7 +93,7 @@ int hv_gain_cal(calib_data *dom_calib) {
     halUSleep(5000000);
 
     /* Turn on high voltage base */
-#ifdef REV3HAL
+#if defined DOMCAL_REV2 || defined DOMCAL_REV3
     halEnablePMT_HV();
 #else
     halPowerUpBase();
@@ -280,7 +280,7 @@ int hv_gain_cal(calib_data *dom_calib) {
     }
 
     /* Turn off the high voltage */
-#ifdef REV3HAL
+#if defined DOMCAL_REV2 || defined DOMCAL_REV3
     halDisablePMT_HV();
 #else
     halDisableBaseHV();

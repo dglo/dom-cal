@@ -89,10 +89,8 @@ int pulser_cal(calib_data *dom_calib) {
 
     /* Convert SPE value to volts */
     float volt_spe_settings[NUMBER_OF_SPE_SETTINGS];
-    for ( i = 0; i < NUMBER_OF_SPE_SETTINGS; i++ ) {
-        volt_spe_settings[i] = 
-               0.0000244 * ( 0.4 * spe_settings[i] - 0.1 * bias ) * 5;
-    }
+    for ( i = 0; i < NUMBER_OF_SPE_SETTINGS; i++ )
+        volt_spe_settings[i] = discDAC2V((int)spe_settings[i], bias);
 
     /* Do linear fit, x-axis pulser amplitude, y-axis SPE thresh */
     linearFitFloat( pulser_cal_data, volt_spe_settings,

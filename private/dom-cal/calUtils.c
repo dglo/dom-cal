@@ -79,6 +79,17 @@ float temp2K(short temp) {
 
 /*---------------------------------------------------------------------------*/
 /*
+ * discDAC2V
+ *
+ * Converts the discriminator DAC setting to volts (using bias DAC too).
+ *
+ */
+float discDAC2V(int disc_dac, int bias_dac) {
+    return (0.0000244 * (0.4 * disc_dac - 0.1 * bias_dac) * 5.0);
+}
+
+/*---------------------------------------------------------------------------*/
+/*
  * biasDAC2V
  *
  * Converts the FE pedestal level (bias) from DAC value to volts
