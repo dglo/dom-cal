@@ -26,6 +26,8 @@ int pulser_cal(calib_data *dom_calib) {
     int old_spe_thresh;
     int old_pulser_amplitude;
     
+    printf( "Performing FE pulser calibration...\r\n" );
+
     /* ATWD sampling speeds to be tested */
     const short spe_settings[NUMBER_OF_SPE_SETTINGS] = 
              { 525, 550, 575, 600, 625, 650, 675, 700, 750, 800, 900, 1000 };

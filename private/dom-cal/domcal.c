@@ -370,7 +370,9 @@ int save_results(calib_data dom_calib) {
     char binary_data[RECORD_LENGTH];
 
     /* Convert DOM calibration data to binary format */
-    if ( !( write_dom_calib( &dom_calib, binary_data ) == RECORD_LENGTH ) ) {
+    int b_write = write_dom_calib( &dom_calib, binary_data );
+    printf( "Writing %d bytes to flash....", b_write );
+    if ( !( b_write == RECORD_LENGTH ) ) {
         err = FAILED_BINARY_CONVERSION;
     }
 
@@ -417,12 +419,11 @@ int main(void) {
     atwd_freq_cal(&dom_calib);
     
     /* Write calibration record to flash */
-    printf( "Saving to flash...." );
     int save_ret = save_results( dom_calib );
     if ( !save_ret ) {
         printf( "done.\r\n" );
     } else {
-        printf( "FAILED.\r\n" );
+        printf( "FAILED. %d\r\n", save_ret );
         err = save_ret;
     }    
 
