@@ -402,13 +402,19 @@ int hv_gain_cal(calib_data *dom_calib) {
     /* If no error in fit, record gain and P/V */
     if (!fiterr) {
 
-        float valley_x, valley_y, pv_ratio;
+        float valley_x, valley_y, peak_y, pv_ratio;
         /* Find valley */
         int val = spe_find_valley(fit_params[hv_idx], &valley_x, &valley_y);
         if (val == 0) {
 
-            pv_ratio = fit_params[hv_idx][2] / valley_y;
+            /* Peak value is Gaussian + exponential at x-value defined */
+            /* by Gaussian peak */
+            peak_y = fit_params[hv_idx][2] + 
+                (fit_params[hv_idx][0] * exp(-1.0 * fit_params[hv_idx][1] * fix_params[hv_idx][3]));
+
+            pv_ratio = peak_y / valley_y;
 #ifdef DEBUG
+            printf("Full peak (exp + gaussian) = %.6g\r\n", peak_y);
             printf("Valley located at %.6g, %.6g: PV = %.2g\r\n", valley_x, valley_y, pv_ratio);
 #endif
             
