@@ -252,8 +252,14 @@ int write_dom_calib( calib_data *cal, char *bin_data ) {
 
     strncpy(id_hi, id, 4);
     strncpy(id_lo, &(id[4]), 8);
+
+    printf("DEBUG: strings %s %s\r\n", id_hi, id_lo);
+
     val_lo = (unsigned int) strtoul(id_lo, NULL, 16);
     val_hi = (unsigned int) strtoul(id_hi, NULL, 16);
+
+    printf("DEBUG: val %08x %08x\r\n", val_hi, val_lo);
+
     offset += get_bytes_from_int( val_lo, bin_data, offset);
     offset += get_bytes_from_int( val_hi, bin_data, offset);
 
