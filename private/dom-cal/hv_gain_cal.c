@@ -174,7 +174,7 @@ int hv_gain_cal(calib_data *dom_calib) {
                     + dom_calib->atwd1_gain_calib[ch][0].y_intercept;
             }
 
-            for (bin=0; bin<cnt; bin++) {
+            for (bin=96; bin<cnt; bin++) {
 
                 /* Use calibration to convert to V */
                 /* Don't need to subtract out bias or correct for amplification to find */
@@ -218,7 +218,12 @@ int hv_gain_cal(calib_data *dom_calib) {
 
         /* Create histogram of charge values */
         /* Heuristic maximum for histogram */
-        int hist_max = ceil(pow(10.0, 6.37*log10(hv*2)-21.0));
+	/* 
+	 * KDH - scale by 0.5 - noted that histos were compressed
+	 * s.t. interesting features were lost.
+	 */
+	   
+        int hist_max = ceil(0.5*pow(10.0, 6.37*log10(hv*2)-21.0));
         int hbin;
 
         /* Initialize histogram */
