@@ -518,18 +518,20 @@ public class CalibratorDB
     private void loadHvGain(Statement stmt, Calibrator cal)
         throws DOMCalibrationException, SQLException
     {
-        final String qStr = "select slope,intercept from DOMCal_HvGain" +
-            " where domcal_id=" + cal.getDOMCalId();
+        final String qStr = "select slope,intercept,regression" +
+            " from DOMCal_HvGain where domcal_id=" + cal.getDOMCalId();
 
         ResultSet rs = stmt.executeQuery(qStr);
 
         double slope = Double.NaN;
         double intercept = Double.NaN;
+        double regression = Double.NaN;
 
         boolean found = false;
         if (rs.next()) {
             slope = rs.getDouble(1);
             intercept = rs.getDouble(2);
+            regression = rs.getDouble(3);
             found = true;
         }
 
@@ -540,7 +542,7 @@ public class CalibratorDB
         }
 
         if (found) {
-            cal.setHvGain(slope, intercept);
+            cal.setHvGain(slope, intercept, regression);
         }
     }
 
@@ -603,10 +605,18 @@ public class CalibratorDB
                 final String name = rs.getString(1);
                 final float value = rs.getFloat(2);
 
-                for (int j = 0; j < params.length; j++) {
-                    if (name.equals(HVHistogram.getParameterName(j))) {
+                boolean foundParam = false;
+                for (int j = 0; !foundParam && j < params.length; j++) {
+                    final String paramName = HVHistogram.getParameterName(j);
+                    if (name.equals(paramName)) {
                         params[j] = value;
+                        foundParam = true;
                     }
+                }
+
+                if (!foundParam) {
+                    System.err.println("Unknown HvHistogram parameter \"" +
+                                       name + "\"");
                 }
             }
 
@@ -756,7 +766,7 @@ public class CalibratorDB
         cal.setPulserFitParam("r", regression);
 
         final String pStr = "select dp.name,dpp.value" +
-            " from DOMCal_PulserParam dpp,DOMCAL_Param dp" +
+            " from DOMCal_PulserParam dpp,DOMCal_Param dp" +
             " where dpp.domcal_id=" + cal.getDOMCalId() +
             " and dpp.dc_param_id=dp.dc_param_id";
 
@@ -1156,9 +1166,9 @@ public class CalibratorDB
         }
 
         final String iStr =
-            "insert into DOMCal_HvGain(domcal_id,slope,intercept)values(" +
-            domcalId + "," + cal.getHvGainSlope() + "," +
-            cal.getHvGainIntercept() + ")";
+            "insert into DOMCal_HvGain(domcal_id,slope,intercept,regression)" +
+            "values(" + domcalId + "," + cal.getHvGainSlope() + "," +
+            cal.getHvGainIntercept() + "," + cal.getHvGainRegression() + ")";
 
         int rows;
         try {
