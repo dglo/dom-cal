@@ -17,16 +17,10 @@ import org.apache.log4j.BasicConfigurator;
 
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.io.PrintWriter;
-import java.io.FileWriter;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
-import java.util.Iterator;
-import java.util.List;
-import java.util.LinkedList;
-import java.util.StringTokenizer;
+import java.io.*;
+import java.util.*;
+import java.sql.*;
 
 public class DOMCal implements Runnable {
     
@@ -41,42 +35,45 @@ public class DOMCal implements Runnable {
     private String outDir;
     private boolean calibrate;
     private boolean calibrateHv;
+    private DOMCalRecord rec;
+    private Connection jdbc;
+    private Properties calProps;
     private String version;
 
     public DOMCal( String host, int port, String outDir ) {
-        this.host = host;
-        this.port = port;
-        this.outDir = outDir;
-        if ( !outDir.endsWith( "/" ) ) {
-            this.outDir += "/";
-        }
-        this.calibrate = false;
-        this.calibrateHv = false;
-        this.version = "Unknown";
+        this(host, port, outDir, false, false);
     }
 
     public DOMCal( String host, int port, String outDir, boolean calibrate ) {
-        this.host = host;
-        this.port = port;
-        this.outDir = outDir;
-        if ( !outDir.endsWith( "/" ) ) {
-            this.outDir += "/";
-        }
-        this.calibrate = calibrate;
-        this.calibrateHv = false;
-        this.version = "Unknown";
+        this(host, port, outDir, calibrate, false);
     }
 
     public DOMCal( String host, int port, String outDir, boolean calibrate, boolean calibrateHv ) {
         this.host = host;
         this.port = port;
         this.outDir = outDir;
+        this.version = "Unknown";
         if ( !outDir.endsWith( "/" ) ) {
             this.outDir += "/";
         }
         this.calibrate = calibrate;
         this.calibrateHv = calibrateHv;
-        this.version = "Unknown";
+        calProps = new Properties();
+        File propFile = new File(System.getProperty("user.home") +
+                "/.domcal.properties"
+        );
+        if (!propFile.exists()) {
+            propFile = new File("/usr/local/etc/domcal.properties");
+        }
+
+        try {
+            calProps.load(new FileInputStream(propFile));
+        } catch (IOException e) {
+            logger.warn("Cannot access the domcal.properties file " +
+                    "- using compiled defaults.",
+                    e
+            );
+        }
     }
 
     public void run() {
@@ -125,6 +122,7 @@ public class DOMCal implements Runnable {
                 if ( st.hasMoreTokens() ) {
                     version = st.nextToken();
                 }
+
                 com.send( "" + year + "\r" );
                 com.receive( ": " );
                 com.send( "" + month + "\r" );
@@ -173,8 +171,6 @@ public class DOMCal implements Runnable {
             return;
         }
 
-        DOMCalRecord rec = null;
-
         try {
             rec = DOMCalRecordFactory.parseDomCalRecord( ByteBuffer.wrap( binaryData ) );
         } catch ( Exception e ) {
@@ -199,6 +195,61 @@ public class DOMCal implements Runnable {
         }
 
         logger.debug( "Document saved" );
+
+        // If there is gain calibration data put into database
+        if (rec.isHvCalValid()) {
+
+            String driver = calProps.getProperty(
+                    "icecube.daq.domcal.db.driver",
+                    "com.mysql.jdbc.Driver");
+            try {
+                Class.forName(driver);
+            } catch (ClassNotFoundException x) {
+                logger.error( "No MySQL driver class found - PMT HV not stored in DB." );
+            }
+
+            /*
+             * Compute the 10^7 point from fit information
+             */
+            LinearFit fit = rec.getHvGainCal();
+            double slope = fit.getSlope();
+            double inter = fit.getYIntercept();
+            int hv = new Double(Math.pow(10.0, (7.0 - inter) / slope)).intValue();
+
+            try {
+                String url = calProps.getProperty("icecube.daq.domcal.db.url",
+                        "jdbc:mysql://localhost/fat");
+                String user = calProps.getProperty(
+                        "icecube.daq.domcal.db.user",
+                        "dfl"
+                );
+                String passwd = calProps.getProperty(
+                        "icecube.daq.domcal.db.passwd",
+                        "(D0Mus)"
+                );
+                jdbc = DriverManager.getConnection(
+                        url,
+                        user,
+                        passwd
+                );
+                Statement stmt = jdbc.createStatement();
+                String updateSQL = "UPDATE domtune SET hv=" + hv +
+                    " WHERE mbid='" + domId + "';";
+                stmt.executeUpdate(updateSQL);
+            } catch (SQLException e) {
+                logger.error("Unable to insert into database: ", e);
+            }
+
+        }
+
+    }
+
+    /**
+     * Get the calibration
+     * @return DOMCalRecord object.
+     */
+    public DOMCalRecord getCalibration() {
+        return rec;
     }
 
     public static void main( String[] args ) {

@@ -65,13 +65,13 @@ public class DOMCalDH {
         String propResource = "domcal.properties";
         Properties props = new Properties();
 
-	BasicConfigurator.configure();
-	Logger.getRootLogger().setLevel(Level.DEBUG);
+	    BasicConfigurator.configure();
+	    Logger.getRootLogger().setLevel(Level.DEBUG);
 
         // Gather the properties
         try {
-	    InputStream is = DOMCalDH.class.getResourceAsStream(propResource);
-	    if (is != null) props.load(is);
+	        InputStream is = DOMCalDH.class.getResourceAsStream(propResource);
+	        if (is != null) props.load(is);
         } catch (IOException iox) {
             logger.error("Cannot load class properties: " + iox.getMessage());
             System.exit(1);
@@ -99,9 +99,7 @@ public class DOMCalDH {
         }
 
         DOMCalDH domcal = new DOMCalDH(props);
-
         domcal.execute(hubs);
-
         domcal.waitOnThreads();
 
     }
