@@ -9,8 +9,7 @@
  */
 
 #include <stdio.h>
-#include <string.h>
-#include <unistd.h>
+#include <stdlib.h>
 
 #include "hal/DOM_MB_hal.h"
 #include "hal/DOM_MB_fpga.h"
@@ -25,7 +24,72 @@
 #include "atwd_freq_cal.h"
 
 /*---------------------------------------------------------------------------*/
+/*
+ * get_date
+ * 
+ * Get the date from user to save in results file, since DOM is oblivious to
+ * current date.
+ *
+ */
+void get_date(calib_data *dom_calib) {
 
+    short day, month, year;
+    char buf[100];
+
+    /* Get year */
+    year = month = 0;
+    while ((year < 2004) || (year > 2050)) {
+        printf("Enter year (2004-...): ");
+        /* More robust than scanf with %d */
+        scanf("%s", buf);
+        year = atoi(buf);
+    }
+    
+    /* Get month */
+    while ((month < 1) || (month > 12)) {
+        printf("Enter month (1-12): ");
+        scanf("%s", buf);
+        month = atoi(buf);
+    }
+
+    /* Get day of the month */
+    short day_ok = 0;
+    short day_max;
+    while (!day_ok) {
+        if ((month == 1) || (month == 3) ||
+            (month == 5) || (month == 7) ||
+            (month == 8) || (month == 10) ||
+            (month == 12)) {
+            day_max = 31;
+        }
+        else if (month == 2) {
+            /* Presumably this will not be in use in 2100! */
+            day_max = 28 + ((year % 4 == 0) ? 1 : 0);
+        }
+        else {
+            day_max = 30;
+        }
+        
+        printf("Enter day (1-%d): ", day_max);
+        scanf("%s", buf);
+        day = atoi(buf);
+
+        day_ok = ((day >= 1) && (day <= day_max));
+    }
+
+    /* Store results */
+    dom_calib->year = year;
+    dom_calib->month = month;
+    dom_calib->day = day;
+}
+
+/*---------------------------------------------------------------------------*/
+/*
+ * init_dom
+ *
+ * Initialize DOM to a known state before data-taking.
+ *
+ */
 void init_dom(void) {
 
     /* Make sure HV is off */
@@ -54,7 +118,7 @@ void init_dom(void) {
  * record_state
  *
  * Records the state of the DOM before data taking -- all DAC and ADC settings,
- * temperature, etc.
+ * temperature, and ID.
  *
  */
 void record_state(calib_data *dom_calib) {
@@ -91,6 +155,9 @@ int save_results(calib_data dom_calib) {
 
     /* FIX ME: For now, just print everything out */
 #ifdef DEBUG
+    printf("Date: %d-%d-%d\r\n",dom_calib.month, 
+           dom_calib.day, dom_calib.year);
+
     printf("ID: %s\r\n", dom_calib.dom_id);
 
     for (i = 0; i < 16; i++)
@@ -148,17 +215,17 @@ int main(void) {
     calib_data dom_calib;
     
 #ifdef DEBUG
-    printf("Hello, world!  This is domcal version %d.%d\r\n", 
-           MAJOR_VERSION, MINOR_VERSION);
+    printf("Starting domcal version %d.%d\r\n", MAJOR_VERSION, MINOR_VERSION);
 #endif
-    
+
+    /* Get the date from the user */
+    get_date(&dom_calib);
+
     /* Initialize DOM state: DACs, HV setting, pulser, etc. */
     init_dom();
     
     /* Record DOM state, etc. */
     record_state(&dom_calib);
-    
-    /* FIX ME: get date, don't forget about version number */
     
     /* Calibration modules:
      *  - pulser calibration
@@ -166,6 +233,7 @@ int main(void) {
      *  - amplifier calibration
      *  - sampling speed calibration
      */
+
     /* FIX ME: return real error codes or something */
     pulser_cal(&dom_calib);
     atwd_cal(&dom_calib);
