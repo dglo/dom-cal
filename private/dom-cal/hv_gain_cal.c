@@ -401,7 +401,8 @@ int hv_gain_cal(calib_data *dom_calib) {
 
         float valley_x, valley_y, pv_ratio;
         /* Find valley */
-        if (spe_find_valley(fit_params[hv_idx], &valley_x, &valley_y) == 0) {
+        int val = spe_find_valley(fit_params[hv_idx], &valley_x, &valley_y);
+        if (val == 0) {
 
             pv_ratio = fit_params[hv_idx][2] / valley_y;
 #ifdef DEBUG
@@ -434,12 +435,14 @@ int hv_gain_cal(calib_data *dom_calib) {
         else {
 #ifdef DEBUG
             printf("SPE valley finder error: gain point at %d V not used\r\n", hv);
+            printf("Error is: %d\r\n", val);
 #endif
         }
     }
     else {
 #ifdef DEBUG
         printf("Bad SPE fit: gain point at %d V not used\r\n", hv);
+        printf("Error is: %d\r\n", fiterr);
 #endif
     }
     
