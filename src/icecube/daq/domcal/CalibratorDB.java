@@ -758,7 +758,7 @@ public class CalibratorDB
         cal.setPulserFitParam("r", regression);
 
         final String pStr = "select dp.name,dpp.value" +
-            " from DOMCal_PulserParam dpp,DOMCAL_Param dp" +
+            " from DOMCal_PulserParam dpp,DOMCal_Param dp" +
             " where dpp.domcal_id=" + cal.getDOMCalId() +
             " and dpp.dc_param_id=dp.dc_param_id";
 
