@@ -21,6 +21,8 @@
 /* Include calibration module headers here */
 #include "atwd_cal.h"
 #include "amp_cal.h"
+#include "pulser_cal.h"
+#include "atwd_freq_cal.h"
 
 /*---------------------------------------------------------------------------*/
 
@@ -99,6 +101,11 @@ int save_results(calib_data dom_calib) {
 
     printf("Temp: %.1f\r\n", dom_calib.temp);
 
+    printf("Pulser: m=%.6g b=%.6g r^2=%.6g\r\n",
+                   dom_calib.pulser_calib.slope,
+                   dom_calib.pulser_calib.y_intercept,
+                   dom_calib.pulser_calib.r_squared);
+
     for(ch = 0; ch < 3; ch++)
         for(bin = 0; bin < 128; bin++)
             printf("ATWD0 Ch %d Bin %d Fit: m=%.6g b=%.6g r^2=%.6g\r\n",
@@ -117,6 +124,16 @@ int save_results(calib_data dom_calib) {
         printf("Channel %d gain=%.6g error=%.6g\r\n", ch,
                dom_calib.amplifier_calib[ch].value,
                dom_calib.amplifier_calib[ch].error);
+
+    printf("ATWD0 Frequency: m=%.6g b=%.6g r^2=%.6g\r\n",
+                   dom_calib.atwd0_freq_calib.slope,
+                   dom_calib.atwd0_freq_calib.y_intercept,
+                   dom_calib.atwd0_freq_calib.r_squared);
+
+    printf("ATWD1 Frequency: m=%.6g b=%.6g r^2=%.6g\r\n",
+                   dom_calib.atwd1_freq_calib.slope,
+                   dom_calib.atwd1_freq_calib.y_intercept,
+                   dom_calib.atwd1_freq_calib.r_squared);
 
 #endif
 
@@ -150,8 +167,10 @@ int main(void) {
      *  - sampling speed calibration
      */
     /* FIX ME: return real error codes or something */
+    pulser_cal(&dom_calib);
     atwd_cal(&dom_calib);
     amp_cal(&dom_calib);
+    atwd_freq_cal(&dom_calib);
     
     /* Write calibration record to flash */
     save_results(dom_calib);

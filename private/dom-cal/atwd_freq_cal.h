@@ -9,3 +9,6 @@
 
 /* Prototypes */
 int atwd_freq_cal(calib_data *dom_calib);
+
+void cal_loop( float *atwd_cal, short *speed_settings,
+                             int trigger_mask, short ATWD_DAC_channel );

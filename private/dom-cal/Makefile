@@ -13,7 +13,7 @@
 #
 # Add new calibration routines here
 #
-CALOBJS  = atwd_cal.o amp_cal.o atwd_freq_cal.o
+CALOBJS  = atwd_cal.o amp_cal.o atwd_freq_cal.o pulser_cal.o
 
 EXOBJS = calUtils.o
 KOBJS = ../lib/crt0.o ../lib/libkernel.a
