@@ -105,41 +105,22 @@ public class DOMCalRecordFactory {
         boolean hvCalValid = ( hvCalValidShort == 0 ) ? false : true;
 
         LinearFit hvGainFit = null;
-        short numPVPts = 0;
-        float[] pv = null;
-        float[] pvVoltage = null;
 
-        short numHVHistograms = 0;
-        HVHistogram[] histos = null;
+        short numHVHistograms = bb.getShort();
+        HVHistogram[] histos = new HVHistogram[numHVHistograms];
+
+        for (int i = 0; i < numHVHistograms; i++) {
+            histos[i] = HVHistogram.parseHVHistogram(bb);
+        }     
 
         if ( hvCalValid ) {
             
             hvGainFit = LinearFitFactory.parseLinearFit( bb );
-            
-            numPVPts = bb.getShort();
-            pv = new float[numPVPts];
-            pvVoltage = new float[numPVPts];
-
-            for ( int i = 0; i < numPVPts; i++ ) {
-                pv[i] = bb.getFloat();
-                pvVoltage[i] = bb.getFloat();
-            }
-
-            /* need to check if data is available....so we can read output from older versions */
-            if (bb.limit() - bb.position() >= 2) {
-                numHVHistograms = bb.getShort();
-            
-                histos = new HVHistogram[numHVHistograms];
-
-                for (int i = 0; i < numHVHistograms; i++) {
-                    histos[i] = HVHistogram.parseHVHistogram(bb);
-                }
-            }
-        }
+        }    
 
         return new DefaultDOMCalRecord( pulserCalibration, atwdCalibration, atwdFrequencyCalibration,
                 amplifierCalibration, amplifierCalibrationError, temperature, year, month, day, domId, dacValues,
-               adcValues, fadcValues, version, hvCalValid, hvGainFit, numPVPts, pv, pvVoltage, numHVHistograms, histos);
+               adcValues, fadcValues, version, hvCalValid, hvGainFit, numHVHistograms, histos);
     }
     
     private static class DefaultDOMCalRecord implements DOMCalRecord {
@@ -179,8 +160,8 @@ public class DOMCalRecordFactory {
         public DefaultDOMCalRecord( LinearFit pulserCalibration, LinearFit[][][] atwdCalibration, LinearFit[]
                  atwdFrequencyCalibration, float[] amplifierCalibration, float[] amplifierCalibrationError, float
                  temperature, short year, short month, short day, String domId, short[] dacValues, short[] adcValues,
-                 short[] fadcValues, short version, boolean hvCalValid, LinearFit hvGainCal, short numPVPts,
-                                float[] pvData, float[] pvVoltageData, short numHVHistograms, HVHistogram[] hvHistos ) {
+                 short[] fadcValues, short version, boolean hvCalValid, LinearFit hvGainCal, 
+                                                                short numHVHistograms, HVHistogram[] hvHistos ) {
 
             this.pulserCalibration = pulserCalibration;
             this.atwdCalibration = atwdCalibration;

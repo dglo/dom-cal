@@ -87,7 +87,8 @@ public class DOMCalXML {
     }
 
     private static void formatHisto(HVHistogram histo, PrintWriter out) {
-        out.print("  <histo voltage=\"" + histo.getVoltage() + "\" convergent=\"" + histo.isConvergent() + "\">\n");
+        out.print("  <histo voltage=\"" + histo.getVoltage() + "\" convergent=\"" +
+                                         histo.isConvergent() + "\" pv=\"" + histo.getPV() + "\">\n");
         float[] fitParams = histo.getFitParams();
         out.print("    <param name=\"exponential amplitude\">" + fitParams[0] + "</param>\n");
         out.print("    <param name=\"exponential width\">" + fitParams[1] + "</param>\n");

@@ -48,9 +48,6 @@ void f_spe(float x, float *a, float *y, float *dyda, int nparam) {
 
 void get_fit_initialization( float *x, float *y, int num, float *params ) {
 	    
-    /* Exponential amplitude */
-    params[0] = y[0];
-                                                                                
     /* Find mean and variance */
     float sum = 0;
     float histmax = y[0];
@@ -63,7 +60,7 @@ void get_fit_initialization( float *x, float *y, int num, float *params ) {
 
     /* Gaussian amplitude */
     params[2] = histmax;
-    
+
     float *xvals = (float *) malloc((int)sum * sizeof(float));
 
     int j;
@@ -80,6 +77,9 @@ void get_fit_initialization( float *x, float *y, int num, float *params ) {
 
     /* Exponential decay rate */
     params[1] = mean / 4.0;
+
+    /* Exponential amplitude */
+    params[0] = y[0];   
 
     /* Gaussian center */
     params[3] = mean;
