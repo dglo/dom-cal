@@ -11,6 +11,62 @@
 #include "domcal.h"
 #include "calUtils.h"
 
+
+/*---------------------------------------------------------------------------*/
+/*
+ * getCalibV
+ *
+ * Use calibration data to convert ATWD value to input voltage, before channel
+ * amplification.
+ *
+ */
+
+float getCalibV(short val, calib_data dom_calib, int atwd, int ch, int bin, short bias_dac) {
+
+    float v;
+
+    /* Using ATWD calibration data, convert to V */
+    if (atwd == 0) {
+        v = (float)val * dom_calib.atwd0_gain_calib[ch][bin].slope
+            + dom_calib.atwd0_gain_calib[ch][bin].y_intercept;
+    }
+    else {
+        v = (float)val * dom_calib.atwd1_gain_calib[ch][bin].slope
+            + dom_calib.atwd1_gain_calib[ch][bin].y_intercept;        
+    }
+        
+    /* Also subtract out bias voltage */
+    v -= biasDAC2V(bias_dac);
+    
+    /* Correct for channel amplification with amplifier calibration data */
+    v /= dom_calib.amplifier_calib[ch].value;
+       
+    return v;
+        
+}
+
+/*---------------------------------------------------------------------------*/
+/*
+ * getCalibFreq
+ *
+ * Use calibration data to get sampling frequency of an ATWD, in MHz
+ *
+ */
+float getCalibFreq(int atwd, calib_data dom_calib, short sampling_dac) {
+
+    float ratio;
+
+    /* Get ratio of sampling frequency to clock speed */
+    if (atwd == 0)
+        ratio = (dom_calib.atwd0_freq_calib.slope * sampling_dac) + 
+            dom_calib.atwd0_freq_calib.y_intercept;
+    else
+        ratio = (dom_calib.atwd1_freq_calib.slope * sampling_dac) + 
+            dom_calib.atwd1_freq_calib.y_intercept;
+    
+    return (ratio * DOM_CLOCK_FREQ);
+}
+
 /*---------------------------------------------------------------------------*/
 /*
  * temp2K

@@ -27,6 +27,7 @@
 #include "amp_cal.h"
 #include "pulser_cal.h"
 #include "atwd_freq_cal.h"
+#include "hv_gain_cal.h"
 
 /*---------------------------------------------------------------------------*/
 /* 
@@ -400,7 +401,9 @@ int main(void) {
     
     int err = 0;
     calib_data dom_calib;
-    
+    char buf[100];
+    int doHVCal = 0;
+
 #ifdef DEBUG
     printf("Welcome to domcal version %d.%d\r\n", 
            MAJOR_VERSION, MINOR_VERSION);
@@ -409,6 +412,23 @@ int main(void) {
     /* Get the date from the user */
     get_date(&dom_calib);
     
+    /* DISABLED FOR NOW */
+    /* Ask user if they want an HV calibration */
+    /* 
+       printf("Do you want to perform an HV gain calibration (y/n)? ");
+       fflush(stdout);
+       getstr(buf);
+       printf("\r\n");
+    */
+    /* Sometimes when telnetting there is an extraneous newline */
+    /* 
+       doHVCal = ((buf[0] == 'y') || (buf[0] == 'Y') ||
+       (buf[0] == '\n' && ((buf[1] == 'y') || (buf[1] == 'Y'))));
+    */
+       
+    if (doHVCal)
+        printf("*** HIGH VOLTAGE WILL BE ACTIVATED ***\r\n");
+
     /* Initialize DOM state: DACs, HV setting, pulser, etc. */
     init_dom();
     
@@ -420,12 +440,15 @@ int main(void) {
      *  - atwd calibration
      *  - amplifier calibration
      *  - sampling speed calibration
+     *  - HV gain calibration
      */
     /* FIX ME: return real error codes or something */
     pulser_cal(&dom_calib);
     atwd_cal(&dom_calib);
     amp_cal(&dom_calib);
     atwd_freq_cal(&dom_calib);
+    if (doHVCal)
+        hv_gain_cal(&dom_calib);
     
     /* Write calibration record to flash */
     int save_ret = save_results( dom_calib );

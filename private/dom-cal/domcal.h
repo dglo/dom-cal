@@ -9,7 +9,7 @@
  * be incremented when changing structure of binary output
  */
 #define MAJOR_VERSION 1
-#define MINOR_VERSION 1
+#define MINOR_VERSION 2
 
 /* Number of bytes in binary output */
 #define RECORD_LENGTH 9384
@@ -20,6 +20,13 @@
 #define ATWD_RAMP_BIAS_DAC      3000
 #define ATWD_ANALOG_REF_DAC     2048
 #define ATWD_PEDESTAL_DAC       1925
+
+/* Mainboard oscillator frequency into ATWD channel 3, in MHz */
+#ifdef REV3HAL
+#define DOM_CLOCK_FREQ          40.0
+#else
+#define DOM_CLOCK_FREQ          20.0
+#endif
 
 /* Error codes */
 #define FAILED_BINARY_CONVERSION -1;
