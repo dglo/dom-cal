@@ -260,12 +260,12 @@ int save_results(calib_data dom_calib) {
 
 #endif
 
-    /* char binary_data[RECORD_LENGTH]; */
+    char binary_data[RECORD_LENGTH];
 
     /* Convert DOM calibration data to binary format */
-    /* if ( !( write_dom_calib( &dom_calib, binary_data ) == RECORD_LENGTH ) ) {
+    if ( !( write_dom_calib( &dom_calib, binary_data ) == RECORD_LENGTH ) ) {
         err = FAILED_BINARY_CONVERSION;
-    } */
+    }
 
     /* Write to flash */
     /*const char name[10] = "calib_data";
