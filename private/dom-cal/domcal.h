@@ -29,12 +29,8 @@
 #define ATWD_PEDESTAL_DAC       1925
 #endif
 
-/* Mainboard oscillator frequency into ATWD channel 3, in MHz */
-#if defined DOMCAL_REV2 || defined DOMCAL_REV3
-#define DOM_CLOCK_FREQ          40.0
-#else
+/* Oscillator frequency into ATWD channel 3, mux input 0, in MHz */
 #define DOM_CLOCK_FREQ          20.0
-#endif
 
 /* Wait time after setting a DAC */
 #define DAC_SET_WAIT            250000
