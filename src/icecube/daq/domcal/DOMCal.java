@@ -163,7 +163,6 @@ public class DOMCal implements Runnable {
             com.send( "zd\r" );
             com.receivePartial( "\r\n" );
             binaryData = com.zRead();
-            com.receive( "> " );
             s.close();
         } catch ( IOException e ) {
             logger.error( "IO Error downloading calibration from DOM" );
@@ -235,6 +234,7 @@ public class DOMCal implements Runnable {
                 Statement stmt = jdbc.createStatement();
                 String updateSQL = "UPDATE domtune SET hv=" + hv +
                     " WHERE mbid='" + domId + "';";
+                System.out.println( "Executing stmt: " + updateSQL );
                 stmt.executeUpdate(updateSQL);
             } catch (SQLException e) {
                 logger.error("Unable to insert into database: ", e);
