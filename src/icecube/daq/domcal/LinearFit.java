@@ -1,6 +1,6 @@
 /*************************************************  120 columns wide   ************************************************
 
- Class:  	LinearFitFactory
+ Class:  	LinearFit
 
  @author 	Jim Braun
  @author     jbraun@amanda.wisc.edu
@@ -12,40 +12,12 @@
 
 package icecube.daq.domcal;
 
-import java.nio.ByteBuffer;
+public interface LinearFit {
 
-public class LinearFit {
+    public float getSlope();
 
-    private float slope;
-    private float yIntercept;
-    private float rSquared;
+    public float getYIntercept();
 
-    public LinearFit( float slope, float yIntercept, float rSquared ) {
-
-        this.slope = slope;
-        this.yIntercept = yIntercept;
-        this.rSquared = rSquared;
-
-    }
-
-    public float getSlope() {
-        return slope;
-    }
-
-    public float getYIntercept() {
-        return yIntercept;
-    }
-
-    public float getRSquared() {
-        return rSquared;
-    }
-
-    public static LinearFit parseLinearFit( ByteBuffer bb ) {
-
-        float slope = bb.getFloat();
-        float yIntercept = bb.getFloat();
-        float rSquared = bb.getFloat();
-        return new LinearFit( slope, yIntercept, rSquared );
-
-    }
+    public float getRSquared();
+    
 }

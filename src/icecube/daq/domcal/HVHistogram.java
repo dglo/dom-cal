@@ -19,14 +19,6 @@ import java.nio.ByteBuffer;
 
 public class HVHistogram {
 
-    private static final String[] paramNames = new String[] {
-        "exponential amplitude",
-        "exponential width",
-        "gaussian amplitude",
-        "gaussian mean",
-        "gaussian width",
-    };
-
     private short voltage;
     private float[] fitParams;
     private float[] xVals;
@@ -38,7 +30,7 @@ public class HVHistogram {
 
     public static HVHistogram parseHVHistogram(ByteBuffer bb) {
         short voltage = bb.getShort();
-        float noiseRate = bb.getFloat();
+        float noiseRate = (bb.getFloat());
         boolean isFilled = (bb.getShort() != 0);
         boolean convergent = (bb.getShort() != 0);
         float[] fitParams = new float[5];
@@ -58,27 +50,26 @@ public class HVHistogram {
 
     public static HVHistogram parseHVHistogram(Element histo) {
         short voltage = Short.parseShort(histo.getAttribute("voltage"));
-        // convergent and ifFilled attributes have changed format
-        boolean convergent, isFilled;
-        try {
-            convergent = (Short.parseShort(histo.getAttribute("convergent")) == 1);
-            isFilled = (Short.parseShort(histo.getAttribute("isFilled")) == 1);            
-        } catch (NumberFormatException e) {
-            convergent = Boolean.parseBoolean(histo.getAttribute("convergent"));
-            isFilled = Boolean.parseBoolean(histo.getAttribute("isFilled"));
-        }
+        boolean convergent = (new Boolean(histo.getAttribute("convergent"))).booleanValue();
         float pv = Float.parseFloat(histo.getAttribute("pv"));
         float noiseRate = Float.parseFloat(histo.getAttribute("noiseRate"));
+        boolean isFilled = (new Boolean(histo.getAttribute("isFilled"))).booleanValue();
         float[] fitParams = new float[5];
         NodeList fitP = histo.getElementsByTagName("param");
         for (int i = 0; i < fitP.getLength(); i++) {
             Element currentParam = (Element)fitP.item(i);
             float val = Float.parseFloat(currentParam.getFirstChild().getNodeValue());
             String name = currentParam.getAttribute("name");
-            for (int j = 0; j < paramNames.length; j++) {
-                if (name.equals(paramNames[j])) {
-                    fitParams[j] = val;
-                }
+            if (name.equals("exponential amplitude")) {
+                fitParams[0] = val;
+            } else if (name.equals("exponential width")) {
+                fitParams[1] = val;
+            } else if (name.equals("gaussian amplitude")) {
+                fitParams[2] = val;
+            } else if (name.equals("gaussian mean")) {
+                fitParams[3] = val;
+            } else if (name.equals("gaussian width")) {
+                fitParams[4] = val;
             }
         }
         Element histogram = (Element)histo.getElementsByTagName("histogram").item(0);
@@ -138,14 +129,5 @@ public class HVHistogram {
 
     public boolean isFilled() {
         return isFilled;
-    }
-
-    public static final String getParameterName(int i)
-    {
-        if (i < 0 || i >= paramNames.length) {
-            return null;
-        }
-
-        return paramNames[i];
     }
 }
