@@ -294,12 +294,10 @@ public class HVHistogramGrapher implements Runnable {
             if (histos[i].isConvergent()) {
                 int xCenter = getXPixel(histos[i].getVoltage());
                 int yCenter = getYPixel((int)(1e-12 * histos[i].getFitParams()[3] / EC));
-                if (xCenter > 296) xCenter = 296;
-                if (xCenter < 53) xCenter = 53;
-                if (yCenter > 246) yCenter = 246;
-                if (yCenter < 3) yCenter = 3;
-                g.drawLine(xCenter - 3, yCenter, xCenter + 3, yCenter);
-                g.drawLine(xCenter, yCenter - 3, xCenter, yCenter + 3);
+                if (!(xCenter > 296 || xCenter < 53 || yCenter > 246 || yCenter < 3)) {
+                    g.drawLine(xCenter - 3, yCenter, xCenter + 3, yCenter);
+                    g.drawLine(xCenter, yCenter - 3, xCenter, yCenter + 3);
+                }
                 xData[convIndx] = xCenter;
                 yData[convIndx] = yCenter;
                 convIndx++;
@@ -321,13 +319,13 @@ public class HVHistogramGrapher implements Runnable {
                 int startX = 51;
                 int endX = 299;
                 int startY = (int)(fit.getYIntercept() + startX*fit.getSlope());
-                //find where line reaches 51
-                while (startY > 249 && startX < endX) {
+                //select only X range where Y values are on graph
+                while ((startY > 249 || startY < 0) && startX < endX) {
                     startX++;
                     startY = (int)(fit.getYIntercept() + startX*fit.getSlope());
                 }
                 int endY = (int)(fit.getYIntercept() + endX*fit.getSlope());
-                while (endY < 0 && startX < endX) {
+                while ((endY < 0 || endY > 249) && startX < endX) {
                     endX--;
                     endY = (int)(fit.getYIntercept() + endX*fit.getSlope());
                 }
