@@ -15,6 +15,9 @@
 #include "hal/DOM_MB_hal.h"
 #include "hal/DOM_MB_fpga.h"
 
+/* Needed for flash filesystem write routine */
+#include "iceboot/fis.h"
+
 #include "domcal.h"
 #include "calUtils.h"
 
@@ -74,70 +77,6 @@ void record_state(calib_data *dom_calib) {
 
     /* Read temperature and convert to K */
     dom_calib->temp = temp2K(halReadTemp());
-}
-
-/*---------------------------------------------------------------------------*/
-/*
- * save_results
- *
- * Save calibration results to the flash filesystem.
- *
- */
-
-int save_results(calib_data dom_calib) {
-
-    int i, ch, bin;
-    int err = 0;
-
-    /* FIX ME: For now, just print everything out */
-#ifdef DEBUG
-    printf("ID: %s\r\n", dom_calib.dom_id);
-
-    for (i = 0; i < 16; i++)
-        printf("DAC %d: %d\r\n", i, dom_calib.dac_values[i]);
-
-    for (i = 0; i < 24; i++)
-        printf("ADC %d: %d\r\n", i, dom_calib.adc_values[i]);
-
-    printf("Temp: %.1f\r\n", dom_calib.temp);
-
-    printf("Pulser: m=%.6g b=%.6g r^2=%.6g\r\n",
-                   dom_calib.pulser_calib.slope,
-                   dom_calib.pulser_calib.y_intercept,
-                   dom_calib.pulser_calib.r_squared);
-
-    for(ch = 0; ch < 3; ch++)
-        for(bin = 0; bin < 128; bin++)
-            printf("ATWD0 Ch %d Bin %d Fit: m=%.6g b=%.6g r^2=%.6g\r\n",
-                   ch, bin, dom_calib.atwd0_gain_calib[ch][bin].slope,
-                   dom_calib.atwd0_gain_calib[ch][bin].y_intercept,
-                   dom_calib.atwd0_gain_calib[ch][bin].r_squared);
-
-    for(ch = 0; ch < 3; ch++)
-        for(bin = 0; bin < 128; bin++)
-            printf("ATWD1 Ch %d Bin %d Fit: m=%.6g b=%.6g r^2=%.6g\r\n",
-                   ch, bin, dom_calib.atwd1_gain_calib[ch][bin].slope,
-                   dom_calib.atwd1_gain_calib[ch][bin].y_intercept,
-                   dom_calib.atwd1_gain_calib[ch][bin].r_squared);
-
-    for(ch = 0; ch < 3; ch++)
-        printf("Channel %d gain=%.6g error=%.6g\r\n", ch,
-               dom_calib.amplifier_calib[ch].value,
-               dom_calib.amplifier_calib[ch].error);
-
-    printf("ATWD0 Frequency: m=%.6g b=%.6g r^2=%.6g\r\n",
-                   dom_calib.atwd0_freq_calib.slope,
-                   dom_calib.atwd0_freq_calib.y_intercept,
-                   dom_calib.atwd0_freq_calib.r_squared);
-
-    printf("ATWD1 Frequency: m=%.6g b=%.6g r^2=%.6g\r\n",
-                   dom_calib.atwd1_freq_calib.slope,
-                   dom_calib.atwd1_freq_calib.y_intercept,
-                   dom_calib.atwd1_freq_calib.r_squared);
-
-#endif
-
-    return err;
 }
 
 /* Routine to write a 4 byte memory image of a float into
@@ -258,6 +197,83 @@ int write_dom_calib( calib_data *cal, char *bin_data ) {
     offset += write_fit( &cal->atwd1_freq_calib, bin_data, offset );
 
     return offset;
+}
+
+/*---------------------------------------------------------------------------*/
+/*
+ * save_results
+ *
+ * Save calibration results to the flash filesystem.
+ *
+ */
+
+int save_results(calib_data dom_calib) {
+
+    int i, ch, bin;
+    int err = 0;
+
+    /* FIX ME: For now, just print everything out */
+#ifdef DEBUG
+    printf("ID: %s\r\n", dom_calib.dom_id);
+
+    for (i = 0; i < 16; i++)
+        printf("DAC %d: %d\r\n", i, dom_calib.dac_values[i]);
+
+    for (i = 0; i < 24; i++)
+        printf("ADC %d: %d\r\n", i, dom_calib.adc_values[i]);
+
+    printf("Temp: %.1f\r\n", dom_calib.temp);
+
+    printf("Pulser: m=%.6g b=%.6g r^2=%.6g\r\n",
+                   dom_calib.pulser_calib.slope,
+                   dom_calib.pulser_calib.y_intercept,
+                   dom_calib.pulser_calib.r_squared);
+
+    for(ch = 0; ch < 3; ch++)
+        for(bin = 0; bin < 128; bin++)
+            printf("ATWD0 Ch %d Bin %d Fit: m=%.6g b=%.6g r^2=%.6g\r\n",
+                   ch, bin, dom_calib.atwd0_gain_calib[ch][bin].slope,
+                   dom_calib.atwd0_gain_calib[ch][bin].y_intercept,
+                   dom_calib.atwd0_gain_calib[ch][bin].r_squared);
+
+    for(ch = 0; ch < 3; ch++)
+        for(bin = 0; bin < 128; bin++)
+            printf("ATWD1 Ch %d Bin %d Fit: m=%.6g b=%.6g r^2=%.6g\r\n",
+                   ch, bin, dom_calib.atwd1_gain_calib[ch][bin].slope,
+                   dom_calib.atwd1_gain_calib[ch][bin].y_intercept,
+                   dom_calib.atwd1_gain_calib[ch][bin].r_squared);
+
+    for(ch = 0; ch < 3; ch++)
+        printf("Channel %d gain=%.6g error=%.6g\r\n", ch,
+               dom_calib.amplifier_calib[ch].value,
+               dom_calib.amplifier_calib[ch].error);
+
+    printf("ATWD0 Frequency: m=%.6g b=%.6g r^2=%.6g\r\n",
+                   dom_calib.atwd0_freq_calib.slope,
+                   dom_calib.atwd0_freq_calib.y_intercept,
+                   dom_calib.atwd0_freq_calib.r_squared);
+
+    printf("ATWD1 Frequency: m=%.6g b=%.6g r^2=%.6g\r\n",
+                   dom_calib.atwd1_freq_calib.slope,
+                   dom_calib.atwd1_freq_calib.y_intercept,
+                   dom_calib.atwd1_freq_calib.r_squared);
+
+#endif
+
+    /* char binary_data[RECORD_LENGTH]; */
+
+    /* Convert DOM calibration data to binary format */
+    /* if ( !( write_dom_calib( &dom_calib, binary_data ) == RECORD_LENGTH ) ) {
+        err = FAILED_BINARY_CONVERSION;
+    } */
+
+    /* Write to flash */
+    /*const char name[10] = "calib_data";
+    if ( fisCreate( name, binary_data, RECORD_LENGTH ) != 0 ) {
+        err = FAILED_FLASH_WRITE;
+    }*/
+
+    return err;
 }
 
 /*---------------------------------------------------------------------------*/

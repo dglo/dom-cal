@@ -8,8 +8,8 @@
 /* Version of calibration program -- Major version must
  * be incremented when changing structure of binary output
  */
-#define MAJOR_VERSION 0
-#define MINOR_VERSION 6
+#define MAJOR_VERSION 1
+#define MINOR_VERSION 0
 
 /* Number of bytes in binary output */
 #define RECORD_LENGTH 9387;
@@ -20,6 +20,10 @@
 #define ATWD_RAMP_BIAS_DAC      3000
 #define ATWD_ANALOG_REF_DAC     2048
 #define ATWD_PEDESTAL_DAC       1925
+
+/* Error codes */
+#define FAILED_BINARY_CONVERSION -1;
+#define FAILED_FLASH_WRITE -2;
 
 /* Linear fit parameters */
 typedef struct {
