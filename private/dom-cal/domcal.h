@@ -7,7 +7,7 @@
 
 /* Version of calibration program */
 #define MAJOR_VERSION 0
-#define MINOR_VERSION 5
+#define MINOR_VERSION 6
 
 /* Default ATWD DAC settings */
 #define ATWD_SAMPLING_SPEED_DAC 850
@@ -41,7 +41,9 @@ typedef struct {
     /* DOM state before calibration */
     short dac_values[16];
     short adc_values[24];
-    short fadc_values[4];
+   
+    /* FADC calibration */
+    short fadc_values[2];
 
     /* FE pulser calibration */
     linear_fit pulser_calib;
