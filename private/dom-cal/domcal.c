@@ -399,7 +399,14 @@ int main(void) {
     atwd_freq_cal(&dom_calib);
     
     /* Write calibration record to flash */
-    save_results(dom_calib);
+    printf( "Saving to flash...." );
+    int save_ret = save_results( &dom_calib );
+    if ( !save_ret ) {
+        printf( "done.\r\n" );
+    } else {
+        printf( "FAILED.\r\n" );
+        err = save_ret;
+    }    
 
 #ifdef DEBUG
     if (!err) 
