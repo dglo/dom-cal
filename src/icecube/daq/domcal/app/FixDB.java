@@ -2,6 +2,7 @@ package icecube.daq.domcal.app;
 
 import icecube.daq.db.domprodtest.BasicDB;
 import icecube.daq.db.domprodtest.DOMProdTestException;
+import icecube.daq.db.domprodtest.DOMProdTestUtil;
 
 import java.io.IOException;
 
@@ -11,11 +12,22 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.sql.SQLException;
 
+import java.util.ArrayList;
+
 /**
  * Save a calibration XML file to the database.
  */
 public class FixDB
 {
+    private static final String[] modelVals = new String[] {
+        "linear",
+    };
+
+    private static final String[] paramVals = new String[] {
+        "intercept",
+        "slope",
+    };
+
     /**
      * Save a calibration XML file to the database.
      *
@@ -35,8 +47,82 @@ public class FixDB
             if (isOldGainHv(conn)) {
                 fixGainHv(conn);
             }
+
+            addMissingModelValues(conn);
+            addMissingParameterValues(conn);
         } finally {
             conn.close();
+        }
+    }
+
+    private void addMissingModelValues(Connection conn)
+        throws SQLException
+    {
+        addMissingRows(conn, "DOMCal_Model", "dc_model_id", "name", modelVals);
+    }
+
+    private void addMissingParameterValues(Connection conn)
+        throws SQLException
+    {
+        addMissingRows(conn, "DOMCal_Param", "dc_param_id", "name", paramVals);
+    }
+
+    private void addMissingRows(Connection conn, String tblName,
+                                String idCol, String valCol, String[] valList)
+        throws SQLException
+    {
+        Statement stmt = conn.createStatement();
+        try {
+            boolean[] found = new boolean[valList.length];
+
+            final String qStr = "select " + valCol + " from " + tblName;
+
+            ResultSet rs = stmt.executeQuery(qStr);
+            while (rs.next()) {
+                final String thisVal = rs.getString(1);
+
+                boolean foundOne = false;
+                for (int i = 0; i < valList.length; i++) {
+                    if (valList[i].equals(thisVal)) {
+                        if (found[i]) {
+                            throw new SQLException("Found multiple copies of" +
+                                                   tblName + " value '" +
+                                                   thisVal + "'");
+                        } else if (foundOne) {
+                            throw new SQLException("Found multiple " +
+                                                   tblName +
+                                                   " rows with value '" +
+                                                   thisVal + "'");
+                        }
+
+                        found[i] = true;
+                        foundOne = true;
+                    }
+                }
+
+                if (!foundOne) {
+                    throw new SQLException("Found unknown " + tblName +
+                                           " value '" + thisVal + "'");
+                }
+            }
+            rs.close();
+
+            final String[] cols = new String[] { valCol };
+            final Object[] vals = new Object[cols.length];
+
+            for (int i = 0; i < found.length; i++) {
+                if (!found[i]) {
+                    vals[0] = valList[i];
+                    int id = DOMProdTestUtil.addId(stmt, tblName,
+                                                   idCol, cols, vals,
+                                                   1, Integer.MAX_VALUE);
+                    System.out.println("Added " + tblName + " value '" +
+                                       valList[i] + "' as ID#" + id);
+                }
+            }
+
+        } finally {
+            try { stmt.close(); } catch (SQLException se) { }
         }
     }
 
@@ -103,7 +189,6 @@ public class FixDB
 
         try {
             for (int i = 0; i < cmds.length; i++) {
-System.err.println("CMD#" + i + ": " + cmds[i]);
                 stmt.executeUpdate(cmds[i]);
             }
         } finally {
