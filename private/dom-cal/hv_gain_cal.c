@@ -192,7 +192,7 @@ int hv_gain_cal(calib_data *dom_calib) {
 	/* Fit histograms */
 	int fiterr;
 	fiterr = spe_fit(hist_x[hv_idx], hist_y[hv_idx], 
-			 GAIN_CAL_TRIG_CNT, fit_params[hv_idx]);
+			 HIST_BIN_CNT, fit_params[hv_idx]);
 
     } /* End HV loop */   
 
