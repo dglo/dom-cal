@@ -43,11 +43,20 @@ public class DOMCalRecordFactory {
         bb.getShort();
 
         String domId = "";
-        domId += Integer.toHexString( bb.getInt() );
-        domId += Integer.toHexString( bb.getInt() );
-        while ( domId.length() != 12 ) {
+        String s1 = Integer.toHexString( bb.getInt() );
+
+        while ( s1.length() != 6 ) {
             domId = "0" + domId;
         }
+
+        String s2 = Integer.toHexString( bb.getInt() );
+
+        while ( s2.length() != 6 ) {
+            domId = "0" + domId;
+        }
+
+        domId += s1;
+        domId += s2;
 
         float temperature = bb.getFloat();
 
