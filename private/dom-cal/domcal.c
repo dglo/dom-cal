@@ -402,7 +402,7 @@ int main(void) {
     int err = 0;
     calib_data dom_calib;
     char buf[100];
-    int doHVCal = 1;
+    int doHVCal = 0;
 
 #ifdef DEBUG
     printf("Welcome to domcal version %d.%d\r\n", 
