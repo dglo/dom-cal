@@ -246,24 +246,18 @@ int write_dom_calib( calib_data *cal, char *bin_data ) {
 
     /* Write DOM ID, as true hex value (not ASCII) */
     char *id = cal->dom_id;
-    char id_lo[9];
-    char id_hi[5];
+    char id_lo[9] = "beefcafe";
+    char id_hi[5] = "dead";
     unsigned int val_lo, val_hi;
 
     strncpy(id_hi, id, 4);
     strncpy(id_lo, &(id[4]), 8);
-    id_hi[5] = 0;
-    id_lo[9] = 0;
-
-    printf("DEBUG: strings %s %s\r\n", id_hi, id_lo);
 
     val_lo = (unsigned int) strtoul(id_lo, NULL, 16);
     val_hi = (unsigned int) strtoul(id_hi, NULL, 16);
 
-    printf("DEBUG: val %08x %08x\r\n", val_hi, val_lo);
-
-    offset += get_bytes_from_int( val_lo, bin_data, offset);
     offset += get_bytes_from_int( val_hi, bin_data, offset);
+    offset += get_bytes_from_int( val_lo, bin_data, offset);
 
     /* Write Kelvin temperature */
     offset += get_bytes_from_float( cal->temp, bin_data, offset );
@@ -379,7 +373,9 @@ int save_results(calib_data dom_calib) {
 
     /* Convert DOM calibration data to binary format */
     int b_write = write_dom_calib( &dom_calib, binary_data );
+#ifdef DEBUG
     printf( "Writing %d bytes to flash....", b_write );
+#endif
     if ( !( b_write == RECORD_LENGTH ) ) {
         err = FAILED_BINARY_CONVERSION;
     }
@@ -429,9 +425,13 @@ int main(void) {
     /* Write calibration record to flash */
     int save_ret = save_results( dom_calib );
     if ( !save_ret ) {
+#ifdef DEBUG       
         printf( "done.\r\n" );
+#endif
     } else {
+#ifdef DEBUG       
         printf( "FAILED. %d\r\n", save_ret );
+#endif
         err = save_ret;
     }    
 
