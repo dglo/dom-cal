@@ -14,12 +14,7 @@ import java.text.ParseException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Iterator;
+import java.util.*;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -99,6 +94,8 @@ public class Calibrator
     private HashMap gainFit;
     /** HV histogram data. */
     private HashMap histoMap;
+    /** Baselines at various HV settings */
+    private HashMap baselines;
 
     /** calibration database interface. */
     private CalibratorDB calDB;
@@ -231,7 +228,32 @@ public class Calibrator
      */
 
     public double[] atwdCalibrateToPmtSig(short[] atwdin, int ch, int offset,
-                                          int biasDAC)
+                                          int biasDAC) throws DOMCalibrationException {
+
+        /* if no voltage supplied, assume 10^7 voltage when calculating baseline */
+        int hv = (int)calcVoltageFromGain(1e7);
+        return atwdCalibrateToPmtSig(atwdin, ch, offset, biasDAC, hv);
+
+    }
+
+    /**
+     * Reconstruct PMT signal given an ATWD array and a bias DAC setting.
+     * Note this function assumes the ATWD input array is in raw order
+     * and returns an array with same ordering (time decreasing with increasing
+     * array index).
+     * @param atwdin input array of shorts
+     * @param ch specifies ATWD channel 0-3 ATWD-A, 4-7 ATWD-B
+     * @param offset specifies starting offset in ATWD to atwdin[0].
+     *               For example, if offset is 40 then atwdin[0] really holds
+     *               the 40th bin of the ATWD.
+     * @param biasDAC DAC bias
+     * @param hv HV setting -- baseline id HV dependent!
+     * @return ATWD array in V
+     * @throws DOMCalibrationException if there is a problem with the data
+     */
+
+    public double[] atwdCalibrateToPmtSig(short[] atwdin, int ch, int offset,
+                                          int biasDAC, int hv)
         throws DOMCalibrationException
     {
         if (ch == 3 || ch == 7) {
@@ -239,12 +261,32 @@ public class Calibrator
                 "Calibration of channels 3 and 7 not allowed!";
             throw new IllegalArgumentException(errMsg);
         }
-        double amp = getAmplifierGain(ch);
+
+        /*
+         *  Find closest value to hv in baseline hashmap
+         *  This probably needs to be faster.....
+         */
+        Baseline bl = null;
+        if (baselines != null) {
+            Set s = baselines.keySet();
+            int abs = 10000;
+            for (Iterator it = s.iterator(); it.hasNext();) {
+                Baseline base = (Baseline)(baselines.get(it.next()));
+                int diff = (int)Math.abs(base.getVoltage() - hv);
+                if (diff < abs) {
+                    bl = base;
+                    abs = diff;
+                }
+            }
+        }
+
+        double baseline = (bl == null) ? 0.0 : bl.getBaseline(ch >> 2, ch % 4);
+
+        double amp = getAmplifierGain(ch % 4);
         if ( amp == 0.0 ) {
             final String errMsg = "Amplifier calibration cannot be zero";
             throw new DOMCalibrationException(errMsg);
         }
-        double ampInv = 1.0 / amp;
         double biasV = biasDAC * 5.0 / 4096.0;
         double[] out = new double[atwdin.length];
         for (int i = 0; i < atwdin.length; i++) {
@@ -260,7 +302,8 @@ public class Calibrator
 
                 out[i] = m*atwdin[i] + b;
                 out[i] -= biasV;
-                out[i] *= ampInv;
+                out[i] -= baseline;
+                out[i] /= amp;
             }
         }
         return out;
@@ -1212,6 +1255,7 @@ public class Calibrator
             parseFreqFits(dc.getElementsByTagName("atwdfreq"));
             parseGainVsHV(dc.getElementsByTagName("hvGainCal"));
             parseHistograms(dc.getElementsByTagName("histo"));
+            parseBaselines(dc.getElementsByTagName("baseline"));
         }
 
         /**
@@ -1329,6 +1373,30 @@ public class Calibrator
                 final String errMsg =
                     "XML format error - more than one <hvGainCal> record";
                 throw new DOMCalibrationException(errMsg);
+            }
+        }
+
+        /**
+         * Parses new domcal baseline data
+         *
+         */
+
+        private void parseBaselines(NodeList nodes) {
+            baselines = new HashMap();
+            for (int i = 0; i < nodes.getLength(); i++) {
+                Element baseEl = (Element)(nodes.item(i));
+                short voltage = Short.parseShort(baseEl.getAttribute("voltage"));
+                NodeList baselist = baseEl.getElementsByTagName("base");
+                float[][] values = new float[2][3];
+                for (int j = 0; j < baselist.getLength(); j++) {
+                    Element base = (Element)baselist.item(j);
+                    int atwd = Integer.parseInt(base.getAttribute("atwd"));
+                    int ch = Integer.parseInt(base.getAttribute("ch"));
+                    float value = Float.parseFloat(base.getAttribute("value"));
+                    values[atwd][ch] = value;
+                }
+                Integer v = new Integer(voltage);
+                baselines.put(v, new Baseline(voltage, values));
             }
         }
 
