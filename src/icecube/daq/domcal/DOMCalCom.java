@@ -64,7 +64,28 @@ public class DOMCalCom {
         return out;
     }
 
-     public String receivePartial( String terminator ) throws IOException {
+    public String receive( String terminator, long timeout ) throws IOException {
+        long startTime = System.currentTimeMillis();
+        String out = "";
+        while ( !out.endsWith( terminator ) ) {
+            if ( System.currentTimeMillis - startTime > timeout ) {
+                throw new IOException( "Timeout reached" );
+            }
+            int avail = in.available();
+            if ( avail == 0 ) {
+                try {
+                    Thread.sleep( 100 );
+                } catch ( InterruptedException e ) {
+                }
+            }
+            byte[] b = new byte[in.available()];
+            in.read( b );
+            out += new String( b );
+        }
+        return out;
+    }
+
+    public String receivePartial( String terminator ) throws IOException {
         String out = "";
         while ( !out.endsWith( terminator ) ) {
             out += ( char )in.read();
