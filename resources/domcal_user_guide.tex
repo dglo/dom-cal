@@ -33,6 +33,73 @@
 
 \subsection{DOM-Cal Output}
 
+Dom-cal writes calibration results to the DOM flash filesystem in a binary
+file named "calib\_data".  The format of this file is described in detail in
+table \ref{tbl:binary} and table \ref{tbl:linearfit}.
+
+\begin{table}
+\begin{tabular}{|p{4cm}|p{4cm}|p{4cm}|}
+\hline
+Quantity & Datum Size & Comments \\
+\hline
+Version & Short (16 bits) & Version number -- use to determine endianness ( version < 256 ) \\
+\hline
+Record Length & Short & Length of domcal binary record \\
+\hline
+Date -- Day & Short & Day calibration was performed \\
+\hline
+Date -- Month & Short & Month calibration was performed \\
+\hline
+Date -- Year & Short & Year calibration was performed \\
+\hline
+Unused & Short & Not used \\
+\hline
+DOM ID hi bits & Int (32 bits) & DOM ID in true hex format ( not ASCII ) \\
+\hline
+DOM ID low bits & Int & DOM ID in true hex format ( not ASCII ) \\
+\hline
+Temperature & Float (32 bits) & DOM temperature in Kelvin \\
+\hline
+Initial DAC values & Short[16] & Initial values of DAC 0-15 \\
+\hline
+Initial ADC values & Short[24] & Initial values of ADC 0-23 \\
+\hline
+FADC calibration pedestal & Short & \\
+\hline
+FADC calibration gain & Short & \\
+\hline
+FE pulser calibration & LinearFit & Calibration of internal pulser \\
+\hline
+ATWD gain calibration & LinearFit[2][3][128] & Calibration of atwd 0-1, channels 0-2, bins 0-127,
+such that member 128 is atwd 0, channel 0, bin 127,
+and member 129 is atwd 0, channel 1, bin 0, etc. \\
+\hline
+FE amplifier calibration & Float[6] & Channel 0 amplification and error,
+channel 1 amplification and error, channel 2 amplification and error. \\
+\hline
+ATWD frequency calibration & LinearFit[3] & Frequency calibration for atwd 0, atwd 1. \\
+\hline
+\end{tabular}
+\caption{DOM-Cal binary output format}
+\label{tbl:binary}
+\end{table}
+
+\begin{table}
+\begin{tabular}{|p{4cm}|p{4cm}|p{4cm}|}
+\hline
+Quantity & Datum Size & Comments \\
+\hline
+Slope & Float & Slope parameter of linear fit \\
+\hline
+Y-intercept & Float & Y-intercept parameter of linear fit \\
+\hline
+R-squared & Float & Quality of fit \\
+\hline
+\end{tabular}
+\caption{Binary format of linear fit}
+\label{tbl:linearfit}
+\end{table}
+
 \section{Java Interface to DOM-Cal}
 
 \subsection{XML Calibration Output}
