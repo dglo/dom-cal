@@ -35,7 +35,7 @@ public class DOMCal implements Runnable {
     /* DOMCal version ID */
     public static final String VERSION = "2.0";
 
-    private static Logger logger = Logger.getLogger( "domcal" );
+    private static Logger logger = Logger.getLogger( DOMCal.class );
     private static List threads = new LinkedList();
     
     private String host;

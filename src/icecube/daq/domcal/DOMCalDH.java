@@ -113,6 +113,11 @@ public class DOMCalDH {
             try {
                 t.join();
                 _hubsock hs = (_hubsock) fabricMap.get(t);
+                logger.info("Exec'ing close on DOM " +
+                        hs.channel.getDOMID() + " on DOMHub " +
+                        hs.channel.getHost() + ":" +
+                        hs.channel.getPort()
+                );
                 hs.hub.closeServerChannel(hs.channel.getDOMID(),
                         DOMReservations.SERIAL_COM_CLIENT,
                         hs.channel.getSocketChannelType());
@@ -176,6 +181,8 @@ public class DOMCalDH {
                         afecal,
                         pmtcal
                 ) );
+                // Getting odd behavior from DOMHub - try delay 1.0 sec.
+                Thread.sleep(1000L);
                 t.start();
                 fabric.add(t);
                 // put this into a safe place so I know what channel to release
