@@ -55,6 +55,9 @@ int hv_gain_cal(calib_data *dom_calib) {
     /* Number of reasonable P/V histograms obtained */
     int spe_cnt = 0;
 
+    /* Peak to valley data -- allocate space for GAIN_CAL_HV_CNT pairs */
+    pv_dat pv_data[GAIN_CAL_HV_CNT]; 
+
 #ifdef DEBUG
     printf("Performing HV gain calibration...\r\n");
 #endif
@@ -111,7 +114,7 @@ int hv_gain_cal(calib_data *dom_calib) {
 #endif
 
         halWriteActiveBaseDAC(hv * 2);
-        halUSleep(2500000);
+        halUSleep(5000000);
                 
         /* Warm up the ATWD */
         prescanATWD(trigger_mask);
@@ -234,8 +237,12 @@ int hv_gain_cal(calib_data *dom_calib) {
 
 #ifdef DEBUG
                 printf("New gain point: log(V) %.6g log(gain) %.6g\r\n", log_hv[spe_cnt], log_gain[spe_cnt]);
-#endif
+#endif          
+                pv_data[spe_cnt].pv = pv_ratio;
+                pv_data[spe_cnt].voltage = hv;
+                
                 spe_cnt++;
+                
             }
             else {
 #ifdef DEBUG
@@ -255,7 +262,11 @@ int hv_gain_cal(calib_data *dom_calib) {
 #endif
     }
     
-    } /* End HV loop */   
+    } /* End HV loop */
+
+    /* Add P/V data to calib struct */
+    dom_calib->num_pv = spe_cnt;
+    dom_calib->pv_data = pv_data;
 
     if (spe_cnt >= 2) {
         /* Fit log(hv) vs. log(gain) */

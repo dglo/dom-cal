@@ -41,7 +41,7 @@ int pulser_cal(calib_data *dom_calib) {
 
      /* Set pedestal value */
     halWriteDAC( DOM_HAL_DAC_PMT_FE_PEDESTAL, PEDESTAL_VALUE );
-    halUSleep( 100000 );
+    halUSleep( 500000 );
     int bias = halReadDAC( DOM_HAL_DAC_PMT_FE_PEDESTAL );
     
     /* Turn pulser on */
@@ -71,7 +71,7 @@ int pulser_cal(calib_data *dom_calib) {
             
             /* Set pulser amplitude and wait */
             halWriteDAC( DOM_HAL_DAC_INTERNAL_PULSER, amplitude );
-            halUSleep( 250000 );
+            halUSleep( 500000 );
 
             /* Retreive current spe rate */
             int spe_rate = hal_FPGA_TEST_get_spe_rate();

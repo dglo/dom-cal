@@ -8,11 +8,11 @@
 /* Version of calibration program -- Major version must
  * be incremented when changing structure of binary output
  */
-#define MAJOR_VERSION 1
-#define MINOR_VERSION 4
+#define MAJOR_VERSION 2
+#define MINOR_VERSION 0
 
-/* Number of bytes in binary output */
-#define RECORD_LENGTH 9384
+/* Default number of bytes in binary output */
+#define DEFAULT_RECORD_LENGTH 9386
 
 /* Default ATWD DAC settings */
 #define ATWD_SAMPLING_SPEED_DAC 850
@@ -41,6 +41,11 @@ typedef struct {
 typedef struct {
     float value, error;
 } value_error;
+
+/* Store P/V and voltage together */
+typedef struct {
+    float pv, voltage;
+} pv_dat;
 
 /* Calibration data structure */
 typedef struct {
@@ -80,5 +85,11 @@ typedef struct {
 
     /* Log(HV) vs. Log(gain) HV calibration fit */
     linear_fit hv_gain_calib;
+
+    /* Number of P/V results returned */
+    short num_pv;
+
+    /* P/V results */
+    pv_dat* pv_data;
 
 } calib_data;

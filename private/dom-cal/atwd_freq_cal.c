@@ -100,6 +100,9 @@ int cal_loop( float *atwd_cal, short *speed_settings,
         
         /* Set speed DAC */
         halWriteDAC( ATWD_DAC_channel, speed_settings[i] );
+
+        /* Wait */
+        halUSleep( 500000 );
         
         /* Take  ATWD_FREQ_CAL_TRIG_CNT waveforms */
         for ( j = 0; j <  ATWD_FREQ_CAL_TRIG_CNT; j++ ) {

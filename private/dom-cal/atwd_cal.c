@@ -53,7 +53,7 @@ int atwd_cal(calib_data *dom_calib) {
 
         /* Set the FE bias level */
         halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, bias);
-        halUSleep(250000);
+        halUSleep(500000);
         
         /* Initialize the pedestal array */
         for(atwd=0; atwd<2; atwd++)
