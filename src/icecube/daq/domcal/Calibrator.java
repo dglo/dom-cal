@@ -426,6 +426,40 @@ public class Calibrator {
     }
 
     /**
+     * Reconstruct PMT signal given an ATWD array and a bias DAC setting.
+     * Note this function assumes the ATWD input array is in raw order
+     * and returns an array with same ordering (time decreasing with increasing
+     * array index).
+     * @param atwdin input array of shorts
+     * @param ch specifies ATWD channel 0-3 ATWD-A, 4-7 ATWD-B
+     * @param offset specifies starting offset in ATWD to atwdin[0].  For example,
+     * if offset is 40 then atwdin[0] really holds the 40th bin of the ATWD.
+     * @return ATWD array in V
+     */
+
+    public double[] atwdCalibrateToPmtSig(short[] atwdin, int ch, int offset, int biasDAC)
+                                                                      throws DOMCalibrationException {
+        double amp = getAmplifierGain(ch);
+        if ( amp == 0.0 ) {
+            throw new DOMCalibrationException( "Ampifier calibration canno be zero" );
+        }
+        double ampInv = 1.0 / amp;
+        double biasV = biasDAC * 5.0 / 4096.0;
+        double[] out = new double[atwdin.length];
+        for (int i = 0; i < atwdin.length; i++) {
+            int bin = i + offset;
+            if (atwdFits[ch][bin].get("model").equals("linear")) {
+                double m = ((Double)atwdFits[ch][bin].get("slope")).doubleValue();
+                double b = ((Double)atwdFits[ch][bin].get("intercept")).doubleValue();
+                out[i] = m*atwdin[i] + b;
+                out[i] -= biasV;
+                out[i] *= ampInv;
+            }
+        }
+        return out;
+    }
+
+    /**
      * Perform inverse calibration to get back to raw quantities.
      * @param v calibrated ATWD vector
      * @param ch ATWD channel (0-3 A), (4-7 B)
