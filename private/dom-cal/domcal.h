@@ -5,9 +5,14 @@
 /* Print debugging information */
 #define DEBUG 1
 
-/* Version of calibration program */
+/* Version of calibration program -- Major version must
+ * be incremented when changing structure of binary output
+ */
 #define MAJOR_VERSION 0
 #define MINOR_VERSION 6
+
+/* Number of bytes in binary output */
+#define RECORD_LENGTH 9387;
 
 /* Default ATWD DAC settings */
 #define ATWD_SAMPLING_SPEED_DAC 850
