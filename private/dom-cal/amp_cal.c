@@ -4,7 +4,7 @@
  * Amplifier calibration routine -- record waveform peaks in 
  * ATWD channels for a given pulser amplitude, and use pulser
  * and ATWD calibration to find gain of each amplifier.  Uses
- * only ATWD A (ATWD0).
+ * only ATWD B (ATWD1).
  *
  */
 
@@ -32,7 +32,7 @@ int amp_cal(calib_data *dom_calib) {
                                     AMP_CAL_PULSER_AMP_2 };
 
     /* Channel readout buffers for each channel and bin */
-    /* This test only uses ATWD A */
+    /* This test only uses ATWD B */
     short channels[3][128];
 
     /* Peak arrays for each channel, in Volts */
@@ -87,8 +87,8 @@ int amp_cal(calib_data *dom_calib) {
             for (bin=0; bin<cnt; bin++) {
 
                 /* Using ATWD calibration data, convert to actual V */
-                peak_v = (float)(channels[ch][bin]) * dom_calib->atwd0_gain_calib[ch][bin].slope
-                    + dom_calib->atwd0_gain_calib[ch][bin].y_intercept;
+                peak_v = (float)(channels[ch][bin]) * dom_calib->atwd1_gain_calib[ch][bin].slope
+                    + dom_calib->atwd1_gain_calib[ch][bin].y_intercept;
 
                 /* Also subtract out bias voltage */
                 peak_v -= bias_v;
