@@ -128,7 +128,8 @@ public class CalibratorDBTest
 
         final double hvGainSlope = 12.34;
         final double hvGainIntercept = 56.78;
-        xml.setHvGain(hvGainSlope, hvGainIntercept);
+        final double hvGainRegression = 90.12;
+        xml.setHvGain(hvGainSlope, hvGainIntercept, hvGainRegression);
 
         HVHistogram[] histo = new HVHistogram[2];
         for (int i = 0; i < histo.length; i++) {
@@ -195,7 +196,8 @@ public class CalibratorDBTest
         MockSQLUtil.addAmpGainInsertSQL(stmt, domcalId, ampGain, ampError);
         MockSQLUtil.addATWDFreqInsertSQL(stmt, domcalId, freqData);
         MockSQLUtil.addHvGainInsertSQL(stmt, domcalId,
-                                       hvGainSlope, hvGainIntercept);
+                                       hvGainSlope, hvGainIntercept,
+                                       hvGainRegression);
         MockSQLUtil.addHvHistoInsertSQL(stmt, domcalId, histo);
 
         MockCalDB calDB = new MockCalDB();
@@ -279,8 +281,10 @@ public class CalibratorDBTest
 
         final double hvGainSlope = 12.34;
         final double hvGainIntercept = 56.78;
+        final double hvGainRegression = 90.12;
 
-        MockSQLUtil.addHvGainSQL(stmt, domcalId, hvGainSlope, hvGainIntercept);
+        MockSQLUtil.addHvGainSQL(stmt, domcalId, hvGainSlope, hvGainIntercept,
+                                 hvGainRegression);
 
         HVHistogram[] histo = new HVHistogram[2];
         for (int i = 0; i < histo.length; i++) {
@@ -372,7 +376,8 @@ public class CalibratorDBTest
 
         final double hvGainSlope = 12.34;
         final double hvGainIntercept = 56.78;
-        xml.setHvGain(hvGainSlope, hvGainIntercept);
+        final double hvGainRegression = 90.12;
+        xml.setHvGain(hvGainSlope, hvGainIntercept, hvGainRegression);
 
         HVHistogram[] histo = new HVHistogram[2];
         for (int i = 0; i < histo.length; i++) {
@@ -434,7 +439,8 @@ public class CalibratorDBTest
         MockSQLUtil.addATWDSQL(stmt, domcalId, atwdData);
         MockSQLUtil.addAmpGainSQL(stmt, domcalId, ampGain, ampError);
         MockSQLUtil.addATWDFreqSQL(stmt, domcalId, freqData);
-        MockSQLUtil.addHvGainSQL(stmt, domcalId, hvGainSlope, hvGainIntercept);
+        MockSQLUtil.addHvGainSQL(stmt, domcalId, hvGainSlope, hvGainIntercept,
+                                 hvGainRegression);
         MockSQLUtil.addHvHistoSQL(stmt, domcalId, histo);
 
         MockCalDB calDB = new MockCalDB();

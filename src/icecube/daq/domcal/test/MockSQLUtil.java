@@ -269,23 +269,27 @@ abstract class MockSQLUtil
     public static final void addHvGainInsertSQL(MockStatement stmt,
                                                 int domcalId,
                                                 double slope,
-                                                double intercept)
+                                                double intercept,
+                                                double regression)
     {
         final String iStr =
-            "insert into DOMCal_HvGain(domcal_id,slope,intercept)values(" +
-            domcalId + "," + slope + "," + intercept + ")";
+            "insert into DOMCal_HvGain(domcal_id,slope,intercept,regression)" +
+            "values(" + domcalId + "," + slope + "," + intercept + "," +
+            regression + ")";
         stmt.addExpectedUpdate(iStr, 1);
     }
 
     public static final void addHvGainSQL(MockStatement stmt, int domcalId,
-                                          double slope, double intercept)
+                                          double slope, double intercept,
+                                          double regression)
     {
-        final String qStr = "select slope,intercept from DOMCal_HvGain" +
-            " where domcal_id=" + domcalId;
+        final String qStr = "select slope,intercept,regression" +
+            " from DOMCal_HvGain where domcal_id=" + domcalId;
 
         stmt.addExpectedQuery(qStr, "HvGainQry", new Object[] {
                                   new Double(slope),
                                   new Double(intercept),
+                                  new Double(regression),
                               });
     }
 

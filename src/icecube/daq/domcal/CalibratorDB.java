@@ -518,18 +518,20 @@ public class CalibratorDB
     private void loadHvGain(Statement stmt, Calibrator cal)
         throws DOMCalibrationException, SQLException
     {
-        final String qStr = "select slope,intercept from DOMCal_HvGain" +
-            " where domcal_id=" + cal.getDOMCalId();
+        final String qStr = "select slope,intercept,regression" +
+            " from DOMCal_HvGain where domcal_id=" + cal.getDOMCalId();
 
         ResultSet rs = stmt.executeQuery(qStr);
 
         double slope = Double.NaN;
         double intercept = Double.NaN;
+        double regression = Double.NaN;
 
         boolean found = false;
         if (rs.next()) {
             slope = rs.getDouble(1);
             intercept = rs.getDouble(2);
+            regression = rs.getDouble(3);
             found = true;
         }
 
@@ -540,7 +542,7 @@ public class CalibratorDB
         }
 
         if (found) {
-            cal.setHvGain(slope, intercept);
+            cal.setHvGain(slope, intercept, regression);
         }
     }
 
@@ -1156,9 +1158,9 @@ public class CalibratorDB
         }
 
         final String iStr =
-            "insert into DOMCal_HvGain(domcal_id,slope,intercept)values(" +
-            domcalId + "," + cal.getHvGainSlope() + "," +
-            cal.getHvGainIntercept() + ")";
+            "insert into DOMCal_HvGain(domcal_id,slope,intercept,regression)" +
+            "values(" + domcalId + "," + cal.getHvGainSlope() + "," +
+            cal.getHvGainIntercept() + "," + cal.getHvGainRegression() + ")";
 
         int rows;
         try {

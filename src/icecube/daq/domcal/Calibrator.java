@@ -689,6 +689,20 @@ public class Calibrator
     }
 
     /**
+     * Get the regression coefficient, if present.
+     *
+     * @return <tt>Double.NaN</tt> if gain fit data is not present.
+     */
+    public double getHvGainRegression()
+    {
+        if (gainFit == null) {
+            return Double.NaN;
+        }
+
+        return ((Double) gainFit.get("r")).doubleValue();
+    }
+
+    /**
      * Get the gain intercept, if present.
      *
      * @return <tt>Double.NaN</tt> if gain fit data is not present.
@@ -700,6 +714,20 @@ public class Calibrator
         }
 
         return ((Double) gainFit.get("intercept")).doubleValue();
+    }
+
+    /**
+     * Get the gain slope, if present.
+     *
+     * @return <tt>Double.NaN</tt> if gain fit data is not present.
+     */
+    public double getHvGainSlope()
+    {
+        if (gainFit == null) {
+            return Double.NaN;
+        }
+
+        return ((Double) gainFit.get("slope")).doubleValue();
     }
 
     /**
@@ -732,20 +760,6 @@ public class Calibrator
         ArrayList keys = new ArrayList(histoMap.keySet());
         Collections.sort(keys);
         return keys.iterator();
-    }
-
-    /**
-     * Get the gain slope, if present.
-     *
-     * @return <tt>Double.NaN</tt> if gain fit data is not present.
-     */
-    public double getHvGainSlope()
-    {
-        if (gainFit == null) {
-            return Double.NaN;
-        }
-
-        return ((Double) gainFit.get("slope")).doubleValue();
     }
 
     /**
@@ -986,7 +1000,7 @@ public class Calibrator
      * @param slope slope
      * @param intercept intercept
      */
-    protected void setHvGain(double slope, double intercept)
+    protected void setHvGain(double slope, double intercept, double regression)
     {
         if (gainFit == null) {
             gainFit = new HashMap();
@@ -994,6 +1008,7 @@ public class Calibrator
 
         gainFit.put("slope", new Double(slope));
         gainFit.put("intercept", new Double(intercept));
+        gainFit.put("r", new Double(regression));
     }
 
     /**
