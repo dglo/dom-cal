@@ -24,7 +24,7 @@ public class DOMCalXML {
             out += "  <dac channel=\"" + i + "\">" + rec.getDacValue( i ) + "</dac>\n";
         }
         for ( int i = 0; i < 24; i++ ) {
-            out += "  <adc channel=\"" + i + "\">" + rec.getAdcValue( i ) + "</dac>\n";
+            out += "  <adc channel=\"" + i + "\">" + rec.getAdcValue( i ) + "</adc>\n";
         }
         out += "  <pulser>\n";
         out += format( rec.getPulserCalibration() );
