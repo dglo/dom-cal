@@ -41,7 +41,7 @@ int atwd_freq_cal(calib_data *dom_calib) {
                       trigger_mask, DOM_HAL_DAC_ATWD1_TRIGGER_BIAS );
 
     linearFitFloat( speed_settings, atwd0_cal, NUMBER_OF_SPEED_SETTINGS,
-                                             dom_calib->atwd0_freq_calib );
+                                             &dom_calib->atwd0_freq_calib );
 
     linearFitFloat( speed_settings, atwd1_cal, NUMBER_OF_SPEED_SETTINGS,
                                              &dom_calib->atwd1_freq_calib );
@@ -49,7 +49,7 @@ int atwd_freq_cal(calib_data *dom_calib) {
     return 0;
 }
 
-void cal_loop( float *atwd_cal, short *speed_setings,
+void cal_loop( float *atwd_cal, short *speed_settings,
                              int trigger_mask, short ATWD_DAC_channel ) {
     
     int clock_waveform[128];
@@ -58,26 +58,30 @@ void cal_loop( float *atwd_cal, short *speed_setings,
 
     prescanATWD( trigger_mask );
     
-    for ( int i = 0; i < NUMBER_OF_SPEED_SETTINGS; i++ ) {
+    int i;
+    int j;
+    int k;
+ 
+    for ( i = 0; i < NUMBER_OF_SPEED_SETTINGS; i++ ) {
         
         halWriteDAC( ATWD_DAC_channel, speed_settings[i] );
 
-        for ( int j = 0; j <  ATWD_FREQ_CAL_TRIG_CNT; j++ ) {
+        for ( j = 0; j <  ATWD_FREQ_CAL_TRIG_CNT; j++ ) {
 
             int clock_waveform[128];
             hal_FPGA_TEST_trigger_forced( trigger_mask );
-            hal_FPGA_TEST_readout( NULL, NULL, NULL, &clock_waveform,
+            hal_FPGA_TEST_readout( NULL, NULL, NULL, clock_waveform,
                                                NULL, NULL, NULL, NULL,
                                                128, NULL, 0, trigger_mask );
             
             /* Remove DC */
             int sum = 0;
-            for ( int k = 0; k < 128; k++ ) {
+            for ( k = 0; k < 128; k++ ) {
                 sum += clock_waveform[k];
             }
             
-            for ( int k = 0; k < 128; k++ ) {
-                normalized_waveform[k] = ( float )clock / sum;
+            for ( k = 0; k < 128; k++ ) {
+                normalized_waveform[k] = ( float )clock_waveform[k] / sum;
             }
 
             /* Calculate #bins between first and final
@@ -87,7 +91,7 @@ void cal_loop( float *atwd_cal, short *speed_setings,
             int final_crossing = 0;
             int number_of_crossings = 0;
          
-            for ( int k = 0; k < 127; k++ ) {
+            for ( k = 0; k < 127; k++ ) {
                 if ( normalized_waveform[k] < 0
                            && normalized_waveform[k + 1] >= 0 ) {
                     if ( first_crossing == 0 ) {
@@ -105,7 +109,7 @@ void cal_loop( float *atwd_cal, short *speed_setings,
         
         /* Calculate average */
         float sum = 0.0;
-        for ( int j = 0; j < ATWD_FREQ_CAL_TRIG_CNT; j++ ) {
+        for ( j = 0; j < ATWD_FREQ_CAL_TRIG_CNT; j++ ) {
             sum += bin_count[j];
         }
         atwd_cal[i] = sum / ATWD_FREQ_CAL_TRIG_CNT;
