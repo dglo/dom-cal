@@ -182,6 +182,72 @@ int hv_gain_cal(calib_data *dom_calib) {
             continue;
         }
 
+        /* baseline should be independent of ATWD bin -- can store in one variable */
+        float baseline = 0;
+
+        /* number of 'baseline' readouts flagged as containing wf */
+        int wf_bad = 0;
+
+        /* max allowed variance */
+        float max_var = MAXIMUM_BASELINE_VARIANCE;
+
+        /* Calculate baseline */
+        for (trig=0; trig<BASELINE_TRIG_CNT; trig++) {
+
+            /* Warm up the ATWD */
+            prescanATWD(trigger_mask);
+
+            /* baseline */
+            short wf[128];
+
+            /* read it! */
+            hal_FPGA_TEST_trigger_forced(trigger_mask);
+            while (!hal_FPGA_TEST_readout_done(trigger_mask));
+            if (atwd == 0) {
+                hal_FPGA_TEST_readout(wf, NULL, NULL, NULL,
+                                      NULL, NULL, NULL, NULL,
+                                      128, NULL, 0, trigger_mask);
+            }
+            else {
+                hal_FPGA_TEST_readout(NULL, NULL, NULL, NULL,
+                                      wf, NULL, NULL, NULL,
+                                      128, NULL, 0, trigger_mask);
+            }
+
+            int i;
+            /* calibrate waveform */
+            for (i = 0; i < 128; i++) wf[i] = getCalibV(wf[i], *dom_calib, atwd, 0, i, bias_v);
+
+            /* look at the variance for evidence of signal */
+            float mean, var;
+            meanVarFloat(wf, 128, &mean, &var);
+
+            /* if variance is too large, redo this iteration */
+            if (var > max_var) {
+                trig--;
+                wf_bad++;
+                
+                /* if we have too many bad 'baseline' readouts, maybe we're too stringent */
+                if (wf_bad == BASELINE_TRIG_CNT) {
+                    wf_bad = 0;
+                    max_var *= 1.1;
+                }
+
+                continue;
+            }
+
+            /* sum up the ATWD readout */
+            for (i = 0; i < 128; i++) baseline += wf[i];
+ 
+        }
+
+        /* get final baseline value */
+        baseline /= (128 * BASELINE_TRIG_CNT);
+
+#ifdef DEBUG
+        printf("PMT baseline is %f\r\n", baseline);
+#endif
+
         /* Number of points with negative charge */
         int bad_trig = 0;
 
@@ -258,7 +324,7 @@ int hv_gain_cal(calib_data *dom_calib) {
             vsum = 0;
 
             for (bin = int_min; bin <= int_max; bin++)
-                vsum += getCalibV(channels[ch][bin], *dom_calib, atwd, ch, bin, bias_v);
+                vsum += (getCalibV(channels[ch][bin], *dom_calib, atwd, ch, bin, bias_v) - baseline);
 
             /* True charge, in pC = 1/R_ohm * sum(V) * 1e12 / (freq_mhz * 1e6) */
             /* FE sees a 50 Ohm load */
@@ -384,6 +450,7 @@ int hv_gain_cal(calib_data *dom_calib) {
     if (spe_cnt >= 2) {
         /* Fit log(hv) vs. log(gain) */
         linearFitFloat(log_hv, log_gain, spe_cnt, &(dom_calib->hv_gain_calib)); 
+        dom_calib->hv_gain_valid = 1;
     }
     else {
 #ifdef DEBUG
