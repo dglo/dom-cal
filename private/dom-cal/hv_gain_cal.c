@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "hal/DOM_MB_hal.h"
 #include "hal/DOM_MB_fpga.h"
@@ -112,6 +113,20 @@ int hv_gain_cal(calib_data *dom_calib) {
     halPowerUpBase();
     halEnableBaseHV();
 #endif
+
+    /* Check to make sure there *is* a HV base by looking at ID */
+    /* Avoids running on, say, the sync board */
+    const char *hv_id = halHVSerial();
+#ifdef DEBUG
+    printf("HV ID is %s\r\n", hv_id);
+#endif
+    if (strcmp(hv_id, "000000000000") == 0) {
+#ifdef DEBUG
+        printf("All-zero HV ID!  No HV base attached; aborting gain calibration.\r\n");
+#endif
+        dom_calib->hv_gain_valid = 0;        
+        return 0;
+    }
 
     short hv_idx = 0;
     short hv;
@@ -233,10 +248,10 @@ int hv_gain_cal(calib_data *dom_calib) {
 
         /* Create histogram of charge values */
         /* Heuristic maximum for histogram */
-	/* 
-	 * KDH - scale by 0.5 - noted that histos were compressed
-	 * s.t. interesting features were lost.
-	 */
+        /* 
+         * KDH - scale by 0.5 - noted that histos were compressed
+         * s.t. interesting features were lost.
+         */
 	   
         int hist_max = ceil(0.5*pow(10.0, 6.37*log10(hv*2)-21.0));
         int hbin;
