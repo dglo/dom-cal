@@ -25,11 +25,21 @@
 
 \subsection{Pulser Calibration}
 
+The DOM pulser produces SPE-like waveforms to test and calibrate mainboard
+functionality.  Pulser amplitude is controlled through a DAC setting,
+DOM\_HAL\_DAC\_INTERNAL\_PULSER ( DAC 12 ).  The pulser calibration
+produces a linear relation between DAC setting and pulse amplitude in Volts.
+
 \subsection{ATWD Calibraton}
 
 \subsection{Amplifier Calibration}
 
 \subsection{ATWD Frequency Calibration}
+
+ATWD frequency is controlled by DAC settings DOM\_HAL\_DAC\_ATWD0\_TRIGGER\_BIAS and
+DOM\_HAL\_DAC\_ATWD1\_TRIGGER\_BIAS ( DACs 0 and 4, respectively ).  ATWD frequency
+calibration produces a linear relation between DAC setting and ratio between ATWD
+frequency and the mainboard ~20MHz oscillator.
 
 \subsection{DOM-Cal Output}
 
