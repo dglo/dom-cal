@@ -87,7 +87,7 @@ int amp_cal(calib_data *dom_calib) {
             for (bin=0; bin<cnt; bin++) {
 
                 /* Using ATWD calibration data, convert to actual V */
-                /* FIX ME */
+                /* FIX ME!!!!!!!! */
                 peak_v = (float)(channels[ch][bin]) * -1.0;
 
                 /* Note "peak" is actually a minimum */
