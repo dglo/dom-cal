@@ -382,6 +382,7 @@ public class Calibrator {
      * @return double-valued gain
      */
     public double getAmplifierGain(int ch) {
+        if (ch < 0 || ch > 2) throw new IllegalArgumentException("Channel " + ch + " is not a valid amplifier channel");
         return ampGain[ch];
     }
 
@@ -391,6 +392,7 @@ public class Calibrator {
      * @return the error on the amplifier gain.
      */
     public double getAmplifierGainError(int ch) {
+        if (ch < 0 || ch > 2) throw new IllegalArgumentException("Channel " + ch + " is not a valid amplifier channel");
         return ampGainErr[ch];
     }
 
@@ -458,7 +460,7 @@ public class Calibrator {
                         doubleValue();
                 domtestAtwdOut[inputDataLength - 1 - iSample] = ( (
                         slope * domtestAtwdIn[inputDataLength - 1 - iSample] ) ) /
-                        this.getAmplifierGain( iChannel );
+                        this.getAmplifierGain( iChannel % 4 );
             } else {
 
                 domtestAtwdOut[inputDataLength - 1 - iSample] = 0.;
@@ -497,7 +499,7 @@ public class Calibrator {
                         doubleValue();
                 domtestAtwdOut[inputDataLength - 1 - iSample] = ( (
                         slope * domtestAtwdIn[inputDataLength - 1 - iSample] ) ) /
-                        this.getAmplifierGain( iChannel );
+                        this.getAmplifierGain( iChannel % 4);
             } else {
 
                 domtestAtwdOut[inputDataLength - 1 - iSample] = 0.;
@@ -536,7 +538,7 @@ public class Calibrator {
                         doubleValue();
                 domtestAtwdOut[inputDataLength - 1 - iSample] = ( (
                         slope * domtestAtwdIn[inputDataLength - 1 - iSample] ) ) /
-                        this.getAmplifierGain( iChannel );
+                        this.getAmplifierGain( iChannel % 4 );
             } else {
 
                 domtestAtwdOut[inputDataLength - 1 - iSample] = 0.;

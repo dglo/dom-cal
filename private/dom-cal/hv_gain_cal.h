@@ -35,7 +35,7 @@
 
 /* Largest P/V we might consider a real measurement */
 /* Larger ones are not used in fit */
-#define GAIN_CAL_MAX_SANE_PV    6.0
+#define GAIN_CAL_MAX_SANE_PV    8.0
 
 /* Charge of e, Coulombs */
 #define Q_E               1.602E-19

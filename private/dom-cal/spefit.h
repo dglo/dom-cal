@@ -3,7 +3,7 @@
 
 /* Fit information */
 #define SPE_FIT_PARAMS              5
-#define SPE_FIT_MAX_ITER           35
+#define SPE_FIT_MAX_ITER           75
 #define SPE_FIT_CHISQ_ABS_DONE   0.01
 #define SPE_FIT_CHISQ_PCT_DONE  0.001
 

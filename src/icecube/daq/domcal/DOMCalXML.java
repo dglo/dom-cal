@@ -65,16 +65,13 @@ public class DOMCalXML {
             format( rec.getHvGainCal(), out );
             out.print("  </hvGainCal>\n");
 
-            for ( int i = 0; i < rec.getNumPVPts(); i++ ) {
-                out.print( "  <pv voltage=\"" + rec.getPVVoltageData( i ) + "\">" +
-                                                rec.getPVValue( i ) + "</pv>\n");
-            }
-
-            for (int i = 0; i < rec.getNumHVHistograms(); i++) {
-                formatHisto(rec.getHVHistogram(i), out);
-            }
-
         }
+
+
+        for (int i = 0; i < rec.getNumHVHistograms(); i++) {
+            formatHisto(rec.getHVHistogram(i), out);
+        }
+
         out.print("</domcal>\n");
     }
 

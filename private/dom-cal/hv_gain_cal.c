@@ -352,7 +352,7 @@ int hv_gain_cal(calib_data *dom_calib) {
         /* Create histogram of charge values */
         /* Heuristic maximum for histogram */
 	   
-        int hist_max = ceil(pow(10.0, 6.37*log10(hv*2)-21.0));
+        int hist_max = ceil(0.75*pow(10.0, 6.37*log10(hv*2)-21.0));
         int hbin;
 
         /* Initialize histogram */
