@@ -26,6 +26,8 @@ import java.util.GregorianCalendar;
 
 public class DOMCal implements Runnable {
 
+    public static final String FPGA_NAME = "domcal.sbi";
+
     private static Logger logger = Logger.getLogger( "domcal" );
 
     private String host;
@@ -65,9 +67,11 @@ public class DOMCal implements Runnable {
             } catch ( UnknownHostException e ) {
                 logger.error( "Cannot connect to " + host );
                 die( e );
+                return;
             } catch ( IOException e ) {
                 logger.error( "IO Error connecting to " + host );
                 die( e );
+                return;
             }
 
             logger.debug( "Connected to " + host + " at port " + port );
@@ -76,10 +80,17 @@ public class DOMCal implements Runnable {
                 com = new DOMCalCom( s );
             } catch ( IOException e ) {
                 logger.error( "IO Error establishing communications" );
+                return;
             }
 
             logger.debug( "Beginning DOM calibration routine" );
             try {
+                com.send( "s\" " + FPGA_NAME + "\" find if fpga endif\r" );
+                String ret = com.receive( "/r/n/> " );
+                if ( !ret.equals(  "s\" " + FPGA_NAME + "\" find if fpga endif" ) ) {
+                    logger.error( "Failed fpga load....is " + FPGA_NAME + "  present?" );
+                    return;
+                }
                 com.send( "s\" domcal\" find if exec endif\r" );
                 Calendar cal = new GregorianCalendar();
                 int day = cal.get( Calendar.DAY_OF_MONTH );
@@ -94,6 +105,7 @@ public class DOMCal implements Runnable {
             } catch ( IOException e ) {
                 logger.error( "IO Error starting DOM calibration routine" );
                 die( e );
+                return;
             }
 
             logger.debug( "Waiting for calibration to finish" );
@@ -103,6 +115,7 @@ public class DOMCal implements Runnable {
             } catch ( IOException e ) {
                 logger.error( "IO Error occurred during calibration routine" );
                 die( e );
+                return;
             }
         }
 
@@ -115,6 +128,7 @@ public class DOMCal implements Runnable {
         } catch ( IOException e ) {
             logger.error( "IO Error downloading calibration from DOM" );
             die( e );
+            return;
         }
 
         DOMCalRecord rec = null;
@@ -124,6 +138,7 @@ public class DOMCal implements Runnable {
         } catch ( Exception e ) {
             logger.error( "Error parsing test output" );
             die( e );
+            return;
         }
 
         String domId = rec.getDomId();
@@ -139,6 +154,7 @@ public class DOMCal implements Runnable {
         } catch ( IOException e ) {
             logger.error( "IO error writing file" );
             die( e );
+            return;
         }
 
         logger.debug( "Document saved" );
@@ -162,7 +178,7 @@ public class DOMCal implements Runnable {
                 nPorts = Integer.parseInt( args[2] );
                 outDir = args[3];
                 for ( int i = 0; i < nPorts; i++ ) {
-                    ( new Thread( new DOMCal( host, port + i, outDir ), "" + port + i ) ).start();
+                    ( new Thread( new DOMCal( host, port + i, outDir ), "" + ( port + i ) ) ).start();
                 }
             } else if ( args.length == 5 ) {
                 host = args[0];
@@ -175,7 +191,7 @@ public class DOMCal implements Runnable {
                 nPorts = Integer.parseInt( args[2] );
                 outDir = args[3];
                 for ( int i = 0; i < nPorts; i++ ) {
-                    ( new Thread( new DOMCal( host, port + i, outDir, true ), "" + port + i ) ).start();
+                    ( new Thread( new DOMCal( host, port + i, outDir, true ), "" + ( port + i ) ) ).start();
                 }
             } else {
                 usage();
