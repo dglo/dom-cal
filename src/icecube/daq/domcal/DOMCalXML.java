@@ -42,7 +42,7 @@ public class DOMCalXML {
             }
         }
         out += "  <fadc parname=\"pedestal\" value=\"" + rec.getFadcValue( 0 ) + "\"/>\n";
-        out += "  <fadc parname=\"gain\" value=\"" + rec.getFadcValue( 1 ) + "/>\n";
+        out += "  <fadc parname=\"gain\" value=\"" + rec.getFadcValue( 1 ) + "\"/>\n";
         for ( int i = 0; i < 3; i++ ) {
             out += "  <amplifier channel=\"" + i + "\">\n";
             out += "    <gain error=\"" + rec.getAmplifierGainError( i ) + "\">" +
