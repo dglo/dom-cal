@@ -1,12 +1,14 @@
 package icecube.daq.domcal;
 
 import org.apache.log4j.Logger;
-
+import org.apache.log4j.Level;
+import org.apache.log4j.BasicConfigurator;
 import java.util.Properties;
 import java.util.LinkedList;
 import java.util.Iterator;
 import java.util.Hashtable;
 import java.io.IOException;
+import java.io.InputStream;
 import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.rmi.NotBoundException;
@@ -63,9 +65,13 @@ public class DOMCalDH {
         String propResource = "domcal.properties";
         Properties props = new Properties();
 
+	BasicConfigurator.configure();
+	Logger.getRootLogger().setLevel(Level.DEBUG);
+
         // Gather the properties
         try {
-            props.load(DOMCalDH.class.getResourceAsStream(propResource));
+	    InputStream is = DOMCalDH.class.getResourceAsStream(propResource);
+	    if (is != null) props.load(is);
         } catch (IOException iox) {
             logger.error("Cannot load class properties: " + iox.getMessage());
             System.exit(1);
@@ -78,11 +84,13 @@ public class DOMCalDH {
 
         while (iarg < args.length) {
             String arg = args[iarg++];
-            if (arg.equals("-cal"))
+            if (arg.equals("-cal")) {
                 props.setProperty("icecube.domcal.calibrate", "analogfe");
-            else if (arg.equals("-gaincal"))
+		logger.info("Enabled analog FE calibration.");
+	    } else if (arg.equals("-gaincal")) {
                 props.setProperty("icecube.domcal.calibrate", "pmtgain");
-            else if (arg.equals("-outDir")) {
+		logger.info("Enabled PMT HV calibration!");
+            } else if (arg.equals("-outDir")) {
                 props.setProperty("icecube.domcal.outputDirectory", args[iarg++]);
             } else {
                 // interpret as a domhub name
