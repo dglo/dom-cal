@@ -384,6 +384,7 @@ int hv_gain_cal(calib_data *dom_calib) {
     if (spe_cnt >= 2) {
         /* Fit log(hv) vs. log(gain) */
         linearFitFloat(log_hv, log_gain, spe_cnt, &(dom_calib->hv_gain_calib)); 
+        dom_calib->hv_gain_valid = 1;
     }
     else {
 #ifdef DEBUG

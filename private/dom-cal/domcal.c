@@ -487,7 +487,7 @@ int main(void) {
         printf("*** HIGH VOLTAGE WILL BE ACTIVATED ***\r\n");
 #endif
     }
-    dom_calib.hv_gain_valid = doHVCal;
+    dom_calib.hv_gain_valid = 0;
 
     /* Init # histos returned */
     dom_calib.num_histos = doHVCal ? GAIN_CAL_HV_CNT : 0;
