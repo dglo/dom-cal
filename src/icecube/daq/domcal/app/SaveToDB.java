@@ -15,6 +15,8 @@ import java.sql.SQLException;
 import java.text.FieldPosition;
 import java.text.SimpleDateFormat;
 
+import org.apache.log4j.BasicConfigurator;
+
 /**
  * Save a calibration XML file to the database.
  */
@@ -78,6 +80,9 @@ public class SaveToDB
         if (!f.exists()) {
             throw new IOException("File \"" + f + "\" does not exist");
         }
+
+        // configure log4j
+        BasicConfigurator.configure();
 
         FileInputStream fis = new FileInputStream(f);
 
