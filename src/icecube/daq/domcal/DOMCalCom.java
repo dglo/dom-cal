@@ -49,6 +49,14 @@ public class DOMCalCom {
     public String receive( String terminator ) throws IOException {
         String out = "";
         while ( !out.endsWith( terminator ) ) {
+            int avail = in.available();
+            if ( avail == 0 ) {
+                try {
+                    Thread.sleep( 100 );
+                } catch ( InterruptedException e ) {
+                    throw new IOException( "IO wait operation interrupted" );
+                }
+            }
             byte[] b = new byte[in.available()];
             in.read( b );
             out += new String( b );
