@@ -109,6 +109,9 @@ public class DOMCalRecordFactory {
         float[] pv = null;
         float[] pvVoltage = null;
 
+        short numHVHistograms = 0;
+        HVHistogram[] histos = null;
+
         if ( hvCalValid ) {
             
             hvGainFit = LinearFitFactory.parseLinearFit( bb );
@@ -121,11 +124,22 @@ public class DOMCalRecordFactory {
                 pv[i] = bb.getFloat();
                 pvVoltage[i] = bb.getFloat();
             }
+
+            /* need to check if data is available....so we can read output from older versions */
+            if (bb.limit() - bb.position() >= 2) {
+                numHVHistograms = bb.getShort();
+            
+                histos = new HVHistogram[numHVHistograms];
+
+                for (int i = 0; i < numHVHistograms; i++) {
+                    histos[i] = HVHistogram.parseHVHistogram(bb);
+                }
+            }
         }
 
         return new DefaultDOMCalRecord( pulserCalibration, atwdCalibration, atwdFrequencyCalibration,
                 amplifierCalibration, amplifierCalibrationError, temperature, year, month, day, domId, dacValues,
-                                           adcValues, fadcValues, version, hvCalValid, hvGainFit, numPVPts, pv, pvVoltage );
+               adcValues, fadcValues, version, hvCalValid, hvGainFit, numPVPts, pv, pvVoltage, numHVHistograms, histos);
     }
     
     private static class DefaultDOMCalRecord implements DOMCalRecord {
@@ -158,12 +172,15 @@ public class DOMCalRecordFactory {
         private short numPVPts;
         private float[] pvData;
         private float[] pvVoltageData;
-        
-        public DefaultDOMCalRecord( LinearFit pulserCalibration, LinearFit[][][] atwdCalibration, LinearFit[] 
+
+        private short numHVHistograms;
+        private HVHistogram[] hvHistos;
+
+        public DefaultDOMCalRecord( LinearFit pulserCalibration, LinearFit[][][] atwdCalibration, LinearFit[]
                  atwdFrequencyCalibration, float[] amplifierCalibration, float[] amplifierCalibrationError, float
                  temperature, short year, short month, short day, String domId, short[] dacValues, short[] adcValues,
                  short[] fadcValues, short version, boolean hvCalValid, LinearFit hvGainCal, short numPVPts,
-                                                                                  float[] pvData, float[] pvVoltageData ) {
+                                float[] pvData, float[] pvVoltageData, short numHVHistograms, HVHistogram[] hvHistos ) {
 
             this.pulserCalibration = pulserCalibration;
             this.atwdCalibration = atwdCalibration;
@@ -184,7 +201,8 @@ public class DOMCalRecordFactory {
             this.numPVPts = numPVPts;
             this.pvData = pvData;
             this.pvVoltageData = pvVoltageData;
-
+            this.numHVHistograms = numHVHistograms;
+            this.hvHistos = hvHistos;
         }
 
         public short getVersion() {
@@ -281,11 +299,28 @@ public class DOMCalRecordFactory {
         }
 
         public float getPVValue( int iter ) {
+            if (iter >= numPVPts || iter < 0) {
+                throw new IndexOutOfBoundsException("" + iter);
+            }
             return pvData[iter];
         }
 
         public float getPVVoltageData( int iter ) {
+            if (iter >= numPVPts || iter < 0) {
+                throw new IndexOutOfBoundsException("" + iter);
+            }
             return pvVoltageData[iter];
+        }
+
+        public short getNumHVHistograms() {
+            return numHVHistograms;
+        }
+
+        public HVHistogram getHVHistogram(int iter) {
+            if (iter >= numHVHistograms || iter < 0) {
+                throw new IndexOutOfBoundsException("" + iter);
+            }
+            return hvHistos[iter];
         }
 
     }

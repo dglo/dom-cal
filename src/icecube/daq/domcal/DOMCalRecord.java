@@ -52,4 +52,8 @@ public interface DOMCalRecord {
 
     public float getPVVoltageData( int iter );
 
+    public short getNumHVHistograms();
+
+    public HVHistogram getHVHistogram(int iter);
+
 }

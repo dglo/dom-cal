@@ -8,8 +8,8 @@
 /* Version of calibration program -- Major version must
  * be incremented when changing structure of binary output
  */
-#define MAJOR_VERSION 2
-#define MINOR_VERSION 6
+#define MAJOR_VERSION 3
+#define MINOR_VERSION 0
 
 /* Default number of bytes in binary output */
 #define DEFAULT_RECORD_LENGTH 9386
@@ -53,6 +53,16 @@ typedef struct {
 typedef struct {
     float pv, voltage;
 } pv_dat;
+
+/* HV histogram */
+typedef struct {
+    float* x_data;
+    float* y_data;
+    short voltage;
+    short bin_count;
+    short convergent;
+    float* fit;
+} hv_histogram;
 
 /* Calibration data structure */
 typedef struct {
@@ -98,5 +108,12 @@ typedef struct {
 
     /* P/V results */
     pv_dat* pv_data;
+
+    /* Number of histograms returned */
+    short num_histos;
+
+    /* Histograms */
+    hv_histogram* histogram_data;
+
 
 } calib_data;

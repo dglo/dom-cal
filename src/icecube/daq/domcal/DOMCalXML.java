@@ -70,6 +70,10 @@ public class DOMCalXML {
                                                 rec.getPVValue( i ) + "</pv>\n");
             }
 
+            for (int i = 0; i < rec.getNumHVHistograms(); i++) {
+                formatHisto(rec.getHVHistogram(i), out);
+            }
+
         }
         out.print("</domcal>\n");
     }
@@ -80,5 +84,23 @@ public class DOMCalXML {
         out.print("      <param name=\"intercept\">" + fit.getYIntercept() + "</param>\n");
         out.print("      <regression-coeff>" + fit.getRSquared() + "</regression-coeff>\n");
         out.print("    </fit>\n");
+    }
+
+    private static void formatHisto(HVHistogram histo, PrintWriter out) {
+        out.print("  <histo voltage=\"" + histo.getVoltage() + "\" convergent=\"" + histo.isConvergent() + "\">\n");
+        float[] fitParams = histo.getFitParams();
+        out.print("    <param name=\"exponential amplitude\">" + fitParams[0] + "</param>\n");
+        out.print("    <param name=\"exponential width\">" + fitParams[1] + "</param>\n");
+        out.print("    <param name=\"gaussian amplitude\">" + fitParams[2] + "</param>\n");
+        out.print("    <param name=\"gaussian mean\">" + fitParams[3] + "</param>\n");
+        out.print("    <param name=\"gaussian width\">" + fitParams[4] + "</param>\n");
+        out.print("    <histogram bins=\"" + histo.getXVals().length + "\">\n");
+        float[] xVals = histo.getXVals();
+        float[] yVals = histo.getYVals();
+        for (int i = 0; i < xVals.length; i++) {
+            out.print("      <bin num=\"" + i + "\" charge=\"" + xVals[i] + "\" count=\"" + yVals[i] + "\"></bin>\n");
+        }
+        out.print("    </histogram>\n");
+        out.print("  </histo>\n");
     }
 }
