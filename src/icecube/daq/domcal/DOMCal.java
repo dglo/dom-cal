@@ -30,7 +30,7 @@ import java.util.LinkedList;
 public class DOMCal implements Runnable {
     
     /* Timeout waiting for response, in seconds */
-    public static final int TIMEOUT = 600;
+    public static final int TIMEOUT = 300;
    
     /* DOMCal version ID */
     public static final String VERSION = "2.0";
