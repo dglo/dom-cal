@@ -222,13 +222,13 @@ int hv_gain_cal(calib_data *dom_calib) {
         /* Find valley */
         if (spe_find_valley(fit_params[hv_idx], &valley_x, &valley_y) == 0) {
 
+            pv_ratio = fit_params[hv_idx][2] / valley_y;
 #ifdef DEBUG
             printf("Valley located at %.6g, %.6g: PV = %.2g\r\n", valley_x, valley_y, pv_ratio);
 #endif
-            pv_ratio = fit_params[hv_idx][2] / valley_y;
             
             /* If PV is too high, we don't have true peak and valley */
-            if ((pv_ratio > 0.0) && (pv_ratio < 4.0)) {
+            if ((pv_ratio > 0.0) && (pv_ratio < GAIN_CAL_MAX_SANE_PV)) {
                 log_hv[spe_cnt] = log10(hv);
                 log_gain[spe_cnt] = log10(fit_params[hv_idx][3] / Q_E) - 12.0;
 
@@ -257,8 +257,16 @@ int hv_gain_cal(calib_data *dom_calib) {
     
     } /* End HV loop */   
 
-    /* Fit log(hv) vs. log(gain) */
-    linearFitFloat(log_hv, log_gain, spe_cnt, &(dom_calib->hv_gain_calib)); 
+    if (spe_cnt >= 2) {
+        /* Fit log(hv) vs. log(gain) */
+        linearFitFloat(log_hv, log_gain, spe_cnt, &(dom_calib->hv_gain_calib)); 
+    }
+    else {
+#ifdef DEBUG
+        printf("Error: too few gain data points to do the regression!\r\n");
+#endif
+        dom_calib->hv_gain_valid = 0;
+    }
 
     /* Turn off the high voltage */
 #ifdef REV3HAL

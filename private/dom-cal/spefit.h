@@ -1,4 +1,7 @@
-/* Fit information -- number of parameters */
+/* Fraction of hits in first real bin */
+#define SPE_FIT_NOISE_FRACT     0.015
+
+/* Fit information */
 #define SPE_FIT_PARAMS              5
 #define SPE_FIT_MAX_ITER           35
 #define SPE_FIT_CHISQ_ABS_DONE   0.01

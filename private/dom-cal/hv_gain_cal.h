@@ -2,6 +2,9 @@
  * hv_gain_cal header file
  */
 
+/* Maximum allowed temperature to run calibration, in K */
+#define GAIN_CAL_MAX_TEMP       250
+
 /* Specific DAC values for this test */
 #define GAIN_CAL_DISC_DAC       505
 
@@ -17,7 +20,11 @@
 /* Histogram info */
 #define GAIN_CAL_BINS           100
 
-/* Charge of e, Couloumbs */
+/* Largest P/V we might consider a real measurement */
+/* Larger ones are not used in fit */
+#define GAIN_CAL_MAX_SANE_PV    4.0
+
+/* Charge of e, Coulombs */
 #define Q_E               1.602E-19
 
 /* Prototypes */

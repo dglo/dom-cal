@@ -155,16 +155,11 @@ int spe_find_valley(float *a, float *valley_x, float *valley_y) {
 
 /*--------------------------------------------------------------------------*/
 int spe_fit(float *xdata, float *ydata, int pts,
-                            float *fit_params, int num_samples ) {
+            float *fit_params, int num_samples ) {
 
     int i, ndata;
     int iter = 0;
     int err = 0;
-
-    /* Data vectors */
-    float *sigma = vector(pts);
-    float *x = vector(pts);
-    float *y = vector(pts);
 
     /* Working matrices */
     float **alpha = matrix(SPE_FIT_PARAMS, SPE_FIT_PARAMS);
@@ -176,35 +171,30 @@ int spe_fit(float *xdata, float *ydata, int pts,
     /* Must be negative for first iteration */
     float lambda = -1.0;
     
-    int found = 0;
-    ndata = 0;
-    for (i = 0; i < pts; i++) {
-        /* Suppress initial zeros */
-        if ((found) || (ydata[i] > 0)) {
-            found = 1;
+    /* Find a maximal bin with > 1.5% of total hits */
+    int start_bin = 0;    
+    int nonzero_bin = 0;
+    int nonzero_found = 0;
 
-            x[ndata] = xdata[i];
-            y[ndata] = ydata[i];
+    while ((ydata[start_bin] < (SPE_FIT_NOISE_FRACT * num_samples) || 
+           (ydata[start_bin] < ydata[start_bin + 1])) && 
+           (start_bin < pts - 1)) {
 
-            /* Std. dev. estimate for each point */
-            /* sigma[ndata] = sqrt(ydata[i]); */
-            /* Shouldn't be < 1.0 */
-            /* sigma[ndata] = (sigma[ndata] < 1.0) ? 1.0 : sigma[ndata]; */
-
-            /* TEMP */
-            sigma[ndata] = 0.1;
-
-#ifdef DEBUG
-            printf ("data: %g %g %g\n", x[ndata], y[ndata], sigma[ndata]);
-#endif
-            ndata++;
+        /* Also record first non-zero bin as a fallback */
+        if ((!nonzero_found) && (ydata[start_bin] > 0)) {
+            nonzero_found = 1;
+            nonzero_bin = start_bin;
         }
-#ifdef DEBUG
-        else {
-            printf("Dropping zero in bin %d\n", i);
-        }
-#endif
+
+        start_bin++;
     }
+
+    /* if start_bin > pts / 2, we're better off starting at first nonzero bin */
+    if ( start_bin > pts / 2 )
+        start_bin = nonzero_bin;
+
+    /* Determine the number of data points */
+    ndata = pts - start_bin;
 
     /* Check to make sure histogram isn't empty */
     if (ndata == 0) {
@@ -213,28 +203,29 @@ int spe_fit(float *xdata, float *ydata, int pts,
 #endif
         return SPE_FIT_ERR_EMPTY_HIST;
     }
-    
-    /* Find a maximal bin with > 1.5% of total hits */
-    int start_bin = 0;
-    while ( ( y[start_bin] < ( 0.015 * num_samples )  || y[start_bin] <
-                              y[start_bin + 1] ) && start_bin < pts - 1 ) {
-        start_bin++;
-    }
 
-    /* if start_bin > pts / 2, we're better off starting at 0 */
-    if ( start_bin > pts / 2 ) {
-        start_bin = 0;
-    }
-
-    /* Get starting fit parameters */
-    get_fit_initialization( &x[start_bin], &y[start_bin],
-                                        ndata - start_bin, fit_params);
-
-    /* Print values */
 #ifdef DEBUG
-    printf("Starting parameter values:\n");
-    for (i = 0; i < SPE_FIT_PARAMS; i++)
-        printf(" a[%d] = %g\n", i, fit_params[i]);
+    printf("Starting fit at bin %d\r\n", start_bin);
+#endif
+    
+    /* Determine the sigma at each point */  
+    float *sigma = vector(ndata);
+    for (i = 0; i < ndata; i++) {
+            /* Std. dev. estimate for each point */
+            /* sigma[i] = sqrt(ydata[i+startbin]); */
+            /* Shouldn't be < 1.0 */
+            /* sigma[i] = (sigma[i] < 1.0) ? 1.0 : sigma[i]; */
+
+            /* TEMP */
+            sigma[i] = 0.1;
+    }
+  
+    /* Get starting fit parameters */
+    get_fit_initialization( &xdata[start_bin], &ydata[start_bin],
+                            ndata, fit_params);
+
+#ifdef DEBUG
+    printf("Fitting SPE histogram...\r\n");
 #endif
 
     /* Fit loop */
@@ -244,8 +235,6 @@ int spe_fit(float *xdata, float *ydata, int pts,
     float del_chisq;
 
     while (!done) {
-
-        printf("Iteration %d\n", iter);
 
         /* Loop is done when the max number of iterations is reached */
         /* or when chi-squared has decreased, but only by a small amount */
@@ -264,29 +253,28 @@ int spe_fit(float *xdata, float *ydata, int pts,
         /* Save chi-squared */
         old_chisq = chisq;
 
-        /* Do an iteration */
-        if (lmfit(&x[start_bin], &y[start_bin], sigma, ndata - start_bin,
-                                         fit_params, SPE_FIT_PARAMS, covar,
-                                         alpha, &chisq, f_spe, &lambda)) {
+        /* Do an iteration and watch for errors */
+        if (lmfit(&xdata[start_bin], &ydata[start_bin], sigma, ndata,
+                  fit_params, SPE_FIT_PARAMS, covar,
+                  alpha, &chisq, f_spe, &lambda)) {
+
             done = 1;
             err = SPE_FIT_ERR_SINGULAR;
 #ifdef DEBUG
             printf("SPE fit error: singular matrix\r\n");
 #endif
         };
-
-        /* Print values */
-#ifdef DEBUG
-        printf("Chisq: %.6g\r\n", chisq);
-        for (i = 0; i < SPE_FIT_PARAMS; i++)
-            printf(" a[%d] = %g\n", i, fit_params[i]);
-#endif
-
     }
 
-    /* Read out covariance matrix */   
-    free_vector(x);
-    free_vector(y);
+    /* Print values */
+#ifdef DEBUG
+    printf("Final parameter values, iteration %d:\r\n", iter);
+    printf("Chisq: %.6g\r\n", chisq);
+    for (i = 0; i < SPE_FIT_PARAMS; i++)
+        printf(" a[%d] = %g\n", i, fit_params[i]);
+#endif
+
+    /* Read out covariance matrix */
     free_vector(sigma);
     free_matrix(alpha, SPE_FIT_PARAMS);
     free_matrix(covar, SPE_FIT_PARAMS);
@@ -304,7 +292,7 @@ int spe_fit(float *xdata, float *ydata, int pts,
     }
     else {
 #ifdef DEBUG
-        printf("SPE fit error: no convergence after max iterations\r\n");
+        printf("SPE fit error: singular matrix or no convergence!\r\n");
 #endif
         err = SPE_FIT_ERR_NO_CONVERGE;
     }
