@@ -12,7 +12,7 @@
 #define MINOR_VERSION 1
 
 /* Default number of bytes in binary output */
-#define DEFAULT_RECORD_LENGTH 9386
+#define DEFAULT_RECORD_LENGTH 9388
 
 /* Default ATWD DAC settings */
 #ifdef DOMCAL_REV5
@@ -49,11 +49,6 @@ typedef struct {
     float value, error;
 } value_error;
 
-/* Store P/V and voltage together */
-typedef struct {
-    float pv, voltage;
-} pv_dat;
-
 /* HV histogram */
 typedef struct {
     float* x_data;
@@ -62,6 +57,7 @@ typedef struct {
     short bin_count;
     short convergent;
     float* fit;
+    float pv;
 } hv_histogram;
 
 /* Calibration data structure */
@@ -102,12 +98,6 @@ typedef struct {
 
     /* Log(HV) vs. Log(gain) HV calibration fit */
     linear_fit hv_gain_calib;
-
-    /* Number of P/V results returned */
-    short num_pv;
-
-    /* P/V results */
-    pv_dat* pv_data;
 
     /* Number of histograms returned */
     short num_histos;

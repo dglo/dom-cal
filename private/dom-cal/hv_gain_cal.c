@@ -60,9 +60,6 @@ int hv_gain_cal(calib_data *dom_calib) {
     /* Number of reasonable P/V histograms obtained */
     int spe_cnt = 0;
 
-    /* Peak to valley data -- allocate space for GAIN_CAL_HV_CNT pairs */
-    static pv_dat pv_data[GAIN_CAL_HV_CNT];
-
     /* Charge histogram data */
     static hv_histogram hv_hist_data[GAIN_CAL_HV_CNT];
     dom_calib->num_histos = GAIN_CAL_HV_CNT;
@@ -150,6 +147,7 @@ int hv_gain_cal(calib_data *dom_calib) {
         hv_hist_data[hv_idx].voltage = hv;
         hv_hist_data[hv_idx].bin_count = GAIN_CAL_BINS;
         hv_hist_data[hv_idx].convergent = 0;
+        hv_hist_data[hv_idx].pv = 0.0;
 
         halWriteActiveBaseDAC(hv * 2);
         halUSleep(5000000);
@@ -320,8 +318,7 @@ int hv_gain_cal(calib_data *dom_calib) {
                 /* note fit convergence */
                 hv_hist_data[hv_idx].convergent = 1; 
                
-                pv_data[spe_cnt].pv = pv_ratio;
-                pv_data[spe_cnt].voltage = hv;
+                hv_hist_data[hv_idx].pv = pv_ratio;
                 
                 spe_cnt++;
                 
@@ -345,10 +342,6 @@ int hv_gain_cal(calib_data *dom_calib) {
     }
     
     } /* End HV loop */
-
-    /* Add P/V data to calib struct */
-    dom_calib->num_pv = spe_cnt;
-    dom_calib->pv_data = pv_data;
 
     /* Add histos to calib struct */
     dom_calib->histogram_data = hv_hist_data;
