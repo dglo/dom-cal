@@ -410,7 +410,7 @@ int hv_gain_cal(calib_data *dom_calib) {
             /* Peak value is Gaussian + exponential at x-value defined */
             /* by Gaussian peak */
             peak_y = fit_params[hv_idx][2] + 
-                (fit_params[hv_idx][0] * exp(-1.0 * fit_params[hv_idx][1] * fix_params[hv_idx][3]));
+                (fit_params[hv_idx][0] * exp(-1.0 * fit_params[hv_idx][1] * fit_params[hv_idx][3]));
 
             pv_ratio = peak_y / valley_y;
 #ifdef DEBUG
