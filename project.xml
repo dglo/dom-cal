@@ -1,0 +1,22 @@
+<project>
+	<name>dom-cal</name>
+	<packages default="">
+		
+	</packages>
+	<uses>
+		<libs>
+                </libs>
+		<tools>
+			log4j.jar
+                        commons-logging.jar
+		</tools>
+	</uses>
+	<test>
+		<uses>
+			<libs></libs>
+			<tools>
+				junit.jar
+			</tools>
+		</uses>
+	</test>
+</project>

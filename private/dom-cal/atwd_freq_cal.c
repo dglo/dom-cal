@@ -24,8 +24,10 @@ int atwd_freq_cal(calib_data *dom_calib) {
     int trigger_mask;
     float atwd0_cal[NUMBER_OF_SPEED_SETTINGS];
     float atwd1_cal[NUMBER_OF_SPEED_SETTINGS];
-    
+
+#ifdef DEBUG    
     printf( "Performing ATWD frequency calibration...\r\n" );
+#endif
 
     /* Record current DOM state */
     int old_ATWD0_bias = halReadDAC( DOM_HAL_DAC_ATWD0_TRIGGER_BIAS );

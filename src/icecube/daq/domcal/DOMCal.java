@@ -70,8 +70,7 @@ public class DOMCal implements Runnable {
         try {
             com.send( "s\" calib_data\" find if zd endif\r" );
             com.receive( "\r\n" );
-            com.receive( "\r\n" );
-            binaryData = com.receive( RECORD_LENGTH );
+            binaryData = com.receive( 9384 );
         } catch ( IOException e ) {
             logger.error( "IO Error downloading calibration from DOM" );
             die( e );
@@ -104,7 +103,7 @@ public class DOMCal implements Runnable {
         try {
             host = args[0];
             port = Integer.parseInt( args[1] );
-            outFile = args[3];
+            outFile = args[2];
         } catch ( Exception e ) {
             usage();
             die( e );

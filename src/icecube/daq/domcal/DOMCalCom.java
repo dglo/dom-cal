@@ -34,9 +34,12 @@ public class DOMCalCom {
         if ( avail != 0 ) {
             in.read( new byte[avail] );
         }
+        send( "\r" );
+        receive( "\r\n" );
     }
 
     public void send( String s ) throws IOException {
+        System.out.println( "SENT: " + s );
         byte[] bytes = s.getBytes();
         out.write( bytes );
         out.flush();
@@ -47,14 +50,15 @@ public class DOMCalCom {
         while ( !out.endsWith( terminator ) ) {
             out += ( char )in.read();
         }
+        System.out.println( "RECEIVED: " + out );
         return out;
     }
 
     public byte[] receive( int length ) throws IOException {
-        GZIPInputStream zStream = new GZIPInputStream( in );
+        GZIPInputStream z = new GZIPInputStream( in );
         byte[] out = new byte[length];
         for ( int offset = 0; offset != length; offset++ ) {
-            out[offset] = ( byte )zStream.read();
+            out[offset] = ( byte )in.read();
         }
         return out;
     }
