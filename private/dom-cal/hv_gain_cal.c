@@ -126,6 +126,12 @@ int hv_gain_cal(calib_data *dom_calib) {
                 
         /* Warm up the ATWD */
         prescanATWD(trigger_mask);
+
+        /* Number of points with negative charge */
+        int bad_trig = 0;
+
+        /* maximum allowed negative charge points before failing */
+        int max_bad_trig = GAIN_CAL_TRIG_CNT * 5;
         
         for (trig=0; trig<(int)GAIN_CAL_TRIG_CNT; trig++) {
             
@@ -202,6 +208,11 @@ int hv_gain_cal(calib_data *dom_calib) {
             /* True charge, in pC = 1/R_ohm * sum(V) * 1e12 / (freq_mhz * 1e6) */
             /* FE sees a 50 Ohm load */
             charges[trig] = 0.02 * 1e6 * vsum / freq;
+ 
+            if (charges[trig] < 0) {
+                trig--;
+                if (++bad_trig > max_bad_trig) return NEG_WF;
+            }
 
             /* TEMP TEMP TEMP */
             /* Print sample */
