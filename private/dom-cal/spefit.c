@@ -76,7 +76,7 @@ void get_fit_initialization( float *x, float *y, int num, float *params ) {
     meanVarFloat( xvals, ( int )sum , &mean, &variance );
 
     /* Exponential decay rate */
-    params[1] = 2.0;
+    params[1] = mean / 4.0;
 
     /* Exponential amplitude */
     params[0] = y[0];
