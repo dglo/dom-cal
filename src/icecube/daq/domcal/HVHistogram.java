@@ -63,6 +63,8 @@ public class HVHistogram {
         boolean convergent = (new Boolean(histo.getAttribute("convergent"))).booleanValue();
         float pv = Float.parseFloat(histo.getAttribute("pv"));
         float noiseRate = Float.parseFloat(histo.getAttribute("noiseRate"));
+        String baselineAttr = histo.getAttribute("pmtBaseline");
+        float pmtBaseline = baselineAttr.equals("") ? Float.NaN : Float.parseFloat(histo.getAttribute("pmtBaseline"));
         boolean isFilled = (new Boolean(histo.getAttribute("isFilled"))).booleanValue();
         float[] fitParams = new float[5];
         NodeList fitP = histo.getElementsByTagName("param");
@@ -88,7 +90,7 @@ public class HVHistogram {
             yData[num] = Float.parseFloat(currentBin.getAttribute("count"));
         }
 
-        return new HVHistogram(voltage, fitParams, xData, yData, convergent, pv, noiseRate, isFilled);
+        return new HVHistogram(voltage, fitParams, xData, yData, convergent, pv, noiseRate, pmtBaseline, isFilled);
     }
 
     public HVHistogram(short voltage, float[] fitParams, float[] xVals, float[] yVals,
@@ -102,6 +104,11 @@ public class HVHistogram {
         this.noiseRate = noiseRate;
         this.pmtBaseline = pmtBaseline;
         this.isFilled = isFilled;
+    }
+
+    public HVHistogram(short voltage, float[] fitParams, float[] xVals, float[] yVals,
+                                   boolean convergent, float pv, float noiseRate, boolean isFilled) {
+        this(voltage, fitParams, xVals, yVals, convergent, pv, noiseRate, Float.NaN, isFilled);
     }
 
     public short getVoltage() {
