@@ -41,7 +41,7 @@ public class DOMCalXML {
                 out += format( rec.getATWDCalibration( 1 , i , j ) );
             }
         }
-        out += "  <fadc parname=\"pedestal\" value=\"" + rec.getFadcValue( 0 ) + "/>\n";
+        out += "  <fadc parname=\"pedestal\" value=\"" + rec.getFadcValue( 0 ) + "\"/>\n";
         out += "  <fadc parname=\"gain\" value=\"" + rec.getFadcValue( 1 ) + "/>\n";
         for ( int i = 0; i < 3; i++ ) {
             out += "  <amplifier channel=\"" + i + "\">\n";
