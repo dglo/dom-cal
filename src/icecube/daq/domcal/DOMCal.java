@@ -25,7 +25,7 @@ import java.sql.*;
 public class DOMCal implements Runnable {
     
     /* Timeout waiting for response, in seconds */
-    public static final int TIMEOUT = 1200;
+    public static final int TIMEOUT = 2400;
    
     private static Logger logger = Logger.getLogger( DOMCal.class );
     private static List threads = new LinkedList();
@@ -163,7 +163,7 @@ public class DOMCal implements Runnable {
             com.send( "zd\r" );
             com.receivePartial( "\r\n" );
             binaryData = com.zRead();
-            s.close();
+            //s.close();  -- stop breaking dom hub app!!!!!
         } catch ( IOException e ) {
             logger.error( "IO Error downloading calibration from DOM" );
             die( e );

@@ -9,7 +9,7 @@
  * be incremented when changing structure of binary output
  */
 #define MAJOR_VERSION 2
-#define MINOR_VERSION 3
+#define MINOR_VERSION 6
 
 /* Default number of bytes in binary output */
 #define DEFAULT_RECORD_LENGTH 9386
@@ -33,7 +33,7 @@
 #define DOM_CLOCK_FREQ          20.0
 
 /* Wait time after setting a DAC */
-#define DAC_SET_WAIT            250000
+#define DAC_SET_WAIT         1000000
 
 /* Error codes */
 #define FAILED_BINARY_CONVERSION -1;

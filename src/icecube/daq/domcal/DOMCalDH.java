@@ -109,7 +109,7 @@ public class DOMCalDH {
         for (Iterator it = fabric.iterator(); it.hasNext(); ) {
             Thread t = (Thread) it.next();
             try {
-                t.join();
+                //t.join();
                 _hubsock hs = (_hubsock) fabricMap.get(t);
                 logger.info("Exec'ing close on DOM " +
                         hs.channel.getDOMID() + " on DOMHub " +
@@ -119,6 +119,9 @@ public class DOMCalDH {
                 hs.hub.closeServerChannel(hs.channel.getDOMID(),
                         DOMReservations.SERIAL_COM_CLIENT,
                         hs.channel.getSocketChannelType());
+                /* Kill thread after dh close to avoid inadvertent
+                   close on socket */
+                t.join();
             } catch (InterruptedException iex) {
                 logger.warn("Ouch - interrupted: " + iex.getMessage());
             } catch (Exception ex) {

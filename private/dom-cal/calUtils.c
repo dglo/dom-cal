@@ -125,18 +125,19 @@ void prescanATWD(unsigned int trigger_mask) {
 void meanVarFloat(float *x, int pts, float *mean, float *var) {
 
     int i;
-    float sum = 0.0;
+    /* Use double internally */
+    double sum = 0.0;
     
     for (i = 0; i < pts; i++)
         sum += x[i];
 
-    *mean = sum / (float)pts;
+    *mean = sum / pts;
 
     sum = 0.0;
     for (i = 0; i < pts; i++)
         sum += (x[i] - *mean)*(x[i] - *mean);
 
-    *var = sum / (float)pts;
+    *var = (float)(sum / pts);
 
 }
 
@@ -154,9 +155,10 @@ void meanVarFloat(float *x, int pts, float *mean, float *var) {
 void linearFitFloat(float *x, float *y, int pts, linear_fit *fit) {
 
     int i;
-    float sum_x, sum_y;
-    float sum_xy, sum_xx, sum_yy;
-    float denom;
+    /* Use doubles internally */
+    double sum_x, sum_y;
+    double sum_xy, sum_xx, sum_yy;
+    double denom;
 
     sum_x = sum_y = 0.0;
     sum_xy = sum_xx = sum_yy = 0.0;
@@ -169,7 +171,7 @@ void linearFitFloat(float *x, float *y, int pts, linear_fit *fit) {
         sum_xy += x[i]*y[i];     
     }
 
-    denom = (float)(pts*sum_xx - sum_x*sum_x);
+    denom = pts*sum_xx - sum_x*sum_x;
 
     fit->slope = (float)(pts*sum_xy - sum_x*sum_y) / denom;
     fit->y_intercept = (float)(sum_xx*sum_y - sum_x*sum_xy) / denom;

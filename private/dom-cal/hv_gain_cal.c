@@ -123,11 +123,17 @@ int hv_gain_cal(calib_data *dom_calib) {
 
         halWriteActiveBaseDAC(hv * 2);
         halUSleep(5000000);
-                
-        /* Warm up the ATWD */
-        prescanATWD(trigger_mask);
+
+        /* Number of points with negative charge */
+        int bad_trig = 0;
+
+        /* maximum allowed negative charge points before failing */
+        int max_bad_trig = GAIN_CAL_TRIG_CNT * 3;
         
         for (trig=0; trig<(int)GAIN_CAL_TRIG_CNT; trig++) {
+                
+            /* Warm up the ATWD */
+            prescanATWD(trigger_mask);
             
             /* Discriminator trigger the ATWD */
             hal_FPGA_TEST_trigger_disc(trigger_mask);
@@ -168,7 +174,7 @@ int hv_gain_cal(calib_data *dom_calib) {
                     + dom_calib->atwd1_gain_calib[ch][0].y_intercept;
             }
 
-            for (bin=0; bin<cnt; bin++) {
+            for (bin=96; bin<cnt; bin++) {
 
                 /* Use calibration to convert to V */
                 /* Don't need to subtract out bias or correct for amplification to find */
@@ -202,25 +208,22 @@ int hv_gain_cal(calib_data *dom_calib) {
             /* True charge, in pC = 1/R_ohm * sum(V) * 1e12 / (freq_mhz * 1e6) */
             /* FE sees a 50 Ohm load */
             charges[trig] = 0.02 * 1e6 * vsum / freq;
-
-            /* TEMP TEMP TEMP */
-            /* Print sample */
-            /* if (trig == 0) {
-                printf("Sample waveform\r\n");
-                for (bin=0; bin<cnt; bin++) {
-                    bin_v = (float)channels[ch][bin] * dom_calib->atwd1_gain_calib[ch][bin].slope
-                        + dom_calib->atwd1_gain_calib[ch][bin].y_intercept;
-                    printf("%d %.6g\r\n", channels[ch][bin], bin_v);
-                }
-                printf("Peak: %.6g at %d\r\n", peak_v, peak_idx);
-                printf("Charge: %.6g\r\n", charges[0]);                
-                } */
+ 
+            if (charges[trig] < 0) {
+                trig--;
+                if (++bad_trig > max_bad_trig) return NEG_WF;
+            }
 
         } /* End trigger loop */
 
         /* Create histogram of charge values */
         /* Heuristic maximum for histogram */
-        int hist_max = ceil(pow(10.0, 6.37*log10(hv*2)-21.0));
+	/* 
+	 * KDH - scale by 0.5 - noted that histos were compressed
+	 * s.t. interesting features were lost.
+	 */
+	   
+        int hist_max = ceil(0.5*pow(10.0, 6.37*log10(hv*2)-21.0));
         int hbin;
 
         /* Initialize histogram */
@@ -246,6 +249,7 @@ int hv_gain_cal(calib_data *dom_calib) {
         }
 
 #ifdef DEBUG
+        printf("Negative charge points discarded: %d\r\n", bad_trig); 
         printf("Histogram points out of range: under %d, over %d\r\n", 
                hist_under, hist_over);
         printf("Histogram:\r\n");

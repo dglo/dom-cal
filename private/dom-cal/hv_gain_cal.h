@@ -17,7 +17,7 @@
 #endif
 
 /* How many SPE waveforms to histogram */
-#define GAIN_CAL_TRIG_CNT      1000
+#define GAIN_CAL_TRIG_CNT      5000
 
 /* HV settings for gain calibration (in V) */
 /* Starting value, amount to increment, and number of settings */
@@ -26,7 +26,7 @@
 #define GAIN_CAL_HV_CNT           8
 
 /* Histogram info */
-#define GAIN_CAL_BINS           100
+#define GAIN_CAL_BINS           250
 
 /* Integration window on either side of peak */
 /* 8 bins *after* peak in time, 4 bins before peak */
@@ -39,6 +39,9 @@
 
 /* Charge of e, Coulombs */
 #define Q_E               1.602E-19
+
+/* Error indicating too many negative charge points */
+#define NEG_WF			 -2
 
 /* Prototypes */
 int hv_gain_cal(calib_data *dom_calib);
