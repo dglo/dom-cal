@@ -492,7 +492,11 @@ int main(void) {
     atwd_freq_cal(&dom_calib);
     if (doHVCal)
         hv_gain_cal(&dom_calib);
-    
+
+    /* FIX ME: FADC calibration is a placeholder */
+    dom_calib.fadc_values[0] = 0;
+    dom_calib.fadc_values[1] = 0;
+
     /* Write calibration record to flash */
     int save_ret = save_results( dom_calib );
     if ( !save_ret ) {
