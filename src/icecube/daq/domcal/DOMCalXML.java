@@ -33,12 +33,14 @@ public class DOMCalXML {
             for ( int j = 0; j < 128; j++ ) {
                 out += "  <atwd id=\"0\" channel=\"" + i + "\" bin=\"" + j + "\">\n";
                 out += format( rec.getATWDCalibration( 0 , i , j ) );
+                out += "  </atwd>\n";
             }
         }
         for ( int i = 0; i < 3; i++ ) {
             for ( int j = 0; j < 128; j++ ) {
                 out += "  <atwd id=\"1\" channel=\"" + i + "\" bin=\"" + j + "\">\n";
                 out += format( rec.getATWDCalibration( 1 , i , j ) );
+                out += "  </atwd>\n";
             }
         }
         out += "  <fadc parname=\"pedestal\" value=\"" + rec.getFadcValue( 0 ) + "\"/>\n";
