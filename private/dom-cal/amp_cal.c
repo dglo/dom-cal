@@ -4,7 +4,7 @@
  * Amplifier calibration routine -- record waveform peaks in 
  * ATWD channels for a given pulser amplitude, and use pulser
  * and ATWD calibration to find gain of each amplifier.  Uses
- * only ATWD B (ATWD1).
+ * only one ATWD.
  *
  */
 
@@ -26,13 +26,16 @@ int amp_cal(calib_data *dom_calib) {
     int ch, bin, trig;
     float bias_v, peak_v;
     
+    /* Which atwd to use */
+    short atwd = AMP_CAL_ATWD;
+
     /* Pulser amplitude settings for each channel */
     const int pulser_settings[3] = {AMP_CAL_PULSER_AMP_0, 
                                     AMP_CAL_PULSER_AMP_1, 
                                     AMP_CAL_PULSER_AMP_2 };
 
     /* Channel readout buffers for each channel and bin */
-    /* This test only uses ATWD B */
+    /* This test only uses one ATWD */
     short channels[3][128];
 
     /* Peak arrays for each channel, in Volts */
@@ -45,18 +48,23 @@ int amp_cal(calib_data *dom_calib) {
     /* Save DACs that we modify */
     short origBiasDAC = halReadDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL);
     short origDiscDAC = halReadDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH);
+    /* Increase sampling speed to make sure we see peak */
+    short origSampDAC = halReadDAC((atwd == 0) ? DOM_HAL_DAC_ATWD0_TRIGGER_BIAS : 
+                                   DOM_HAL_DAC_ATWD1_TRIGGER_BIAS);
 
     /* Set discriminator and bias level */
     halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, AMP_CAL_PEDESTAL_DAC);   
     halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, AMP_CAL_DISC_DAC);
+    halWriteDAC((atwd == 0) ? DOM_HAL_DAC_ATWD0_TRIGGER_BIAS : 
+                DOM_HAL_DAC_ATWD1_TRIGGER_BIAS, AMP_CAL_SAMPLING_DAC);
 
     bias_v = biasDAC2V(AMP_CAL_PEDESTAL_DAC);
 
     /* Turn on the pulser */
     hal_FPGA_TEST_enable_pulser();
 
-    /* Trigger ATWD B only */
-    trigger_mask = HAL_FPGA_TEST_TRIGGER_ATWD1;
+    /* Trigger one ATWD only */
+    trigger_mask = (atwd == 0) ? HAL_FPGA_TEST_TRIGGER_ATWD0 : HAL_FPGA_TEST_TRIGGER_ATWD1;
 
     /* Loop over channels and pulser settings for each channel */
     for (ch = 0; ch < 3; ch++) {
@@ -79,16 +87,29 @@ int amp_cal(calib_data *dom_calib) {
             while (!hal_FPGA_TEST_readout_done(trigger_mask));
 
             /* Read out one waveform for all channels except 3 */        
-            hal_FPGA_TEST_readout(NULL, NULL, NULL, NULL, 
-                                  channels[0], channels[1], channels[2], NULL,
-                                  cnt, NULL, 0, trigger_mask);
+            if (atwd == 0) {
+                hal_FPGA_TEST_readout(channels[0], channels[1], channels[2], NULL, 
+                                      NULL, NULL, NULL, NULL,
+                                      cnt, NULL, 0, trigger_mask);
+            }
+            else {
+                hal_FPGA_TEST_readout(NULL, NULL, NULL, NULL,
+                                      channels[0], channels[1], channels[2], NULL,
+                                      cnt, NULL, 0, trigger_mask);
+            }
             
             /* Find and record the peak for the channel we're calibrating */
             for (bin=0; bin<cnt; bin++) {
 
                 /* Using ATWD calibration data, convert to actual V */
-                peak_v = (float)(channels[ch][bin]) * dom_calib->atwd1_gain_calib[ch][bin].slope
-                    + dom_calib->atwd1_gain_calib[ch][bin].y_intercept;
+                if (atwd == 0) {
+                    peak_v = (float)(channels[ch][bin]) * dom_calib->atwd0_gain_calib[ch][bin].slope
+                        + dom_calib->atwd0_gain_calib[ch][bin].y_intercept;
+                }
+                else {
+                    peak_v = (float)(channels[ch][bin]) * dom_calib->atwd1_gain_calib[ch][bin].slope
+                        + dom_calib->atwd1_gain_calib[ch][bin].y_intercept;
+                }
 
                 /* Also subtract out bias voltage */
                 peak_v -= bias_v;
@@ -122,6 +143,8 @@ int amp_cal(calib_data *dom_calib) {
     /* Put the DACs back to original state */
     halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, origBiasDAC);   
     halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, origDiscDAC);
+    halWriteDAC((atwd == 0) ? DOM_HAL_DAC_ATWD0_TRIGGER_BIAS : 
+                DOM_HAL_DAC_ATWD1_TRIGGER_BIAS, origSampDAC);
 
     /* Turn off the pulser */
     hal_FPGA_TEST_disable_pulser();

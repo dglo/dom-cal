@@ -9,7 +9,7 @@
  * be incremented when changing structure of binary output
  */
 #define MAJOR_VERSION 1
-#define MINOR_VERSION 3
+#define MINOR_VERSION 4
 
 /* Number of bytes in binary output */
 #define RECORD_LENGTH 9384
