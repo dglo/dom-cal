@@ -76,10 +76,12 @@ void get_fit_initialization( float *x, float *y, int num, float *params ) {
     meanVarFloat( xvals, ( int )sum , &mean, &variance );
 
     /* Exponential decay rate */
-    params[1] = mean / 4.0;
+    params[1] = 2.0;
 
     /* Exponential amplitude */
-    params[0] = y[0];   
+    params[0] = y[0];
+    /* Zero amplitude will crash fit! */
+    if (params[0] == 0.0) params[0] = 0.01;   
 
     /* Gaussian center */
     params[3] = mean;
@@ -106,7 +108,7 @@ int spe_find_valley(float *a, float *valley_x, float *valley_y) {
      
     /* Find valley (first minimum) with Newton-Raphson search for zero
        of first derivative */
-    x = 0.0;
+    x = a[3] / 2;
     int iter = 0;
     int done = 0;
     int converged = 0;
@@ -143,6 +145,10 @@ int spe_find_valley(float *a, float *valley_x, float *valley_y) {
 
     *valley_x = x;
     *valley_y = (a[0] * e1) + (a[2] * e2);
+
+#ifdef DEBUG
+    printf("Possible valley at %f\r\n", *valley_x);
+#endif
 
     if(!converged)
         err = SPE_FIT_ERR_NR_NO_CONVERGE;
@@ -193,9 +199,9 @@ int spe_fit(float *xdata, float *ydata, int pts,
 
     /* if start_bin > pts / 20, we're better off starting at first nonzero bin + 2 -- +2 to get rid of disc effects*/
     if ( start_bin > pts / 20 )
-        start_bin = nonzero_bin + 2;
+        start_bin = ydata[nonzero_bin + 2] > ydata[nonzero_bin] ? nonzero_bin + 2 : nonzero_bin;
 
-    /*  OK -- let's chop off the last 5% -- these are probably non-gaussian */
+    /*  OK -- let's chop off the last few % -- these are probably non-gaussian */
     ndata = pts;
     int tot = 0;
     for (; ndata > start_bin; ndata--) {

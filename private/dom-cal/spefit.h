@@ -2,7 +2,7 @@
 #define SPE_FIT_NOISE_FRACT     0.0075
 
 /* Fraction of data to chop off high end of SPE peak -- eliminate non-gaussian component */
-#define SPE_BAD_TAIL_FRACTION   0.05
+#define SPE_BAD_TAIL_FRACTION   0.02
 
 /* Fit information */
 #define SPE_FIT_PARAMS              5
