@@ -291,6 +291,8 @@ int spe_fit(float *xdata, float *ydata, int pts,
             if (fit_params[i] <= 0.0)
                 err = SPE_FIT_ERR_BAD_FIT;
         }
+
+        if (fit_params[3] > xdata[pts-1]) err = SPE_FIT_ERR_BAD_FIT;
     }
     else {
 #ifdef DEBUG

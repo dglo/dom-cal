@@ -40,9 +40,6 @@
 /* Charge of e, Coulombs */
 #define Q_E               1.602E-19
 
-/* Error indicating too many negative charge points */
-#define NEG_WF			 -2
-
 /* Number of noise readings to take before determining if noise level is sane */
 #define NOISE_CNT                10
 
