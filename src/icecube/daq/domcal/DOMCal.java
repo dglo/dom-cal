@@ -23,10 +23,13 @@ import java.io.PrintWriter;
 import java.io.FileWriter;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
+import java.util.Iterator;
+import java.util.HashSet;
 
 public class DOMCal implements Runnable {
-
-    public static final String FPGA_NAME = "domcal.sbi";
+    
+    /* Timeout waiting for response, in seconds */
+    public static final int TIMEOUT = 200;
 
     private static Logger logger = Logger.getLogger( "domcal" );
 
@@ -34,6 +37,7 @@ public class DOMCal implements Runnable {
     private int port;
     private String outDir;
     private boolean calibrate;
+    private static HashSet threads;
 
     public DOMCal( String host, int port, String outDir ) {
         this.host = host;
@@ -43,6 +47,7 @@ public class DOMCal implements Runnable {
             this.outDir += "/";
         }
         this.calibrate = false;
+        threads = new HashSet();
     }
 
     public DOMCal( String host, int port, String outDir, boolean calibrate ) {
@@ -53,6 +58,7 @@ public class DOMCal implements Runnable {
             this.outDir += "/";
         }
         this.calibrate = calibrate;
+        threads = new HashSet();
     }
 
     public void run() {
@@ -176,36 +182,65 @@ public class DOMCal implements Runnable {
                 host = args[0];
                 port = Integer.parseInt( args[1] );
                 outDir = args[2];
-                ( new DOMCal( host, port, outDir ) ).run();
+                Thread t = new Thread( new DOMCal( host, port, outDir ) );
+                threads.add( t );
+                t.start();
             } else if ( args.length == 4 ) {
                 host = args[0];
                 port = Integer.parseInt( args[1] );
                 nPorts = Integer.parseInt( args[2] );
                 outDir = args[3];
                 for ( int i = 0; i < nPorts; i++ ) {
-                    ( new Thread( new DOMCal( host, port + i, outDir ), "" + ( port + i ) ) ).start();
+                    Thread t = new Thread( new DOMCal( host, port + i, outDir ), "" + ( port + i ) );
+                    threads.add( t );
+                    t.start();
                 }
             } else if ( args.length == 5 ) {
                 host = args[0];
                 port = Integer.parseInt( args[1] );
                 outDir = args[2];
-                ( new DOMCal( host, port, outDir, true ) ).run();
+                Thread t = new Thread( new DOMCal( host, port, outDir, true ) );
+                threads.add( t );
+                t.start();
             } else if ( args.length == 6 ) {
                 host = args[0];
                 port = Integer.parseInt( args[1] );
                 nPorts = Integer.parseInt( args[2] );
                 outDir = args[3];
                 for ( int i = 0; i < nPorts; i++ ) {
-                    ( new Thread( new DOMCal( host, port + i, outDir, true ), "" + ( port + i ) ) ).start();
+                    Thread t = new Thread( new DOMCal( host, port + i, outDir, true ), "" + ( port + i ) );
+                    threads.add( t );
+                    t.start();
                 }
             } else {
                 usage();
                 die( "Invalid command line arguments" );
             }
+            for ( int i = 0; i < TIMEOUT; i++ ) {
+                try {
+                    Thread.sleep( 1000 );
+                } catch ( InterruptedException e ) {
+                    logger.warn( "Wait interrupted -- compensating" );
+                    i--;
+                }
+                boolean done = true;
+                for ( Iterator it = threads.iterator(); it.hasNext() && done; ) {
+                    Thread t = ( Thread )it.next();
+                    if ( t.isAlive() ) {
+                        done = false;
+                    }
+                }
+                if ( done ) {
+                    System.exit( 0 );
+                }
+            }
+            logger.warn( "Timeout reached....probably not significant" );
+            System.exit( 0 );
         } catch ( Exception e ) {
             usage();
             die( e );
         }
+        
     }
 
     private static void usage() {
