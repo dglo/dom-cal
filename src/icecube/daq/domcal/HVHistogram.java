@@ -34,11 +34,13 @@ public class HVHistogram {
     private float pv;
     private boolean convergent;
     private float noiseRate;
+    private float pmtBaseline;
     private boolean isFilled;
 
     public static HVHistogram parseHVHistogram(ByteBuffer bb) {
         short voltage = bb.getShort();
-        float noiseRate = (bb.getFloat());
+        float noiseRate = bb.getFloat();
+        float pmtBaseline = bb.getFloat();
         boolean isFilled = (bb.getShort() != 0);
         boolean convergent = (bb.getShort() != 0);
         float[] fitParams = new float[5];
@@ -53,7 +55,7 @@ public class HVHistogram {
             yVals[i] = bb.getFloat();
         }
         float pv = bb.getFloat();
-        return new HVHistogram(voltage, fitParams, xVals, yVals, convergent, pv, noiseRate, isFilled);
+        return new HVHistogram(voltage, fitParams, xVals, yVals, convergent, pv, noiseRate, pmtBaseline, isFilled);
     }
 
     public static HVHistogram parseHVHistogram(Element histo) {
@@ -90,7 +92,7 @@ public class HVHistogram {
     }
 
     public HVHistogram(short voltage, float[] fitParams, float[] xVals, float[] yVals,
-                                   boolean convergent, float pv, float noiseRate, boolean isFilled) {
+                                   boolean convergent, float pv, float noiseRate, float pmtBaseline, boolean isFilled) {
         this.voltage = voltage;
         this.fitParams = fitParams;
         this.xVals = xVals;
@@ -98,6 +100,7 @@ public class HVHistogram {
         this.convergent = convergent;
         this.pv = pv;
         this.noiseRate = noiseRate;
+        this.pmtBaseline = pmtBaseline;
         this.isFilled = isFilled;
     }
 
@@ -127,6 +130,10 @@ public class HVHistogram {
 
     public float getNoiseRate() {
         return noiseRate;
+    }
+
+    public float getPmtBaseline() {
+        return pmtBaseline;
     }
 
     public boolean isFilled() {
