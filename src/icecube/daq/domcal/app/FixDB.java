@@ -27,6 +27,10 @@ public class FixDB
         "intercept",
         "slope",
         "exponential amplitude",
+        "exponential width",
+        "gaussian amplitude",
+        "gaussian mean",
+        "gaussian width",
     };
 
     /**
