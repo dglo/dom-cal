@@ -21,7 +21,9 @@ import java.net.Socket;
 import java.util.zip.InflaterInputStream;
 
 public class DOMCalCom {
-
+    
+    public static final int CONNECT_TIMEOUT_MSEC = 2000;
+    
     private InputStream in;
     private OutputStream out;
     private Socket s;
@@ -36,8 +38,7 @@ public class DOMCalCom {
         if ( avail != 0 ) {
             in.read( new byte[avail] );
         }
-        send( "\r" );
-        receive( "\r\n> " );
+        initCom();
     }
 
     public void send( String s ) throws IOException {
@@ -54,7 +55,6 @@ public class DOMCalCom {
                 try {
                     Thread.sleep( 100 );
                 } catch ( InterruptedException e ) {
-                    throw new IOException( "IO wait operation interrupted" );
                 }
             }
             byte[] b = new byte[in.available()];
@@ -98,7 +98,47 @@ public class DOMCalCom {
         s.close();
     }
 
+    private void initCom() throws IOException {
+        Thread t = new Thread( new InitRunnable( this ) );
+        t.start();
+        for ( int i = 0; i < ( CONNECT_TIMEOUT_MSEC / 100 ); i++ ) {
+            try {
+                Thread.sleep( 100 );
+                if ( !t.isAlive() ) {
+                    return;
+                }
+            } catch ( InterruptedException e ) {
+                i--;
+            }
+        }
+        if ( t.isAlive() ) {
+            try {
+                t.join( 100 );
+            } catch ( InterruptedException e ) {
+            }
+            throw new IOException( "Connect timeout reached" );
+        }
+    }
+
     protected void finalize() throws Throwable {
         close();
+    }
+
+    private class InitRunnable implements Runnable {
+
+        private DOMCalCom com;
+
+        public InitRunnable( DOMCalCom com ) {
+            this.com = com;
+        }
+
+        public void run() {
+            try {
+                com.send( "\r" );
+                com.receive( "\r\n> " );
+                return;
+            } catch ( IOException e ) {
+            }
+        }
     }
 }

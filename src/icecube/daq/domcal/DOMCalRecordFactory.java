@@ -45,6 +45,9 @@ public class DOMCalRecordFactory {
         String domId = "";
         domId += Integer.toHexString( bb.getInt() );
         domId += Integer.toHexString( bb.getInt() );
+        while ( domId.length() != 12 ) {
+            domId = "0" + domId;
+        }
 
         float temperature = bb.getFloat();
 
