@@ -1,5 +1,5 @@
 /* Fraction of hits in first real bin */
-#define SPE_FIT_NOISE_FRACT     0.015
+#define SPE_FIT_NOISE_FRACT     0.0075
 
 /* Fit information */
 #define SPE_FIT_PARAMS              5

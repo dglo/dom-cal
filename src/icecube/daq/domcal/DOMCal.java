@@ -14,6 +14,7 @@ package icecube.daq.domcal;
 
 import org.apache.log4j.Logger;
 import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.Level;
 
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -25,9 +26,14 @@ import java.sql.*;
 public class DOMCal implements Runnable {
     
     /* Timeout waiting for response, in seconds */
-    public static final int TIMEOUT = 2400;
+    public static final int TIMEOUT = 5400;
    
     private static Logger logger = Logger.getLogger( DOMCal.class );
+    
+    static {
+        logger.setLevel(Level.ALL);
+    }
+
     private static List threads = new LinkedList();
     
     private String host;

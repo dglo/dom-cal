@@ -191,8 +191,8 @@ int spe_fit(float *xdata, float *ydata, int pts,
         start_bin++;
     }
 
-    /* if start_bin > pts / 2, we're better off starting at first nonzero bin */
-    if ( start_bin > pts / 2 )
+    /* if start_bin > pts / 10, we're better off starting at first nonzero bin */
+    if ( start_bin > pts / 10 )
         start_bin = nonzero_bin;
 
     /* Determine the number of data points */

@@ -35,6 +35,8 @@ public class HVHistogramGrapher implements Runnable {
 
     public static final double EC = 1.6022e-19;
 
+    public static short[] VOLTAGES = {1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900};
+
     private String inDir;
     private String outDir;
     private String htmlRoot;
@@ -99,45 +101,42 @@ public class HVHistogramGrapher implements Runnable {
             return;
         }
         doc.add("DOM Id");
-        doc.add("1200V");
-        doc.add("1300V");
-        doc.add("1400V");
-        doc.add("1500V");
-        doc.add("1600V");
-        doc.add("1700V");
-        doc.add("1800V");
-        doc.add("1900V");
+        sumDoc.add("DOM Id");
+        for (int i = 0; i < VOLTAGES.length; i++) {
+            doc.add(VOLTAGES[i] + "V");
+            sumDoc.add(VOLTAGES[i] + "V");
+        }
         doc.add("Gain vs HV");
         doc.addBr();
-        sumDoc.add("DOM Id");
-        sumDoc.add("1200V");
-        sumDoc.add("1300V");
-        sumDoc.add("1400V");
-        sumDoc.add("1500V");
-        sumDoc.add("1600V");
-        sumDoc.add("1700V");
-        sumDoc.add("1800V");
-        sumDoc.add("1900V");
         sumDoc.add("Gain vs HV");
         sumDoc.addBr();
         for (Iterator it = histTable.keySet().iterator(); it.hasNext();) {
             String domId = (String)it.next();
-            HVHistogram[] histArr = (HVHistogram[])histTable.get(domId);
+            Hashtable hTable = (Hashtable)histTable.get(domId);
             StringTokenizer st = new StringTokenizer(domId, ".xml");
             String id = st.nextToken();
             doc.addNew(id);
             sumDoc.addNew(id);
-            for (int i = 0; i < histArr.length; i++) {
-                try {
-                    String loc = graphHistogram(histArr[i], domId);
-                    doc.addImg(loc);
-                    sumDoc.addSizedImg(loc, 100, 100);
-                } catch (IOException e) {
-                    System.out.println("Failed encoding histogram " + e);
+            for (int i = 0; i < VOLTAGES.length; i++) {
+                HVHistogram currentHisto = (HVHistogram)hTable.get(new Short(VOLTAGES[i]));
+                if (currentHisto == null) {
+                    System.out.println("Error -- " + domId + " histogram for " + VOLTAGES[i] + "V not found");
+                    doc.add("Not produced");
+                } else if (!currentHisto.isFilled()) {
+                    System.out.println(domId + " Histogram for " + VOLTAGES[i] + "V is not filled");
+                    doc.add("N/A");
+                } else {
+                    try {
+                        String loc = graphHistogram(currentHisto, domId);
+                        doc.addImg(loc);
+                        sumDoc.addSizedImg(loc, 100, 100);
+                    } catch (IOException e) {
+                        System.out.println("Failed encoding histogram " + e);
+                    }
                 }
             }
             try {
-                String loc = graphHV(histArr, domId);
+                String loc = graphHV(hTable, domId);
                 doc.addImg(loc);
                 sumDoc.addSizedImg(loc, 100, 100);
             } catch (IOException e) {
@@ -150,18 +149,18 @@ public class HVHistogramGrapher implements Runnable {
         sumDoc.close();
     }
 
-    public HVHistogram[] processDomcal(File domcalFile) throws ParserConfigurationException, SAXException, IOException {
+    public Hashtable processDomcal(File domcalFile) throws ParserConfigurationException, SAXException, IOException {
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         dbf.setNamespaceAware(true);
         DocumentBuilder db = dbf.newDocumentBuilder();
         Document doc = db.parse(domcalFile);
         NodeList histos = doc.getElementsByTagName("histo");
-        HVHistogram[] hArr = new HVHistogram[histos.getLength()];
+        Hashtable hTable = new Hashtable();
         for (int i = 0; i < histos.getLength(); i++) {
-            //todo -- hack -- should probably know something about the voltage here rather than assuming order......
-            hArr[i] = (HVHistogram.parseHVHistogram((Element)histos.item(i)));
+            HVHistogram current = (HVHistogram.parseHVHistogram((Element)histos.item(i)));
+            hTable.put(new Short(current.getVoltage()), current);
         }
-        return hArr;
+        return hTable;
     }
 
     private String graphHistogram(HVHistogram histo, String domId) throws IOException {
@@ -178,7 +177,7 @@ public class HVHistogramGrapher implements Runnable {
         return outHttp;
     }
 
-    private String graphHV(HVHistogram[] histos, String domId) throws IOException {
+    private String graphHV(Hashtable histos, String domId) throws IOException {
         String outName = domId + "_hv" + ".jpeg";
         String outFile = outDir + (outDir.endsWith("/") ? "" : "/") + outName;
         String outHttp = htmlRoot + (htmlRoot.endsWith("/") ? "" : "/") + outName;
@@ -192,7 +191,11 @@ public class HVHistogramGrapher implements Runnable {
         return outHttp;
     }
 
-    private BufferedImage createSummaryImage(HVHistogram[] histos) {
+    private BufferedImage createSummaryImage(Hashtable histTable) {
+        Object[] obj = histTable.values().toArray();
+        HVHistogram[] histos = new HVHistogram[obj.length];
+        for (int i = 0; i < obj.length; i++) histos[i] = (HVHistogram)obj[i];
+
         BufferedImage bi = new BufferedImage(300, 300, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = bi.createGraphics();
 
@@ -371,6 +374,14 @@ public class HVHistogramGrapher implements Runnable {
             g.drawString(str, 50 + 50*i - (g.getFontMetrics().stringWidth(str))/2, 249 + (50 + charHeight)/2);
         }
 
+        //write pv and noise
+        double pv = ((int)(histo.getPV() * 10)) / 10.0;
+        int noise = (int)histo.getNoiseRate();
+        String pvString = "PV=" + pv;
+        String noiseString = "Noise=" + noise;
+        String maxStr = (pvString.length() > noiseString.length()) ? pvString : noiseString;
+        g.drawString(pvString, 295 - g.getFontMetrics().stringWidth(maxStr), 5 + charHeight );
+        g.drawString(noiseString, 295 - g.getFontMetrics().stringWidth(maxStr), 8 + 2*charHeight );
         return bi;
     }
 

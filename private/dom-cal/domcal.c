@@ -229,17 +229,20 @@ int write_value_error( value_error *val_er, char *bin_data, int offset ) {
 /* Writes a histogram to binary format */
 int write_histogram(hv_histogram *hist, char *bin_data, int offset) {
     int bytes_written = get_bytes_from_short(hist->voltage, bin_data, offset);
-    bytes_written += get_bytes_from_short(hist->convergent, bin_data, offset + bytes_written);
+    bytes_written += get_bytes_from_float(hist->noise_rate, bin_data, offset + bytes_written);
+    short filled = hist->is_filled;
+    bytes_written += get_bytes_from_short(filled, bin_data, offset + bytes_written);
+    bytes_written += get_bytes_from_short(filled ? hist->convergent : 0, bin_data, offset + bytes_written);
     int i;
     for (i = 0; i < 5; i++) {
-        bytes_written += get_bytes_from_float(hist->fit[i], bin_data, offset + bytes_written);
+        bytes_written += get_bytes_from_float(filled ? hist->fit[i] : 0.0, bin_data, offset + bytes_written);
     }
     bytes_written += get_bytes_from_short(hist->bin_count, bin_data, offset + bytes_written);
-    for (i = 0; i < GAIN_CAL_BINS; i++) {
-        bytes_written += get_bytes_from_float(hist->x_data[i], bin_data, offset + bytes_written);
-        bytes_written += get_bytes_from_float(hist->y_data[i], bin_data, offset + bytes_written);
+    for (i = 0; i < hist->bin_count; i++) {
+        bytes_written += get_bytes_from_float(filled ? hist->x_data[i] : 0.0, bin_data, offset + bytes_written);
+        bytes_written += get_bytes_from_float(filled ? hist->y_data[i] : 0.0, bin_data, offset + bytes_written);
     }
-    bytes_written += get_bytes_from_float(hist->pv, bin_data, offset + bytes_written);
+    bytes_written += get_bytes_from_float(filled ? hist->pv : 0.0, bin_data, offset + bytes_written);
     return bytes_written;
 } 
 
@@ -429,6 +432,8 @@ int save_results(calib_data dom_calib) {
     r_size += dom_calib.num_histos * 2; //bin counts;
     r_size += dom_calib.num_histos * 2; //convergent bits
     r_size += dom_calib.num_histos * 4; //PV data
+    r_size += dom_calib.num_histos * 4; //Noise rate
+    r_size += dom_calib.num_histos * 2; //is_filled flag
 
     char binary_data[r_size];
 
@@ -484,8 +489,8 @@ int main(void) {
     }
     dom_calib.hv_gain_valid = doHVCal;
 
-    /* Init # histos returned to zero */
-    dom_calib.num_histos = 0;
+    /* Init # histos returned */
+    dom_calib.num_histos = doHVCal ? GAIN_CAL_HV_CNT : 0;
 
     /* Initialize DOM state: DACs, HV setting, pulser, etc. */
     init_dom();

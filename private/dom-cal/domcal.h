@@ -8,8 +8,8 @@
 /* Version of calibration program -- Major version must
  * be incremented when changing structure of binary output
  */
-#define MAJOR_VERSION 3
-#define MINOR_VERSION 1
+#define MAJOR_VERSION 4
+#define MINOR_VERSION 0
 
 /* Default number of bytes in binary output */
 #define DEFAULT_RECORD_LENGTH 9388
@@ -58,6 +58,8 @@ typedef struct {
     short convergent;
     float* fit;
     float pv;
+    float noise_rate;
+    short is_filled;
 } hv_histogram;
 
 /* Calibration data structure */
