@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <math.h>
 
 #include "hal/DOM_MB_hal.h"
 #include "hal/DOM_MB_fpga.h"
@@ -20,9 +21,7 @@
 #include "calUtils.h"
 
 /*---------------------------------------------------------------------------*/
-/* FIX ME -- use real data structure */
-
-int amp_cal(void) {
+int amp_cal(calib_data *dom_calib) {
 
     const int cnt = 128;
     int trigger_mask;

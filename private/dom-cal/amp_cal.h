@@ -10,4 +10,4 @@
 #define AMP_CAL_TRIG_CNT 250
 
 /* Prototypes */
-int amp_cal(void);
+int amp_cal(calib_data *dom_calib);

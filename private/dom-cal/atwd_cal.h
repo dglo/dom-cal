@@ -13,4 +13,4 @@
 #define ATWD_CAL_TRIG_CNT 100
 
 /* Prototypes */
-int atwd_cal(void);
+int atwd_cal(calib_data *dom_calib);

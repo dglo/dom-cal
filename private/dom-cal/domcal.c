@@ -16,6 +16,7 @@
 #include "hal/DOM_MB_fpga.h"
 
 #include "domcal.h"
+#include "calUtils.h"
 
 /* Include calibration module headers here */
 #include "atwd_cal.h"
@@ -23,10 +24,7 @@
 
 /*---------------------------------------------------------------------------*/
 
-/* This may go away? Should we use boot state of DOM? */
-void initDOM(void) {
-
-    int atwd;
+void init_dom(void) {
 
     /* Make sure HV is off */
     /* halPowerDownBase(); */
@@ -48,30 +46,79 @@ void initDOM(void) {
 
 }
 
+
+/*---------------------------------------------------------------------------*/
+/* 
+ * record_state
+ *
+ * Records the state of the DOM before data taking -- all DAC and ADC settings,
+ * temperature, etc.
+ *
+ */
+void record_state(calib_data *dom_calib) {
+
+    int i;
+
+    /* Read ID */
+    strcpy(dom_calib->dom_id, halGetBoardID());
+
+    /* Read DACs */
+    for (i = 0; i < 16; i++)
+        dom_calib->dac_values[i] = halReadDAC(i);
+
+    /* Read ADCs */
+    for (i = 0; i < 24; i++)
+        dom_calib->adc_values[i] = halReadADC(i);
+
+    /* Read temperature and convert to K */
+    dom_calib->temp = temp2K(halReadTemp());
+}
+
+/*---------------------------------------------------------------------------*/
+/*
+ * save_results
+ *
+ * Save calibration results to the flash filesystem.
+ *
+ */
+
+int save_results(calib_data dom_calib) {
+
+    int i;
+    int err = 0;
+
+    /* FIX ME: For now, just print everything out */
+#ifdef DEBUG
+    printf("ID: %s\r\n", dom_calib.dom_id);
+    for (i = 0; i < 16; i++)
+        printf("DAC %d: %d\r\n", i, dom_calib.dac_values[i]);
+    for (i = 0; i < 24; i++)
+        printf("ADC %d: %d\r\n", i, dom_calib.adc_values[i]);
+    printf("Temp: %.1f\r\n", dom_calib.temp);
+#endif
+
+    return err;
+}
+
 /*---------------------------------------------------------------------------*/
 
 int main(void) {
-
+    
     int err = 0;
-    int i;
-
+    calib_data dom_calib;
+    
 #ifdef DEBUG
     printf("Hello, world!  This is domcal version %d.%d\r\n", 
            MAJOR_VERSION, MINOR_VERSION);
 #endif
     
-    /* Possible flow: */
-
-    /* Initialize DOM state? DACs, HV setting, pulser, etc. */
-    initDOM();
-
-    /* Record DOM state, etc. (separate function): 
-     *  - version of calibration program
-     *  - DOM ID
-     *  - Temperature
-     *  - DACs and ADCs
-     *  - anything else?  ask user to put in date?
-     */
+    /* Initialize DOM state: DACs, HV setting, pulser, etc. */
+    init_dom();
+    
+    /* Record DOM state, etc. */
+    record_state(&dom_calib);
+    
+    /* FIX ME: get date, don't forget about version number */
     
     /* Calibration modules:
      *  - pulser calibration
@@ -79,17 +126,21 @@ int main(void) {
      *  - amplifier calibration
      *  - sampling speed calibration
      */
-
-    /* FIX ME: record results, return error code */
-    atwd_cal();
-    amp_cal();
-
-    /* Write calibration record to flash (separate function) */
+    /* FIX ME: return real error codes or something */
+    atwd_cal(&dom_calib);
+    amp_cal(&dom_calib);
+    
+    /* Write calibration record to flash */
+    save_results(dom_calib);
 
 #ifdef DEBUG
     if (!err) 
         printf("Calibration completed successfully.\r\n");
 #endif
    
-    return err;
+    /* Reboot the DOM -- DOESN'T SEEM TO WORK */
+    hal_FPGA_TEST_request_reboot();
+    while (!hal_FPGA_TEST_is_reboot_granted());
+
+    return 0;
 }

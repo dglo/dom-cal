@@ -8,7 +8,19 @@
 #include "hal/DOM_MB_hal.h"
 #include "hal/DOM_MB_fpga.h"
 
+#include "domcal.h"
 #include "calUtils.h"
+
+/*---------------------------------------------------------------------------*/
+/*
+ * temp2K
+ *
+ * Converts a raw DOM temperature reading to Kelvin.
+ *
+ */
+float temp2K(short temp) {
+    return (temp/256.0 + 273.16);
+}
 
 /*---------------------------------------------------------------------------*/
 /*
@@ -54,11 +66,10 @@ void meanVarFloat(float *x, int pts, float *mean, float *var) {
  *
  * Takes an array of (x,y) points and returns the 
  * slope, intercept, and R-squared value of the best-fit
- * line.
+ * line, using the linear_fit struct in domcal.h.
  *
  */
-void linearFitFloat(float *x, float *y, int pts, float *m, 
-                    float *b, float *rsqr) {
+void linearFitFloat(float *x, float *y, int pts, linear_fit *fit) {
 
     int i;
     float sum_x, sum_y;
@@ -77,10 +88,12 @@ void linearFitFloat(float *x, float *y, int pts, float *m,
     }
 
     denom = (float)(pts*sum_xx - sum_x*sum_x);
-    *m = (float)(pts*sum_xy - sum_x*sum_y) / denom;
-    *b = (float)(sum_xx*sum_y - sum_x*sum_xy) / denom;
-    *rsqr = (float)(pts*sum_xy - sum_x*sum_y) * (*m) / 
+
+    fit->slope = (float)(pts*sum_xy - sum_x*sum_y) / denom;
+    fit->y_intercept = (float)(sum_xx*sum_y - sum_x*sum_xy) / denom;
+    fit->r_squared = (float)(pts*sum_xy - sum_x*sum_y) * (fit->slope) / 
         (pts*sum_yy - sum_y*sum_y);
+
 }
 
 /*---------------------------------------------------------------------------*/

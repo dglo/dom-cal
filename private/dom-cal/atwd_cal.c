@@ -19,9 +19,7 @@
 #include "calUtils.h"
 
 /*---------------------------------------------------------------------------*/
-
-/* FIX ME -- use real data structure */
-int atwd_cal(void) {
+int atwd_cal(calib_data *dom_calib) {
 
     const int cnt = 128;
     int trigger_mask, bias_idx, bias;
@@ -99,23 +97,28 @@ int atwd_cal(void) {
     }
 
     /* Fit each ATWD, channel, and bin */
-    float m, b, r2;
-
-    for(atwd=0; atwd<2; atwd++) {
-        for(ch=0; ch<3; ch++) {
-            for(bin=0; bin<cnt; bin++) {
-                linearFitFloat(atwd_pedestal[atwd][ch][bin], biases, BIAS_CNT, &m, &b, &r2); 
+    for(ch=0; ch<3; ch++) {
+        for(bin=0; bin<cnt; bin++) {
+            linearFitFloat(atwd_pedestal[0][ch][bin], biases, BIAS_CNT, 
+                           &(dom_calib->atwd0_gain_calib[ch][bin])); 
+            linearFitFloat(atwd_pedestal[1][ch][bin], biases, BIAS_CNT, 
+                           &(dom_calib->atwd1_gain_calib[ch][bin])); 
 #ifdef DEBUG
-                printf("ATWD: %d Ch: %d Bin: %d Slope: %.6g Int: %.6g R^2: %.6f\r\n",
-                       atwd, ch, bin, m, b, r2);
+            printf("ATWD0: Ch: %d Bin: %d Slope: %.6g Int: %.6g R^2: %.6f\r\n",
+                   ch, bin, dom_calib->atwd0_gain_calib[ch][bin].slope, 
+                   dom_calib->atwd0_gain_calib[ch][bin].y_intercept,
+                   dom_calib->atwd0_gain_calib[ch][bin].r_squared);
+            
+            printf("ATWD1: Ch: %d Bin: %d Slope: %.6g Int: %.6g R^2: %.6f\r\n",
+                   ch, bin, dom_calib->atwd1_gain_calib[ch][bin].slope, 
+                   dom_calib->atwd1_gain_calib[ch][bin].y_intercept,
+                   dom_calib->atwd1_gain_calib[ch][bin].r_squared);
 #endif
-            }
         }
     }
                 
     /* FIX ME: turn clamping back on? */
-    /* FIX ME: put results into structure */    
-      
+
     return 0;
 
 }

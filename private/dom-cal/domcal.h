@@ -7,7 +7,7 @@
 
 /* Version of calibration program */
 #define MAJOR_VERSION 0
-#define MINOR_VERSION 2
+#define MINOR_VERSION 3
 
 /* Default ATWD DAC settings */
 #define ATWD_SAMPLING_SPEED_DAC 850
@@ -30,13 +30,13 @@ typedef struct {
 typedef struct {
     
     /* Date */
-    int day, month, year;
+    short day, month, year;
     
     /* DOM ID */
-    char dom_id[12];
+    char dom_id[13];
     
-    /* Calibration temperature */
-    short temp;
+    /* Calibration temperature, in K */
+    float temp;
 
     /* DOM state before calibration */
     short dac_values[16];
@@ -47,11 +47,11 @@ typedef struct {
     linear_fit pulser_calib;
 
     /* ATWD gain calibration */
-    linear_fit *atwd0_gain_calib[4][128];
-    linear_fit *atwd1_gain_calib[4][128];
+    linear_fit atwd0_gain_calib[3][128];
+    linear_fit atwd1_gain_calib[3][128];
     
     /* FE amplifier calibration */
-    value_error *amplifier_calib[3];
+    value_error amplifier_calib[3];
     
     /* ATWD sampling speed calibration */
     linear_fit atwd0_freq_calib;
