@@ -33,18 +33,18 @@ typedef struct {
     int day, month, year;
     
     /* DOM ID */
-    char *dom_id[12];
+    char dom_id[12];
     
     /* Calibration temperature */
     short temp;
 
     /* DOM state before calibration */
-    short *dac_values[16];
-    short *adc_values[24];
-    short *fadc_values[4];
+    short dac_values[16];
+    short adc_values[24];
+    short fadc_values[4];
 
     /* FE pulser calibration */
-    linear_fit *pulser_calib;
+    linear_fit pulser_calib;
 
     /* ATWD gain calibration */
     linear_fit *atwd0_gain_calib[4][128];
@@ -54,7 +54,7 @@ typedef struct {
     value_error *amplifier_calib[3];
     
     /* ATWD sampling speed calibration */
-    linear_fit *atwd0_freq_calib;
-    linear_fit *atwd1_freq_calib;
+    linear_fit atwd0_freq_calib;
+    linear_fit atwd1_freq_calib;
 
 } calib_data;
