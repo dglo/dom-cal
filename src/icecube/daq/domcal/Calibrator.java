@@ -230,7 +230,7 @@ public class Calibrator {
             String atwdStr = atwd.getAttribute("id");
             int ch = Integer.parseInt(atwd.getAttribute("channel"));
             if ( atwdStr != null ) {
-                ch += 3*( Integer.parseInt( atwdStr ) );
+                ch += 4*( Integer.parseInt( atwdStr ) );
             }
             int bin = Integer.parseInt(atwd.getAttribute("bin"));
             atwdFits[ch][bin] = parseFit((Element) atwd.getElementsByTagName("fit").item(0));
