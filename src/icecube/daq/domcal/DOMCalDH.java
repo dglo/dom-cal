@@ -79,9 +79,9 @@ public class DOMCalDH {
         while (iarg < args.length) {
             String arg = args[iarg++];
             if (arg.equals("-cal"))
-                props.setProperty("calibrate", "analogfe");
+                props.setProperty("icecube.domcal.calibrate", "analogfe");
             else if (arg.equals("-gaincal"))
-                props.setProperty("calibrate", "pmtgain");
+                props.setProperty("icecube.domcal.calibrate", "pmtgain");
             else if (arg.equals("-outDir")) {
                 props.setProperty("icecube.domcal.outputDirectory", args[iarg++]);
             } else {
@@ -164,7 +164,7 @@ public class DOMCalDH {
                 Thread t = new Thread( new DOMCal(
                         dsc.getHost(),
                         dsc.getPort(),
-                        props.getProperty("outputDirectory", "."),
+                        props.getProperty("icecube.domcal.outputDirectory", "."),
                         afecal,
                         pmtcal
                 ) );
