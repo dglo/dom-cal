@@ -71,7 +71,7 @@ public class DOMCalXML {
 
 
         for (int i = 0; i < rec.getNumHVHistograms(); i++) {
-            formatBaseline(rec.getBaseline(), out);
+            formatBaseline(rec.getHVBaseline(i), out);
             formatHisto(rec.getHVHistogram(i), out);
         }
 
@@ -113,6 +113,6 @@ public class DOMCalXML {
                 out.print("    <base atwd=\"" + i + "\" ch=\"" + j + "\" value=\"" + base.getBaseline(i,j) + "\"/>\n");
             }
         }
-        out.print("  </baseline>");
+        out.print("  </baseline>\n");
     }
 }
