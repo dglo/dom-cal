@@ -60,38 +60,46 @@ public class DOMCal implements Runnable {
         Socket s = null;
         DOMCalCom com = null;
 
+        try {
+            s = new Socket( host, port );
+        } catch ( UnknownHostException e ) {
+            logger.error( "Cannot connect to " + host );
+            die( e );
+            return;
+        } catch ( IOException e ) {
+            logger.error( "IO Error connecting to " + host );
+            die( e );
+            return;
+        }
+
+        logger.debug( "Connected to " + host + " at port " + port );
+
+        try {
+            com = new DOMCalCom( s );
+        } catch ( IOException e ) {
+            logger.error( "IO Error establishing communications" );
+            return;
+        }
+
         if ( calibrate ) {
-
-            try {
-                s = new Socket( host, port );
-            } catch ( UnknownHostException e ) {
-                logger.error( "Cannot connect to " + host );
-                die( e );
-                return;
-            } catch ( IOException e ) {
-                logger.error( "IO Error connecting to " + host );
-                die( e );
-                return;
-            }
-
-            logger.debug( "Connected to " + host + " at port " + port );
-
-            try {
-                com = new DOMCalCom( s );
-            } catch ( IOException e ) {
-                logger.error( "IO Error establishing communications" );
-                return;
-            }
 
             logger.debug( "Beginning DOM calibration routine" );
             try {
-                com.send( "s\" " + FPGA_NAME + "\" find if fpga endif\r" );
-                String ret = com.receive( "/r/n/> " );
-                if ( !ret.equals(  "s\" " + FPGA_NAME + "\" find if fpga endif" ) ) {
+                com.send( "s\" " + FPGA_NAME + "\" find if ls endif\r" );
+                String ret = com.receive( "\r\n> " );
+                if ( ret.equals(  "s\" " + FPGA_NAME + "\" find if ls endif\r\n> " ) ) {
                     logger.error( "Failed fpga load....is " + FPGA_NAME + "  present?" );
                     return;
                 }
-                com.send( "s\" domcal\" find if exec endif\r" );
+                com.send( "fpga\r" );
+                com.receive( "\r\n> " );
+                com.send( "s\" domcal\" find if ls endif\r" );
+                ret = com.receive( "\r\n> " );
+                if ( ret.equals(  "s\" domcal\" find if ls endif\r\n> " ) ) {
+                    logger.error( "Failed domcal load....is domcal  present?" );
+                    return;
+                }
+                com.send( "exec\r" );
                 Calendar cal = new GregorianCalendar();
                 int day = cal.get( Calendar.DAY_OF_MONTH );
                 int month = cal.get( Calendar.MONTH ) + 1;
@@ -142,13 +150,12 @@ public class DOMCal implements Runnable {
         }
 
         String domId = rec.getDomId();
-        String xmlDoc = DOMCalXML.format( rec );
 
         logger.debug( "Saving output to " + outDir );
 
         try {
             PrintWriter out = new PrintWriter( new FileWriter( outDir + domId + ".xml", false ), false );
-            out.print( xmlDoc );
+            DOMCalXML.format( rec, out );
             out.flush();
             out.close();
         } catch ( IOException e ) {
