@@ -376,12 +376,17 @@ public class HVHistogramGrapher implements Runnable {
 
         //write pv and noise
         double pv = ((int)(histo.getPV() * 10)) / 10.0;
+        double mean = ((int)(histo.getFitParams()[3] * 10)) / 10.0;
         int noise = (int)histo.getNoiseRate();
+        String meanString = "Mean=" + mean + "pC";
         String pvString = "PV=" + pv;
-        String noiseString = "Noise=" + noise;
+        String noiseString = "Noise=" + noise + "Hz";
         String maxStr = (pvString.length() > noiseString.length()) ? pvString : noiseString;
+        if (meanString.length() > maxStr.length()) maxStr = meanString;
+
         g.drawString(pvString, 295 - g.getFontMetrics().stringWidth(maxStr), 5 + charHeight );
         g.drawString(noiseString, 295 - g.getFontMetrics().stringWidth(maxStr), 8 + 2*charHeight );
+        g.drawString(meanString, 295 - g.getFontMetrics().stringWidth(maxStr), 11 + 3*charHeight );
         return bi;
     }
 
