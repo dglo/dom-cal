@@ -131,4 +131,81 @@ would attempt to calibrate and read out \$num ports DOMs, starting from \$port.
 
 \subsection{XML Calibration Output}
 
+The XML calibration output is much more user-friendly then the DOM-resident binary
+file.  Figure \ref{fig:xml} is an example output file with the ATWD calibration,
+DAC, and ADC values truncated.
+An actual output file contains 2x3x128 = 768 ATWD calibration linear fits.
+
+\begin{figure}
+\begin{small}
+\begin{verbatim}
+<domcal>
+  <date>6-11-2004</date>
+  <domid>f771bb4dce28</domid>
+  <temperature format="Kelvin">238.9725</temperature>
+  <dac channel="0">850</dac>
+  .
+  .
+  .
+  <dac channel="15">0</dac>
+  <adc channel="0">95</adc>
+  .
+  .
+  .
+  <adc channel="23">0</adc>
+  <pulser>
+    <fit model="linear">
+      <param name="slope">9.181886E-5</param>
+      <param name="intercept">3.7924567E-4</param>
+      <regression-coeff>0.9999254</regression-coeff>
+    </fit>
+  </pulser>
+  <atwd id="0" channel="0" bin="0">
+    <fit model="linear">
+      <param name="slope">-0.0062284535</param>
+      <param name="intercept">5.0744777</param>
+      <regression-coeff>0.4187727</regression-coeff>
+    </fit>
+  </atwd>
+  .
+  .
+  .
+  <atwd id="1" channel="2" bin="127">
+    <fit model="linear">
+      <param name="slope">-0.0022831585</param>
+      <param name="intercept">2.6237197</param>
+      <regression-coeff>0.9999343</regression-coeff>
+    </fit>
+  </atwd>
+  <fadc parname="pedestal" value="2112"/>
+  <fadc parname="gain" value="2184"/>
+  <amplifier channel="0">
+    <gain error="1.5559148">-97.44885</gain>
+  </amplifier>
+  <amplifier channel="1">
+    <gain error="0.8450469">-52.4845</gain>
+  </amplifier>
+  <amplifier channel="2">
+    <gain error="0.119607404">-8.216592</gain>
+  </amplifier>
+  <atwdfreq chip="0">
+    <fit model="linear">
+      <param name="slope">-2.282832E-4</param>
+      <param name="intercept">4.4375844</param>
+      <regression-coeff>0.43570894</regression-coeff>
+    </fit>
+  </atwdfreq>
+  <atwdfreq chip="1">
+    <fit model="linear">
+      <param name="slope">0.012642916</param>
+      <param name="intercept">3.7248025</param>
+      <regression-coeff>0.9978187</regression-coeff>
+    </fit>
+  </atwdfreq>
+</domcal>
+\end{verbatim}
+\end{small}
+\caption{Sample XML calibration output}
+\label{fig:xml}
+\end{figure}
 \end{document}
