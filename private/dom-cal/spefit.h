@@ -18,5 +18,6 @@
 #define SPE_FIT_ERR_NR_NO_CONVERGE    5
 #define SPE_FIT_ERR_NR_BAD_X          6
 
-int spe_fit(float *xdata, float *ydata, int pts, float *fit_params);
+int spe_fit(float *xdata, float *ydata, int pts,
+                         float *fit_params, int num_samples );
 int spe_find_valley(float *a, float *valley_x, float *valley_y);

@@ -154,7 +154,8 @@ int spe_find_valley(float *a, float *valley_x, float *valley_y) {
 }
 
 /*--------------------------------------------------------------------------*/
-int spe_fit(float *xdata, float *ydata, int pts, float *fit_params) {
+int spe_fit(float *xdata, float *ydata, int pts,
+                            float *fit_params, int num_samples ) {
 
     int i, ndata;
     int iter = 0;
@@ -212,9 +213,22 @@ int spe_fit(float *xdata, float *ydata, int pts, float *fit_params) {
 #endif
         return SPE_FIT_ERR_EMPTY_HIST;
     }
+    
+    /* Find a maximal bin with > 1.5% of total hits */
+    int start_bin = 0;
+    while ( y[start_bin] < ( 0.015 * num_samples ) && start_bin < pts - 1 ) {
+        for ( ; start_bin < pts - 1 && 
+                     y[start_bin] < y[start_bin + 1]; start_bin++ );
+    }
+
+    /* if start_bin > pts / 2, we're better off starting at 0 */
+    if ( start_bin > pts / 2 ) {
+        start_bin = 0;
+    }
 
     /* Get starting fit parameters */
-    get_fit_initialization(x, y, ndata, fit_params);
+    get_fit_initialization( &x[start_bin], &y[start_bin],
+                                        ndata - start_bin, fit_params);
 
     /* Print values */
 #ifdef DEBUG
@@ -251,8 +265,9 @@ int spe_fit(float *xdata, float *ydata, int pts, float *fit_params) {
         old_chisq = chisq;
 
         /* Do an iteration */
-        if (lmfit(x, y, sigma, ndata, fit_params, SPE_FIT_PARAMS, covar, 
-                  alpha, &chisq, f_spe, &lambda)) {
+        if (lmfit(&x[start_bin], &y[start_bin], sigma, ndata - start_bin,
+                                         fit_params, SPE_FIT_PARAMS, covar,
+                                         alpha, &chisq, f_spe, &lambda)) {
             done = 1;
             err = SPE_FIT_ERR_SINGULAR;
 #ifdef DEBUG

@@ -213,7 +213,7 @@ int hv_gain_cal(calib_data *dom_calib) {
 
 	/* Fit histograms */
 	int fiterr;
-	fiterr = spe_fit(hist_x[hv_idx], hist_y[hv_idx], GAIN_CAL_BINS, fit_params[hv_idx]);
+	fiterr = spe_fit(hist_x[hv_idx], hist_y[hv_idx], GAIN_CAL_BINS, fit_params[hv_idx], GAIN_CAL_TRIG_CNT );
     
     /* If no error in fit, record gain and P/V */
     if (!fiterr) {
