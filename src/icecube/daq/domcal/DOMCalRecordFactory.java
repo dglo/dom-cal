@@ -29,7 +29,7 @@ public class DOMCalRecordFactory {
 
         bb.order( ByteOrder.BIG_ENDIAN );
         short version = bb.getShort();
-        if ( version > 256 ) {
+        if ( version >= 256 || version < 0 ) {
             bb.order( ByteOrder.LITTLE_ENDIAN );
             version = ( short )( version >> 8 );
         }
@@ -42,7 +42,9 @@ public class DOMCalRecordFactory {
 
         bb.getShort();
 
-        String domId = Long.toHexString( bb.getLong() );
+        String domId = "";
+        domId += Integer.toHexString( bb.getInt() );
+        domId += Integer.toHexString( bb.getInt() );
 
         float temperature = bb.getFloat();
 

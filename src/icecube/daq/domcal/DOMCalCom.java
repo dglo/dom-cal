@@ -15,8 +15,10 @@ package icecube.daq.domcal;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.net.Socket;
-import java.util.zip.GZIPInputStream;
+import java.util.zip.InflaterInputStream;
 
 public class DOMCalCom {
 
@@ -39,7 +41,6 @@ public class DOMCalCom {
     }
 
     public void send( String s ) throws IOException {
-        System.out.println( "SENT: " + s );
         byte[] bytes = s.getBytes();
         out.write( bytes );
         out.flush();
@@ -50,15 +51,25 @@ public class DOMCalCom {
         while ( !out.endsWith( terminator ) ) {
             out += ( char )in.read();
         }
-        System.out.println( "RECEIVED: " + out );
         return out;
     }
 
-    public byte[] receive( int length ) throws IOException {
-        GZIPInputStream z = new GZIPInputStream( in );
+    public byte[] zRead() throws IOException {
+        
+        byte [] len = new byte[4];
+        for ( int i = 0; i < 4; i++ ) {
+            len[i] = ( byte )in.read();
+        }
+        
+        ByteBuffer buf = ByteBuffer.wrap( len );
+        buf.order( ByteOrder.LITTLE_ENDIAN );
+        int length = buf.getInt();
+
+        InflaterInputStream z = new InflaterInputStream( in );
+        
         byte[] out = new byte[length];
         for ( int offset = 0; offset != length; offset++ ) {
-            out[offset] = ( byte )in.read();
+            out[offset] = ( byte )z.read();
         }
         return out;
     }

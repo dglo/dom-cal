@@ -52,7 +52,7 @@ public class DOMCalXML {
         for ( int i = 0; i < 2; i++ ) {
             out += "  <atwdfreq chip=\"" + i + "\">\n";
             out += format( rec.getATWDFrequencyCalibration( i ) );
-            out += "  </atwdfreq>";
+            out += "  </atwdfreq>\n";
         }
         out += "</domcal>\n";
         return out;

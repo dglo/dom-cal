@@ -70,13 +70,20 @@ public class DOMCal implements Runnable {
         try {
             com.send( "s\" calib_data\" find if zd endif\r" );
             com.receive( "\r\n" );
-            binaryData = com.receive( 9384 );
+            binaryData = com.zRead();
         } catch ( IOException e ) {
             logger.error( "IO Error downloading calibration from DOM" );
             die( e );
         }
 
-        DOMCalRecord rec = DOMCalRecordFactory.parseDomCalRecord( ByteBuffer.wrap( binaryData ) );
+        DOMCalRecord rec = null;
+        try {
+            rec = DOMCalRecordFactory.parseDomCalRecord( ByteBuffer.wrap( binaryData ) );
+        } catch ( Exception e ) {
+            logger.error( "Error parsing test output" );
+            die( e );
+        }
+
         String xmlDoc = DOMCalXML.format( rec );
 
         logger.debug( "Saving output to " + outFile );
@@ -91,7 +98,7 @@ public class DOMCal implements Runnable {
             die( e );
         }
 
-        logger.debug( "Document saved -- Goodbye" );
+        logger.debug( "Document saved" );
 
     }
 
