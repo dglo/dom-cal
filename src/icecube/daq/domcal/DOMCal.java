@@ -28,12 +28,10 @@ public class DOMCal implements Runnable {
 
     private static Logger logger = Logger.getLogger( "domcal" );
 
-    public static final int WAIT_UNSPECIFIED = -2;
-
     private String host;
     private int port;
     private String outDir;
-    private int waitTime;
+    private boolean calibrate;
 
     public DOMCal( String host, int port, String outDir ) {
         this.host = host;
@@ -42,17 +40,17 @@ public class DOMCal implements Runnable {
         if ( !outDir.endsWith( "/" ) ) {
             this.outDir += "/";
         }
-        this.waitTime = WAIT_UNSPECIFIED;
+        this.calibrate = false;
     }
 
-    public DOMCal( String host, int port, String outDir, int waitTime ) {
+    public DOMCal( String host, int port, String outDir, boolean calibrate ) {
         this.host = host;
         this.port = port;
         this.outDir = outDir;
         if ( !outDir.endsWith( "/" ) ) {
             this.outDir += "/";
         }
-        this.waitTime = waitTime;
+        this.calibrate = calibrate;
     }
 
     public void run() {
@@ -60,8 +58,7 @@ public class DOMCal implements Runnable {
         Socket s = null;
         DOMCalCom com = null;
 
-        /* Start test if waitTime is set */
-        if ( waitTime != WAIT_UNSPECIFIED ) {
+        if ( calibrate ) {
 
             try {
                 s = new Socket( host, port );
@@ -102,11 +99,7 @@ public class DOMCal implements Runnable {
             logger.debug( "Waiting for calibration to finish" );
 
             try {
-                Thread.sleep( waitTime * 1000 );
                 com.receive( "\r\n> " );
-            } catch ( InterruptedException e ) {
-                logger.error( "Interrupted from sleep -- quitting" );
-                die( e );
             } catch ( IOException e ) {
                 logger.error( "IO Error occurred during calibration routine" );
                 die( e );
@@ -156,7 +149,6 @@ public class DOMCal implements Runnable {
         String host = null;
         int port = -1;
         int nPorts = -1;
-        int waitTime = -1;
         String outDir = null;
         try {
             if ( args.length == 3 ) {
@@ -176,16 +168,14 @@ public class DOMCal implements Runnable {
                 host = args[0];
                 port = Integer.parseInt( args[1] );
                 outDir = args[2];
-                waitTime = Integer.parseInt( args[4] );
-                ( new DOMCal( host, port, outDir, waitTime ) ).run();
+                ( new DOMCal( host, port, outDir, true ) ).run();
             } else if ( args.length == 6 ) {
                 host = args[0];
                 port = Integer.parseInt( args[1] );
                 nPorts = Integer.parseInt( args[2] );
                 outDir = args[3];
-                waitTime = Integer.parseInt( args[5] );
                 for ( int i = 0; i < nPorts; i++ ) {
-                    ( new Thread( new DOMCal( host, port + i, outDir, waitTime ), "" + port + i ) ).start();
+                    ( new Thread( new DOMCal( host, port + i, outDir, true ), "" + port + i ) ).start();
                 }
             } else {
                 usage();
@@ -199,19 +189,15 @@ public class DOMCal implements Runnable {
 
     private static void usage() {
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir}" );
-        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir} wait {seconds}" );
+        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir} calibrate dom" );
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {num ports} {output dir}" );
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {num ports}" +
-                                                                      "{output dir} wait {seconds}" );
+                                                                      "{output dir} calibrate dom" );
         logger.info( "host -- hostname of domhub/terminal server to connect" );
         logger.info( "port -- remote port to connect on 'host'" );
         logger.info( "num ports -- number of sequential ports to connect above 'port' on 'host'" );
         logger.info( "output dir -- local directory to store results" );
-        logger.info( "wait -- flag to initiate DOM calibration" );
-        logger.info( "seconds -- time to wait after initiating a calibration before downloading data " +
-                                                                                      "-- a good value is 120" );
-        
-
+        logger.info( "'calibrate dom' -- flag to initiate DOM calibration" );
     }
 
     private static void die( Object o ) {
