@@ -30,7 +30,7 @@ import java.util.LinkedList;
 public class DOMCal implements Runnable {
     
     /* Timeout waiting for response, in seconds */
-    public static final int TIMEOUT = 200;
+    public static final int TIMEOUT = 600;
    
     /* DOMCal version ID */
     public static final String VERSION = "1.1";
@@ -42,6 +42,7 @@ public class DOMCal implements Runnable {
     private int port;
     private String outDir;
     private boolean calibrate;
+    private boolean calibrateHv;
 
     public DOMCal( String host, int port, String outDir ) {
         this.host = host;
@@ -51,6 +52,7 @@ public class DOMCal implements Runnable {
             this.outDir += "/";
         }
         this.calibrate = false;
+        this.calibrateHv = false;
     }
 
     public DOMCal( String host, int port, String outDir, boolean calibrate ) {
@@ -61,6 +63,18 @@ public class DOMCal implements Runnable {
             this.outDir += "/";
         }
         this.calibrate = calibrate;
+        this.calibrateHv = false;
+    }
+
+    public DOMCal( String host, int port, String outDir, boolean calibrate, boolean calibrateHv ) {
+        this.host = host;
+        this.port = port;
+        this.outDir = outDir;
+        if ( !outDir.endsWith( "/" ) ) {
+            this.outDir += "/";
+        }
+        this.calibrate = calibrate;
+        this.calibrateHv = calibrateHv;
     }
 
     public void run() {
@@ -110,6 +124,12 @@ public class DOMCal implements Runnable {
                 com.send( "" + month + "\r" );
                 com.receive( ": " );
                 com.send( "" + day + "\r" );
+                com.receive( "? " );
+                if ( calibrateHv ) {
+                    com.send( "y" + "\r" );
+                } else {
+                    com.send( "n" + "\r" );
+                }
             } catch ( IOException e ) {
                 logger.error( "IO Error starting DOM calibration routine" );
                 die( e );
@@ -214,6 +234,23 @@ public class DOMCal implements Runnable {
                     threads.add( t );
                     t.start();
                 }
+            } else if ( args.length == 7 ) {
+                host = args[0];
+                port = Integer.parseInt( args[1] );
+                outDir = args[2];
+                Thread t = new Thread( new DOMCal( host, port, outDir, true, true ) );
+                threads.add( t );
+                t.start();
+            } else if ( args.length == 8 ) {
+                host = args[0];
+                port = Integer.parseInt( args[1] );
+                nPorts = Integer.parseInt( args[2] );
+                outDir = args[3];
+                for ( int i = 0; i < nPorts; i++ ) {
+                    Thread t = new Thread( new DOMCal( host, port + i, outDir, true, true ), "" + ( port + i ) );
+                    threads.add( t );
+                    t.start();
+                }
             } else {
                 usage();
                 die( "Invalid command line arguments" );
@@ -248,14 +285,18 @@ public class DOMCal implements Runnable {
     private static void usage() {
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir}" );
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir} calibrate dom" );
+        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir} calibrate dom calibrate hv" );
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {num ports} {output dir}" );
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {num ports}" +
                                                                       "{output dir} calibrate dom" );
+        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {num ports}" +
+                                                                      "{output dir} calibrate dom calibrate hv" );
         logger.info( "host -- hostname of domhub/terminal server to connect" );
         logger.info( "port -- remote port to connect on 'host'" );
         logger.info( "num ports -- number of sequential ports to connect above 'port' on 'host'" );
         logger.info( "output dir -- local directory to store results" );
         logger.info( "'calibrate dom' -- flag to initiate DOM calibration" );
+        logger.info( "'calibrate hv' -- flag to initiate DOM calibration -- can only be used when calibrate dom is specified" );
     }
 
     private static void die( Object o ) {

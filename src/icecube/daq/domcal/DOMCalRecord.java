@@ -41,5 +41,15 @@ public interface DOMCalRecord {
     public short getDay();
 
     public short getVersion();
+    
+    public boolean isHvCalValid();
+    
+    public LinearFit getHvGainCal();
+
+    public short getNumPVPts();
+
+    public float getPVValue( int iter );
+
+    public float getPVVoltageData( int iter );
 
 }

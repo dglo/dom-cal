@@ -58,6 +58,19 @@ public class DOMCalXML {
             format( rec.getATWDFrequencyCalibration( i ), out );
             out.print("  </atwdfreq>\n");
         }
+
+        if ( rec.isHvCalValid() ) {
+            
+            out.print("  <hvGainCal>\n");
+            format( rec.getHvGainCal(), out );
+            out.print("  </hvGainCal>\n");
+
+            for ( int i = 0; i < rec.getNumPVPts(); i++ ) {
+                out.print( "  <pv voltage=\"" + rec.getPVVoltageData( i ) + "\">" +
+                                                rec.getPVValue( i ) + "</pv>\n");
+            }
+
+        }
         out.print("</domcal>\n");
     }
 
