@@ -11,7 +11,6 @@
 #include "domcal.h"
 #include "calUtils.h"
 
-
 /*---------------------------------------------------------------------------*/
 /*
  * getCalibV
@@ -90,6 +89,22 @@ float biasDAC2V(int val) {
 }
 
 /*---------------------------------------------------------------------------*/
+/* 
+ * prescanATWD
+ *
+ * Call before any data acquisition to "prime" the ATWDs.
+ */
+void prescanATWD(unsigned int trigger_mask) {
+   int i;
+
+   for (i=0; i<8; i++) {
+      hal_FPGA_TEST_trigger_forced(trigger_mask);
+      while (!hal_FPGA_TEST_readout_done(trigger_mask)) ;
+      halUSleep(1000);
+   }
+}
+
+/*---------------------------------------------------------------------------*/
 /*
  * meanVarFloat
  *
@@ -150,20 +165,4 @@ void linearFitFloat(float *x, float *y, int pts, linear_fit *fit) {
     fit->r_squared = (float)(pts*sum_xy - sum_x*sum_y) * (fit->slope) / 
         (pts*sum_yy - sum_y*sum_y);
 
-}
-
-/*---------------------------------------------------------------------------*/
-/* 
- * prescanATWD
- *
- * Call before any data acquisition to "prime" the ATWDs.
- */
-void prescanATWD(unsigned int trigger_mask) {
-   int i;
-
-   for (i=0; i<8; i++) {
-      hal_FPGA_TEST_trigger_forced(trigger_mask);
-      while (!hal_FPGA_TEST_readout_done(trigger_mask)) ;
-      halUSleep(1000);
-   }
 }

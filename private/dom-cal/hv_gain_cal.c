@@ -16,8 +16,10 @@
 #include "domcal.h"
 #include "hv_gain_cal.h"
 #include "calUtils.h"
+#include "spefit.h"
 
 /*---------------------------------------------------------------------------*/
+
 int hv_gain_cal(calib_data *dom_calib) {
 
     const int cnt = 128;
@@ -34,7 +36,14 @@ int hv_gain_cal(calib_data *dom_calib) {
     float charges[GAIN_CAL_TRIG_CNT];
 
     /* Charge histograms for each HV */
-    int hist[GAIN_CAL_HV_CNT][HIST_BIN_CNT];
+    float hist_y[GAIN_CAL_HV_CNT][HIST_BIN_CNT];
+
+    /* Actual x-values for each histgram */
+    float hist_x[GAIN_CAL_HV_CNT][HIST_BIN_CNT];
+
+    /* Fit parameters for each SPE spectrum */
+    float fit_params[GAIN_CAL_HV_CNT][SPE_FIT_PARAMS];    
+
 
 #ifdef DEBUG
     printf("Performing HV gain calibration...\r\n");
@@ -63,9 +72,6 @@ int hv_gain_cal(calib_data *dom_calib) {
     short samp_dac = halReadDAC(DOM_HAL_DAC_ATWD0_TRIGGER_BIAS);
     freq = getCalibFreq(0, *dom_calib, samp_dac);
 
-    /* TEMP */
-    printf("ATWD sampling frequency: %.1f MHz\r\n",freq);
-
     /* Give user a final warning */
 #ifdef DEBUG
     printf(" *** WARNING: enabling HV in 5 seconds! ***\r\n");
@@ -88,8 +94,11 @@ int hv_gain_cal(calib_data *dom_calib) {
         
         /* Set high voltage and give it time to stabilize */
         hv = (hv_idx * GAIN_CAL_HV_INC) + GAIN_CAL_HV_LOW;      
-        /* TEMP */
+
+#ifdef DEBUG
         printf(" Setting HV to %d V\r\n", hv);
+#endif
+
         halWriteActiveBaseDAC(hv * 2);
         halUSleep(2500000);
                 
@@ -132,9 +141,6 @@ int hv_gain_cal(calib_data *dom_calib) {
                     peak_idx = bin;
                     peak_v = bin_v;
                 }
-
-                /* TEMP */
-                /* printf("%g\r\n", bin_v); */
             }
 
             /* Now integrate around the peak to get the charge */
@@ -162,9 +168,11 @@ int hv_gain_cal(calib_data *dom_calib) {
         printf("Histogram max = %d\r\n", hist_max);
 
         /* Initialize histogram */
-        for(hbin=0; hbin < HIST_BIN_CNT; hbin++)
-            hist[hv_idx][hbin] = 0;
-        
+        for(hbin=0; hbin < HIST_BIN_CNT; hbin++) {
+	    hist_x[hv_idx][hbin] = (float)hbin * hist_max / HIST_BIN_CNT;
+	    hist_y[hv_idx][hbin] = 0.0;
+	}
+
         /* Fill histogram -- histogram minimum is 0.0 */
         for(trig=0; trig < GAIN_CAL_TRIG_CNT; trig++) {
 
@@ -172,18 +180,21 @@ int hv_gain_cal(calib_data *dom_calib) {
             
             /* Do NOT use an overflow bin; will screw up fit */
             if (hbin < HIST_BIN_CNT)
-                hist[hv_idx][hbin] += 1;
+                hist_y[hv_idx][hbin] += 1;
         }
 
 #ifdef DEBUG
         printf("Histogram: \r\n");
         for(hbin=0; hbin < HIST_BIN_CNT; hbin++) 
-            printf("%d %g %d\r\n", hbin, (float)hbin*hist_max/HIST_BIN_CNT, hist[hv_idx][hbin]);
+            printf("%d %g %g\r\n", hbin, hist_x[hv_idx][hbin], hist_y[hv_idx][hbin]);
 #endif
 
-        /* FIX ME: Fit histogram */
+	/* Fit histograms */
+	int fiterr;
+	fiterr = spe_fit(hist_x[hv_idx], hist_y[hv_idx], 
+			 GAIN_CAL_TRIG_CNT, fit_params[hv_idx]);
 
-    } /* End HV loop */
+    } /* End HV loop */   
 
     /* Turn off the high voltage */
 #ifdef REV3HAL
