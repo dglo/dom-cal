@@ -75,4 +75,10 @@ typedef struct {
     linear_fit atwd0_freq_calib;
     linear_fit atwd1_freq_calib;
 
+    /* Valid bit for HV calibration */
+    short hv_gain_valid;
+
+    /* Log(HV) vs. Log(gain) HV calibration fit */
+    linear_fit hv_gain_calib;
+
 } calib_data;

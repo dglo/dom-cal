@@ -373,6 +373,13 @@ int save_results(calib_data dom_calib) {
                    dom_calib.atwd1_freq_calib.y_intercept,
                    dom_calib.atwd1_freq_calib.r_squared);
 
+    if (dom_calib.hv_gain_valid) {
+        printf("HV Gain: m=%.6g b=%.6g r^2=%.6g\r\n",
+               dom_calib.hv_gain_calib.slope,
+               dom_calib.hv_gain_calib.y_intercept,
+               dom_calib.hv_gain_calib.r_squared);
+    }
+
 #endif
 
     char binary_data[RECORD_LENGTH];
@@ -425,8 +432,12 @@ int main(void) {
                (buf[0] == '\n' && ((buf[1] == 'y') || (buf[1] == 'Y'))));
     */
 
-    if (doHVCal)
+    if (doHVCal) {
+#ifdef DEBUG
         printf("*** HIGH VOLTAGE WILL BE ACTIVATED ***\r\n");
+#endif
+    }
+    dom_calib.hv_gain_valid = doHVCal;
 
     /* Initialize DOM state: DACs, HV setting, pulser, etc. */
     init_dom();
@@ -441,7 +452,7 @@ int main(void) {
      *  - sampling speed calibration
      *  - HV gain calibration
      */
-    /* FIX ME: return real error codes or something */
+    /* FIX ME: return real error codes */
     pulser_cal(&dom_calib);
     atwd_cal(&dom_calib);
     amp_cal(&dom_calib);

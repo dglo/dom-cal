@@ -20,7 +20,7 @@
  *
  */
 
-float getCalibV(short val, calib_data dom_calib, int atwd, int ch, int bin, short bias_dac) {
+float getCalibV(short val, calib_data dom_calib, int atwd, int ch, int bin, float bias_v) {
 
     float v;
 
@@ -35,7 +35,7 @@ float getCalibV(short val, calib_data dom_calib, int atwd, int ch, int bin, shor
     }
         
     /* Also subtract out bias voltage */
-    v -= biasDAC2V(bias_dac);
+    v -= bias_v;
     
     /* Correct for channel amplification with amplifier calibration data */
     v /= dom_calib.amplifier_calib[ch].value;

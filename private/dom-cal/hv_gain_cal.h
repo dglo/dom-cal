@@ -15,7 +15,10 @@
 #define GAIN_CAL_HV_CNT           8
 
 /* Histogram info */
-#define HIST_BIN_CNT            100
+#define GAIN_CAL_BINS           100
+
+/* Charge of e, Couloumbs */
+#define Q_E               1.602E-19
 
 /* Prototypes */
 int hv_gain_cal(calib_data *dom_calib);

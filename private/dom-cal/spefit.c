@@ -88,10 +88,77 @@ void get_fit_initialization( float *x, float *y, int num, float *params ) {
 }
 
 /*--------------------------------------------------------------------------*/
+/*
+ * spe_find_valley
+ *
+ * Find the valley (first minimum) of an SPE fit function 
+ * using a Newton-Raphson search on the first derivative.
+ *
+ */
+int spe_find_valley(float *a, float *valley_x, float *valley_y) {
+
+    float e1, e2, xoff;
+    float x, d1f, d2f;
+
+    /* Model Yi = A * exp(-B * x) + C * exp( -(x - D)^2 * E ) */
+     
+    /* Find valley (first minimum) with Newton-Raphson search for zero
+       of first derivative */
+    x = 0.0;
+    int iter = 0;
+    int done = 0;
+    int converged = 0;
+    int err = 0;
+
+    while (!done) {
+    
+        xoff = x - a[3];
+        e1 = exp(-a[1] * x);
+        e2 = exp(-xoff * xoff * a[4]);
+
+        /* First derivative of SPE function: */
+        /* -A B exp(-B x) - 2 C E (x-d) exp (-E (x-d)^2) */
+        d1f = (-a[0] * a[1] * e1) - (2 * a[2] * a[4] * xoff* e2);
+
+        converged = (fabs(d1f) < SPE_FIT_NR_MAX_ERR);
+
+        if ((!converged) && (iter < SPE_FIT_NR_MAX_ITER)) {
+
+            /* Second derivative of SPE function: */
+            /* 
+             * A B^2 exp(-B x) - 2 C exp(-E (x-D)^2) E + 
+             *    4 C E^2 (x-D)^2 exp(-E (x-D)^2)
+             */
+            d2f = (a[0] * a[1] * a[1] * e1) - (2 * a[2] * a[4] * e2)
+                + (4 * a[2] * a[4] * a[4] * xoff * xoff * e2);            
+
+            x -= d1f / d2f;
+            iter++;
+        }
+        else done = 1;
+
+    }
+
+    *valley_x = x;
+    *valley_y = (a[0] * e1) + (a[2] * e2);
+
+    if(!converged)
+        err = SPE_FIT_ERR_NR_NO_CONVERGE;
+
+    /* Check sanity of valley */
+    /* Should be positive and to the left of the gaussian peak */
+    if ((*valley_x < 0) || (*valley_x > a[3]))
+        err = SPE_FIT_ERR_NR_BAD_X;
+
+    return err;
+}
+
+/*--------------------------------------------------------------------------*/
 int spe_fit(float *xdata, float *ydata, int pts, float *fit_params) {
 
     int i, ndata;
     int iter = 0;
+    int err = 0;
 
     /* Data vectors */
     float *sigma = vector(pts);
@@ -106,18 +173,26 @@ int spe_fit(float *xdata, float *ydata, int pts, float *fit_params) {
     float chisq = 0.0;
 
     /* Must be negative for first iteration */
-    float alamda = -1.0;
+    float lambda = -1.0;
     
     int found = 0;
     ndata = 0;
     for (i = 0; i < pts; i++) {
         /* Suppress initial zeros */
-        if ((found) || (y[i] > 0)) {
+        if ((found) || (ydata[i] > 0)) {
             found = 1;
+
             x[ndata] = xdata[i];
             y[ndata] = ydata[i];
-            /* FIX ME */
+
+            /* Std. dev. estimate for each point */
+            /* sigma[ndata] = sqrt(ydata[i]); */
+            /* Shouldn't be < 1.0 */
+            /* sigma[ndata] = (sigma[ndata] < 1.0) ? 1.0 : sigma[ndata]; */
+
+            /* TEMP */
             sigma[ndata] = 0.1;
+
 #ifdef DEBUG
             printf ("data: %g %g %g\n", x[ndata], y[ndata], sigma[ndata]);
 #endif
@@ -130,16 +205,27 @@ int spe_fit(float *xdata, float *ydata, int pts, float *fit_params) {
 #endif
     }
 
+    /* Check to make sure histogram isn't empty */
+    if (ndata == 0) {
+#ifdef DEBUG
+        printf("SPE fit error: empty histogram!\r\n");        
+#endif
+        return SPE_FIT_ERR_EMPTY_HIST;
+    }
+
     /* Get starting fit parameters */
     get_fit_initialization(x, y, ndata, fit_params);
 
     /* Print values */
+#ifdef DEBUG
     printf("Starting parameter values:\n");
     for (i = 0; i < SPE_FIT_PARAMS; i++)
         printf(" a[%d] = %g\n", i, fit_params[i]);
+#endif
 
     /* Fit loop */
     int done = 0;
+    int converged = 0;
     float old_chisq = chisq;
     float del_chisq;
 
@@ -149,25 +235,37 @@ int spe_fit(float *xdata, float *ydata, int pts, float *fit_params) {
 
         /* Loop is done when the max number of iterations is reached */
         /* or when chi-squared has decreased, but only by a small amount */
+        /* Decrease can be small absolutely or as a percentage */
         iter++;
         del_chisq = old_chisq - chisq;
-        done = (iter > SPE_FIT_MAX_ITER) || 
-            ((del_chisq > 0) && (del_chisq < SPE_FIT_CHISQ_DONE));
+        converged = (del_chisq > 0) && ((del_chisq < SPE_FIT_CHISQ_ABS_DONE) ||
+                                        (del_chisq / chisq < SPE_FIT_CHISQ_PCT_DONE));
+
+        done = (iter > SPE_FIT_MAX_ITER) || converged;
         
         /* Setting to zero on final iteration will read out covariance and curvature */
         if (done)
-            alamda = 0.0;
+            lambda = 0.0;
 
         /* Save chi-squared */
         old_chisq = chisq;
 
         /* Do an iteration */
-        lmfit(x, y, sigma, ndata, fit_params, SPE_FIT_PARAMS, covar, 
-	      alpha, &chisq, f_spe, &alamda);
+        if (lmfit(x, y, sigma, ndata, fit_params, SPE_FIT_PARAMS, covar, 
+                  alpha, &chisq, f_spe, &lambda)) {
+            done = 1;
+            err = SPE_FIT_ERR_SINGULAR;
+#ifdef DEBUG
+            printf("SPE fit error: singular matrix\r\n");
+#endif
+        };
 
         /* Print values */
+#ifdef DEBUG
+        printf("Chisq: %.6g\r\n", chisq);
         for (i = 0; i < SPE_FIT_PARAMS; i++)
             printf(" a[%d] = %g\n", i, fit_params[i]);
+#endif
 
     }
 
@@ -178,6 +276,23 @@ int spe_fit(float *xdata, float *ydata, int pts, float *fit_params) {
     free_matrix(alpha, SPE_FIT_PARAMS);
     free_matrix(covar, SPE_FIT_PARAMS);
 
-    /* FIX ME: check fit for sanity??? */
-    return 0;
+    /* Check fit for convergence and sanity */
+    if (converged) {
+#ifdef DEBUG
+        printf("SPE fit converged successfully\r\n");
+#endif
+        /* Check that all fit parameters are positive */
+        for (i = 0; i < SPE_FIT_PARAMS; i++) {
+            if (fit_params[i] <= 0.0)
+                err = SPE_FIT_ERR_BAD_FIT;
+        }
+    }
+    else {
+#ifdef DEBUG
+        printf("SPE fit error: no convergence after max iterations\r\n");
+#endif
+        err = SPE_FIT_ERR_NO_CONVERGE;
+    }
+
+    return err;
 }

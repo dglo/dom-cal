@@ -3,6 +3,8 @@
  *
  * HV gain calibration routine -- integrates SPE waveforms
  * to create charge histogram, and then fits to find peak and valley.
+ * Then performs linear regression on log(HV) vs. log(gain).
+ *
  * Iterates over a number of HV settings.
  *
  */
@@ -36,14 +38,22 @@ int hv_gain_cal(calib_data *dom_calib) {
     float charges[GAIN_CAL_TRIG_CNT];
 
     /* Charge histograms for each HV */
-    float hist_y[GAIN_CAL_HV_CNT][HIST_BIN_CNT];
+    float hist_y[GAIN_CAL_HV_CNT][GAIN_CAL_BINS];
 
-    /* Actual x-values for each histgram */
-    float hist_x[GAIN_CAL_HV_CNT][HIST_BIN_CNT];
+    /* Actual x-values for each histogram */
+    float hist_x[GAIN_CAL_HV_CNT][GAIN_CAL_BINS];
 
     /* Fit parameters for each SPE spectrum */
-    float fit_params[GAIN_CAL_HV_CNT][SPE_FIT_PARAMS];    
+    float fit_params[GAIN_CAL_HV_CNT][SPE_FIT_PARAMS];
 
+    /* Log(gain) values for each voltage with a good SPE fit */
+    float log_gain[GAIN_CAL_HV_CNT];
+
+    /* Log(HV) settings, for regression */
+    float log_hv[GAIN_CAL_HV_CNT];
+
+    /* Number of reasonable P/V histograms obtained */
+    int spe_cnt = 0;
 
 #ifdef DEBUG
     printf("Performing HV gain calibration...\r\n");
@@ -57,6 +67,7 @@ int hv_gain_cal(calib_data *dom_calib) {
 
     /* Get bias DAC setting */
     bias_dac = halReadDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL);
+    float bias_v = biasDAC2V(bias_dac);
 
     /* Make sure pulser is off */
     hal_FPGA_TEST_disable_pulser();
@@ -64,12 +75,12 @@ int hv_gain_cal(calib_data *dom_calib) {
     /* Select something static into channel 3 */
     halSelectAnalogMuxInput(DOM_HAL_MUX_FLASHER_LED_CURRENT);
     
-    /* Trigger ATWD A only */
-    trigger_mask = HAL_FPGA_TEST_TRIGGER_ATWD0;
+    /* Trigger ATWD B only */
+    trigger_mask = HAL_FPGA_TEST_TRIGGER_ATWD1;
 
     /* Get calibrated sampling frequency */
     float freq;
-    short samp_dac = halReadDAC(DOM_HAL_DAC_ATWD0_TRIGGER_BIAS);
+    short samp_dac = halReadDAC(DOM_HAL_DAC_ATWD1_TRIGGER_BIAS);
     freq = getCalibFreq(0, *dom_calib, samp_dac);
 
     /* Give user a final warning */
@@ -114,8 +125,8 @@ int hv_gain_cal(calib_data *dom_calib) {
             while (!hal_FPGA_TEST_readout_done(trigger_mask));
 
             /* Read out one waveform from channels 0 and 1 */
-            hal_FPGA_TEST_readout(channels[0], channels[1], NULL, NULL, 
-                                  NULL, NULL, NULL, NULL,
+            hal_FPGA_TEST_readout(NULL, NULL, NULL, NULL,
+                                  channels[0], channels[1], NULL, NULL, 
                                   cnt, NULL, 0, trigger_mask);            
 
             /* Make sure we aren't in danger of saturating channel 0 */            
@@ -128,35 +139,48 @@ int hv_gain_cal(calib_data *dom_calib) {
                 }
             }
 
-            /* Find the peak (maximum) */
+            /* Find the peak */
             peak_idx = 0;
-            peak_v =  getCalibV(channels[ch][0], *dom_calib, 0, ch, bin, bias_dac);
+            peak_v = (float)channels[ch][0] * dom_calib->atwd1_gain_calib[ch][0].slope
+                + dom_calib->atwd1_gain_calib[ch][0].y_intercept;
 
             for (bin=0; bin<cnt; bin++) {
 
                 /* Use calibration to convert to V */
-                bin_v = getCalibV(channels[ch][bin], *dom_calib, 0, ch, bin, bias_dac);
+                /* Don't need to subtract out bias or correct for amplification to find */
+                /* peak location -- but without correction, it is really a minimum */
+                bin_v = (float)channels[ch][bin] * dom_calib->atwd1_gain_calib[ch][bin].slope
+                    + dom_calib->atwd1_gain_calib[ch][bin].y_intercept;
 
-                if (bin_v > peak_v) {
+                if (bin_v < peak_v) {
                     peak_idx = bin;
                     peak_v = bin_v;
                 }
             }
 
             /* Now integrate around the peak to get the charge */
-            /* FIX ME: if peak_idx is close to max, is this correct */
+            /* FIX ME: increase sampling speed? */
             /* FIX ME: use time window instead? */
             vsum = 0;
             for (bin = peak_idx-4; ((bin <= peak_idx+8) && (bin < cnt)); bin++)
-                vsum += getCalibV(channels[ch][bin], *dom_calib, 0, ch, bin, bias_dac);
+                vsum += getCalibV(channels[ch][bin], *dom_calib, 1, ch, bin, bias_v);
 
             /* True charge, in pC = 1/R_ohm * sum(V) * 1e12 / (freq_mhz * 1e6) */
             /* FE sees a 50 Ohm load */
             charges[trig] = 0.02 * 1e6 * vsum / freq;
 
-            /* TEMP */
-            /* printf("Peak of previous wf: %d %g\r\n", peak_idx, peak_v);
-               printf("Charge of previous wf: %g\r\n", charges[trig]); */
+            /* TEMP TEMP TEMP */
+            /* Print sample */
+            /* if (trig == 0) {
+                printf("Sample waveform\r\n");
+                for (bin=0; bin<cnt; bin++) {
+                    bin_v = (float)channels[ch][bin] * dom_calib->atwd1_gain_calib[ch][bin].slope
+                        + dom_calib->atwd1_gain_calib[ch][bin].y_intercept;
+                    printf("%d %.6g\r\n", channels[ch][bin], bin_v);
+                }
+                printf("Peak: %.6g at %d\r\n", peak_v, peak_idx);
+                printf("Charge: %.6g\r\n", charges[0]);                
+                } */
 
         } /* End trigger loop */
 
@@ -164,37 +188,77 @@ int hv_gain_cal(calib_data *dom_calib) {
         /* Heuristic maximum for histogram */
         int hist_max = ceil(pow(10.0, 6.37*log10(hv*2)-21.0));
         int hbin;
-        
-        printf("Histogram max = %d\r\n", hist_max);
 
         /* Initialize histogram */
-        for(hbin=0; hbin < HIST_BIN_CNT; hbin++) {
-	    hist_x[hv_idx][hbin] = (float)hbin * hist_max / HIST_BIN_CNT;
+        for(hbin=0; hbin < GAIN_CAL_BINS; hbin++) {
+	    hist_x[hv_idx][hbin] = (float)hbin * hist_max / GAIN_CAL_BINS;
 	    hist_y[hv_idx][hbin] = 0.0;
 	}
 
         /* Fill histogram -- histogram minimum is 0.0 */
         for(trig=0; trig < GAIN_CAL_TRIG_CNT; trig++) {
 
-            hbin = charges[trig] * HIST_BIN_CNT / hist_max;
+            hbin = charges[trig] * GAIN_CAL_BINS / hist_max;
             
             /* Do NOT use an overflow bin; will screw up fit */
-            if (hbin < HIST_BIN_CNT)
+            if (hbin < GAIN_CAL_BINS)
                 hist_y[hv_idx][hbin] += 1;
         }
 
 #ifdef DEBUG
-        printf("Histogram: \r\n");
-        for(hbin=0; hbin < HIST_BIN_CNT; hbin++) 
+        printf("Histogram:\r\n");
+        for(hbin=0; hbin < GAIN_CAL_BINS; hbin++) 
             printf("%d %g %g\r\n", hbin, hist_x[hv_idx][hbin], hist_y[hv_idx][hbin]);
 #endif
 
 	/* Fit histograms */
 	int fiterr;
-	fiterr = spe_fit(hist_x[hv_idx], hist_y[hv_idx], 
-			 HIST_BIN_CNT, fit_params[hv_idx]);
+	fiterr = spe_fit(hist_x[hv_idx], hist_y[hv_idx], GAIN_CAL_BINS, fit_params[hv_idx]);
+    
+    /* If no error in fit, record gain and P/V */
+    if (!fiterr) {
 
+        float valley_x, valley_y, pv_ratio;
+        /* Find valley */
+        if (spe_find_valley(fit_params[hv_idx], &valley_x, &valley_y) == 0) {
+
+#ifdef DEBUG
+            printf("Valley located at %.6g, %.6g: PV = %.2g\r\n", valley_x, valley_y, pv_ratio);
+#endif
+            pv_ratio = fit_params[hv_idx][2] / valley_y;
+            
+            /* If PV is too high, we don't have true peak and valley */
+            if ((pv_ratio > 0.0) && (pv_ratio < 4.0)) {
+                log_hv[spe_cnt] = log10(hv);
+                log_gain[spe_cnt] = log10(fit_params[hv_idx][3] / Q_E) - 12.0;
+
+#ifdef DEBUG
+                printf("New gain point: log(V) %.6g log(gain) %.6g\r\n", log_hv[spe_cnt], log_gain[spe_cnt]);
+#endif
+                spe_cnt++;
+            }
+            else {
+#ifdef DEBUG
+                printf("PV ratio unrealistic: gain point at %d V not used\r\n", hv);
+#endif
+            }
+        }
+        else {
+#ifdef DEBUG
+            printf("SPE valley finder error: gain point at %d V not used\r\n", hv);
+#endif
+        }
+    }
+    else {
+#ifdef DEBUG
+        printf("Bad SPE fit: gain point at %d V not used\r\n", hv);
+#endif
+    }
+    
     } /* End HV loop */   
+
+    /* Fit log(hv) vs. log(gain) */
+    linearFitFloat(log_hv, log_gain, spe_cnt, &(dom_calib->hv_gain_calib)); 
 
     /* Turn off the high voltage */
 #ifdef REV3HAL
