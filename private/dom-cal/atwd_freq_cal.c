@@ -34,12 +34,12 @@ int atwd_freq_cal(calib_data *dom_calib) {
 
     /* Calibrate ATWD0 */
     trigger_mask = HAL_FPGA_TEST_TRIGGER_ATWD0;
-    cal_loop( atwd0_cal, speed_settings,
+    int ret0 = cal_loop( atwd0_cal, speed_settings,
                       trigger_mask, DOM_HAL_DAC_ATWD0_TRIGGER_BIAS );
     
     /* Calibrate ATWD1 */
     trigger_mask = HAL_FPGA_TEST_TRIGGER_ATWD1;
-    cal_loop( atwd0_cal, speed_settings,
+    int ret1 = cal_loop( atwd1_cal, speed_settings,
                       trigger_mask, DOM_HAL_DAC_ATWD1_TRIGGER_BIAS );
 
     /* Store speed as float array needed by linearFitFloat */
@@ -56,11 +56,16 @@ int atwd_freq_cal(calib_data *dom_calib) {
     /* Fit and store ATWD1 calibration */
     linearFitFloat( speed_settingsf, atwd1_cal, NUMBER_OF_SPEED_SETTINGS,
                                              &dom_calib->atwd1_freq_calib );
-
-    return 0;
+    if ( ret0 != 0 ) {
+        return ret0;
+    } else if ( ret1 != 0 ) {
+        return ret1;
+    } else {
+        return 0;
+    }
 }
 
-void cal_loop( float *atwd_cal, short *speed_settings,
+int cal_loop( float *atwd_cal, short *speed_settings,
                              int trigger_mask, short ATWD_DAC_channel ) {
     
     /* Raw ATWD ch3 waveform from oscillator */
@@ -88,8 +93,16 @@ void cal_loop( float *atwd_cal, short *speed_settings,
         for ( j = 0; j <  ATWD_FREQ_CAL_TRIG_CNT; j++ ) {
 
             /* Force ATWD readout */
-            hal_FPGA_TEST_trigger_forced( trigger_mask );
-            
+            if ( trigger_mask == HAL_FPGA_TEST_TRIGGER_ATWD0 ) {
+                hal_FPGA_TEST_readout( NULL, NULL, NULL, clock_waveform,
+                                               NULL, NULL, NULL, NULL,
+                                               128, NULL, 0, trigger_mask );
+            } else {
+                hal_FPGA_TEST_readout( NULL, NULL, NULL, NULL,
+                                             NULL, NULL, NULL, clock_waveform,
+                                             128, NULL, 0, trigger_mask );
+            }
+ 
             /* Read ATWD ch3 waveform */
             hal_FPGA_TEST_readout( NULL, NULL, NULL, clock_waveform,
                                                NULL, NULL, NULL, NULL,
@@ -100,8 +113,9 @@ void cal_loop( float *atwd_cal, short *speed_settings,
             for ( k = 0; k < 128; k++ ) {
                 sum += clock_waveform[k];
             }
+            float average = ( float )sum / 128;
             for ( k = 0; k < 128; k++ ) {
-                normalized_waveform[k] = ( float )clock_waveform[k] / sum;
+                normalized_waveform[k] = ( float )clock_waveform[k] - average;
             }
 
             /* Calculate #bins between first and final
@@ -109,7 +123,7 @@ void cal_loop( float *atwd_cal, short *speed_settings,
              */
             int first_crossing = 0;
             int final_crossing = 0;
-            int number_of_crossings = 0;
+            int number_of_cycles = 0;
          
             for ( k = 0; k < 127; k++ ) {
                 
@@ -121,16 +135,21 @@ void cal_loop( float *atwd_cal, short *speed_settings,
                         first_crossing = k + 1;
                     } else {
                         final_crossing = k + 1;
+                        number_of_cycles++;
                     }
-                    number_of_crossings++;
                 }
+            }
+
+            /* Data is bad if less than 2 zero crossings are found */
+            if ( number_of_cycles < 1 ) {
+                return UNUSABLE_CLOCK_WAVEFORM;
             }
 
             /* Calculate average number of bins per clock cycle --
              * this is the clock ratio
              */
-            bin_count[j] =
-                ( first_crossing - final_crossing ) / number_of_crossings;
+            float bins = final_crossing - first_crossing;
+            bin_count[j] = bins / number_of_cycles;
         }
         
         /* Calculate average */
@@ -142,4 +161,6 @@ void cal_loop( float *atwd_cal, short *speed_settings,
         /* Store final average value */
         atwd_cal[i] = sum / ATWD_FREQ_CAL_TRIG_CNT;
     }
+    
+    return 0;
 }
