@@ -180,7 +180,7 @@ public class DOMCal implements Runnable {
         logger.debug( "Saving output to " + outDir );
 
         try {
-            PrintWriter out = new PrintWriter( new FileWriter( outDir + domId + ".xml", false ), false );
+            PrintWriter out = new PrintWriter( new FileWriter( outDir + "domcal_" + domId + ".xml", false ), false );
             DOMCalXML.format( rec, out );
             out.flush();
             out.close();
