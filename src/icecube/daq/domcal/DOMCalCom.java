@@ -37,7 +37,7 @@ public class DOMCalCom {
             in.read( new byte[avail] );
         }
         send( "\r" );
-        receive( "\r\n" );
+        receive( "\r\n> " );
     }
 
     public void send( String s ) throws IOException {
@@ -47,6 +47,16 @@ public class DOMCalCom {
     }
 
     public String receive( String terminator ) throws IOException {
+        String out = "";
+        while ( !out.endsWith( terminator ) ) {
+            byte[] b = new byte[in.available()];
+            in.read( b );
+            out += new String( b );
+        }
+        return out;
+    }
+
+     public String receivePartial( String terminator ) throws IOException {
         String out = "";
         while ( !out.endsWith( terminator ) ) {
             out += ( char )in.read();
@@ -68,8 +78,8 @@ public class DOMCalCom {
         InflaterInputStream z = new InflaterInputStream( in );
         
         byte[] out = new byte[length];
-        for ( int offset = 0; offset != length; offset++ ) {
-            out[offset] = ( byte )z.read();
+        for ( int offset = 0; offset != length; ) {
+            offset += z.read( out, offset, z.available() );
         }
         return out;
     }

@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.io.PrintWriter;
 import java.io.FileWriter;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
 
 public class DOMCal implements Runnable {
 
@@ -38,7 +40,7 @@ public class DOMCal implements Runnable {
         this.port = port;
         this.outDir = outDir;
         if ( !outDir.endsWith( "/" ) ) {
-            outDir += "/";
+            this.outDir += "/";
         }
         this.waitTime = WAIT_UNSPECIFIED;
     }
@@ -48,7 +50,7 @@ public class DOMCal implements Runnable {
         this.port = port;
         this.outDir = outDir;
         if ( !outDir.endsWith( "/" ) ) {
-            outDir += "/";
+            this.outDir += "/";
         }
         this.waitTime = waitTime;
     }
@@ -79,49 +81,43 @@ public class DOMCal implements Runnable {
                 logger.error( "IO Error establishing communications" );
             }
 
-            logger.info( "Beginning DOM calibration routine" );
+            logger.debug( "Beginning DOM calibration routine" );
             try {
-                com.send( "s\" domcal\" find if exec endif" );
-                com.receive( "\r\n" );
-                com.close();
+                com.send( "s\" domcal\" find if exec endif\r" );
+                Calendar cal = new GregorianCalendar();
+                int day = cal.get( Calendar.DAY_OF_MONTH );
+                int month = cal.get( Calendar.MONTH ) + 1;
+                int year = cal.get( Calendar.YEAR );
+                com.receive( ": " );
+                com.send( "" + year + "\r" );
+                com.receive( ": " );
+                com.send( "" + month + "\r" );
+                com.receive( ": " );
+                com.send( "" + day + "\r" );
             } catch ( IOException e ) {
                 logger.error( "IO Error starting DOM calibration routine" );
                 die( e );
             }
 
+            logger.debug( "Waiting for calibration to finish" );
+
             try {
-                Thread.sleep( waitTime );
+                Thread.sleep( waitTime * 1000 );
+                com.receive( "\r\n> " );
             } catch ( InterruptedException e ) {
                 logger.error( "Interrupted from sleep -- quitting" );
                 die( e );
+            } catch ( IOException e ) {
+                logger.error( "IO Error occurred during calibration routine" );
+                die( e );
             }
         }
-
-        try {
-            s = new Socket( host, port );
-        } catch ( UnknownHostException e ) {
-            logger.error( "Cannot connect to " + host );
-            die( e );
-        } catch ( IOException e ) {
-            logger.error( "IO Error connecting to " + host );
-            die( e );
-        }
-
-        logger.debug( "Connected to " + host + " at port " + port );
-
-        try {
-            com = new DOMCalCom( s );
-        } catch ( IOException e ) {
-            logger.error( "IO Error establishing communications" );
-        }
-
-        logger.debug( "Communications established -- attempting to download calibration information" );
 
         byte[] binaryData = null;
 
         try {
             com.send( "s\" calib_data\" find if zd endif\r" );
-            com.receive( "\r\n" );
+            com.receivePartial( "\r\n" );
             binaryData = com.zRead();
         } catch ( IOException e ) {
             logger.error( "IO Error downloading calibration from DOM" );
@@ -129,7 +125,6 @@ public class DOMCal implements Runnable {
         }
 
         DOMCalRecord rec = null;
-        String domId = rec.getDomId();
 
         try {
             rec = DOMCalRecordFactory.parseDomCalRecord( ByteBuffer.wrap( binaryData ) );
@@ -138,6 +133,7 @@ public class DOMCal implements Runnable {
             die( e );
         }
 
+        String domId = rec.getDomId();
         String xmlDoc = DOMCalXML.format( rec );
 
         logger.debug( "Saving output to " + outDir );
@@ -220,5 +216,6 @@ public class DOMCal implements Runnable {
 
     private static void die( Object o ) {
         logger.fatal( o );
+        (( Exception )o ).printStackTrace();
     }
 }
