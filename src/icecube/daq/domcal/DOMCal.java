@@ -202,6 +202,5 @@ public class DOMCal implements Runnable {
 
     private static void die( Object o ) {
         logger.fatal( o );
-        (( Exception )o ).printStackTrace();
     }
 }
