@@ -28,5 +28,8 @@
 #define AMP_CAL_PULSER_AMP_1    600
 #define AMP_CAL_PULSER_AMP_2   1000
 
+/* What bin to start looking for pulser peak */
+#define AMP_CAL_START_BIN        80
+
 /* Prototypes */
 int amp_cal(calib_data *dom_calib);

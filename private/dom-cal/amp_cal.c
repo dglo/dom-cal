@@ -74,11 +74,11 @@ int amp_cal(calib_data *dom_calib) {
 
         /* Wait just a bit */
         halUSleep(DAC_SET_WAIT);
-                
-        /* Warm up the ATWD */
-        prescanATWD(trigger_mask);
         
         for (trig=0; trig<(int)AMP_CAL_TRIG_CNT; trig++) {
+                
+            /* Warm up the ATWD */
+            prescanATWD(trigger_mask);
             
             /* Discriminator trigger the ATWD */
             hal_FPGA_TEST_trigger_disc(trigger_mask);
@@ -99,7 +99,7 @@ int amp_cal(calib_data *dom_calib) {
             }
             
             /* Find and record the peak for the channel we're calibrating */
-            for (bin=0; bin<cnt; bin++) {
+            for (bin=AMP_CAL_START_BIN; bin<cnt; bin++) {
 
                 /* Using ATWD calibration data, convert to actual V */
                 if (atwd == 0) {
