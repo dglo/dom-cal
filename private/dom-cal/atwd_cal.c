@@ -48,13 +48,13 @@ int atwd_cal(calib_data *dom_calib) {
     bias_idx = 0;
     for (bias = BIAS_LOW; bias <= BIAS_HIGH; bias += BIAS_STEP) {
 
-        /* Set the FE bias level */
-        halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, bias);
-        halUSleep(DAC_SET_WAIT);
-
         /* Record the bias level, in volts, for the fit */
         biases[bias_idx] = biasDAC2V(bias);
-                
+
+        /* Set the FE bias level */
+        halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, bias);
+        halUSleep(250000);
+        
         /* Initialize the pedestal array */
         for(atwd=0; atwd<2; atwd++)
             for(ch=0; ch<3; ch++)
@@ -69,7 +69,7 @@ int atwd_cal(calib_data *dom_calib) {
             trigger_mask = (atwd == 0) ? HAL_FPGA_TEST_TRIGGER_ATWD0 : 
                 HAL_FPGA_TEST_TRIGGER_ATWD1;
         
-
+            /* Warm up the ATWD */
             prescanATWD(trigger_mask);
         
             for (trig=0; trig<(int)ATWD_CAL_TRIG_CNT; trig++) {
@@ -93,9 +93,10 @@ int atwd_cal(calib_data *dom_calib) {
                 }
             
                 /* Sum the waveform */
-                for(ch=0; ch<3; ch++)
-                    for(bin=0; bin<cnt; bin++)
-                        atwd_pedestal[atwd][ch][bin][bias_idx] += channels[ch][bin];  
+                for(atwd=0; atwd<2; atwd++)
+                    for(ch=0; ch<3; ch++)
+                        for(bin=0; bin<cnt; bin++)
+                            atwd_pedestal[atwd][ch][bin][bias_idx] += channels[ch][bin];  
 
             }
         }

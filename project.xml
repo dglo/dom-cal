@@ -1,13 +1,10 @@
 <project>
 	<name>dom-cal</name>
-	<packages default="icecube.daq.domcal">
-		icecube.daq.domcal
-		icecube.daq.domcal.app
+	<packages default="">
+		
 	</packages>
 	<uses>
 		<libs>
-                        domhub-common.jar
-                        daq-db-common.jar
                 </libs>
 		<tools>
 			log4j.jar
@@ -16,9 +13,7 @@
 	</uses>
 	<test>
 		<uses>
-			<libs>
-				daq-db-common-test.jar
-			</libs>
+			<libs></libs>
 			<tools>
 				junit.jar
 			</tools>
