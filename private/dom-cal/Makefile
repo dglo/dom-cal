@@ -19,7 +19,6 @@ EXOBJS = calUtils.o
 KOBJS = ../lib/crt0.o ../lib/libkernel.a
 FSOBJS = ../iceboot/fis.o ../iceboot/flashdrv.o
 
-#CFILES   = domcal.c calUtils.c $(CALOBJS:.o=.c)
 ALLOBJS  = domcal.o calUtils.o $(CALOBJS)
 
 all: domcal.elf 

@@ -12,7 +12,7 @@
 #define MINOR_VERSION 0
 
 /* Number of bytes in binary output */
-#define RECORD_LENGTH 9392
+#define RECORD_LENGTH 9384
 
 /* Default ATWD DAC settings */
 #define ATWD_SAMPLING_SPEED_DAC 850

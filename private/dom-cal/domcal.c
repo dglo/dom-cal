@@ -12,6 +12,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 #include "hal/DOM_MB_hal.h"
 #include "hal/DOM_MB_fpga.h"
@@ -178,6 +179,18 @@ int get_bytes_from_float( float f, char *c, int offset ) {
     return sizeof( float );
 }
 
+
+/* Routine to write a 4 byte memory image of a in into
+ * an array of bytes at the specified offset
+ */
+int get_bytes_from_int( int d, char *c, int offset ) {
+    int i;
+    for ( i = 0; i < sizeof( int ); i++ ) {
+        c[offset + i] = *( ( char* )&d + i );
+    }
+    return sizeof( int );
+}
+
 /* Routine to write a 2 byte memory image of a short into
  * an array of bytes at the specified offset
  */
@@ -232,12 +245,25 @@ int write_dom_calib( calib_data *cal, char *bin_data ) {
     short z = 0;
     offset += get_bytes_from_short( z, bin_data, offset );
 
-    /* Write DOM ID */
+    /* Write DOM ID, as true hex value (not ASCII) */
     char *id = cal->dom_id;
-    for ( i = 0; i < 16; i++ ) {
-        bin_data[offset] = i < 3 ? 0 : id[i-3];
-        offset++;
-    }
+    int val_lo = 0;
+    int val_hi = 0;
+    int *val_ptr;
+    for(i = 0; i < 12; i++) {
+        if (i < 4)
+            val_ptr = &val_hi;
+        else
+            val_ptr = &val_lo;
+
+        if (isdigit(id[i]))
+                *val_ptr += id[i]-'0';
+        else if (isalpha(id[i]))
+                *val_ptr += tolower(id[i])-'a'+10;
+        *val_ptr <<= 4;
+    }    
+    offset += get_bytes_from_int( val_lo, bin_data, offset);
+    offset += get_bytes_from_int( val_hi, bin_data, offset);
 
     /* Write Kelvin temperature */
     offset += get_bytes_from_float( cal->temp, bin_data, offset );
