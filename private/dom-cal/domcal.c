@@ -172,10 +172,10 @@ void record_state(calib_data *dom_calib) {
  */
 int get_bytes_from_float( float f, char *c, int offset ) {
     int i;
-    for ( i = 0; i < 4; i++ ) {
+    for ( i = 0; i < sizeof( float ); i++ ) {
         c[offset + i] = *( ( char* )&f + i );
     }
-    return 4;
+    return sizeof( float );
 }
 
 /* Routine to write a 2 byte memory image of a short into
@@ -183,10 +183,10 @@ int get_bytes_from_float( float f, char *c, int offset ) {
  */
 int get_bytes_from_short( short s, char *c, int offset ) {
     int i;
-    for ( i = 0; i < 2; i++ ) {
+    for ( i = 0; i < sizeof( short ); i++ ) {
         c[offset + i] = *( ( char* )&s + i );
     }
-    return 2;
+    return sizeof( short );
 }
 
 /* Writes a linear fit to binary format given byte array and pos */
@@ -227,11 +227,15 @@ int write_dom_calib( calib_data *cal, char *bin_data ) {
     offset += get_bytes_from_short( cal->day, bin_data, offset );  
     offset += get_bytes_from_short( cal->month, bin_data, offset );
     offset += get_bytes_from_short( cal->year, bin_data, offset );
+    
+    /* Add padding */
+    short z = 0;
+    offset += get_bytes_from_short( z, bin_data, offset );
 
     /* Write DOM ID */
     char *id = cal->dom_id;
-    for ( i = 0; i < 13; i++ ) {
-        bin_data[offset] = id[i];
+    for ( i = 0; i < 16; i++ ) {
+        bin_data[offset] = i < 3 ? 0 : id[i-3];
         offset++;
     }
 
@@ -241,22 +245,19 @@ int write_dom_calib( calib_data *cal, char *bin_data ) {
     /* Write initial DAC values -- before calibration */
     short *dac = cal->dac_values;
     for ( i = 0; i < 16; i++ ) {
-        bin_data[offset] = dac[i];
-        offset++;
+        offset += get_bytes_from_short( dac[i], bin_data, offset );
     }
 
     /* Write initial ADC values -- before calibration */
     short *adc = cal->adc_values;
-    for ( i = 0; i < 16; i++ ) {
-        bin_data[offset] = adc[i];
-        offset++;
+    for ( i = 0; i < 24; i++ ) {
+        offset += get_bytes_from_short( adc[i], bin_data, offset );
     }
 
     /* Write FADC calibration data */
     short *fadc = cal->fadc_values;
-    for ( i = 0; i < 16; i++ ) {
-        bin_data[offset] = fadc[i];
-        offset++;
+    for ( i = 0; i < 2; i++ ) {
+        offset += get_bytes_from_short( fadc[i], bin_data, offset );
     }
 
     /* Write FE puser calibration data */
