@@ -56,7 +56,7 @@ int amp_cal(calib_data *dom_calib) {
     hal_FPGA_TEST_enable_pulser();
 
     /* Trigger ATWD A only */
-    trigger_mask = HAL_FPGA_TEST_TRIGGER_ATWD0;
+    trigger_mask = HAL_FPGA_TEST_TRIGGER_ATWD1;
 
     /* Loop over channels and pulser settings for each channel */
     for (ch = 0; ch < 3; ch++) {
@@ -79,8 +79,8 @@ int amp_cal(calib_data *dom_calib) {
             while (!hal_FPGA_TEST_readout_done(trigger_mask));
 
             /* Read out one waveform for all channels except 3 */        
-            hal_FPGA_TEST_readout(channels[0], channels[1], channels[2], NULL, 
-                                  NULL, NULL, NULL, NULL,
+            hal_FPGA_TEST_readout(NULL, NULL, NULL, NULL, 
+                                  channels[0], channels[1], channels[2], NULL,
                                   cnt, NULL, 0, trigger_mask);
             
             /* Find and record the peak for the channel we're calibrating */
