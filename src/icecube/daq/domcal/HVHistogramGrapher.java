@@ -364,6 +364,10 @@ public class HVHistogramGrapher implements Runnable {
         BufferedImage bi = new BufferedImage(300, 300, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = bi.createGraphics();
 
+        //want white background
+        g.setColor(Color.WHITE);
+        g.fillRect(0, 0, bi.getWidth(), bi.getHeight());
+
         g.setColor(Color.BLUE);
         //fill histogram
         for (int i = 0; i < 250; i++) {
@@ -393,7 +397,7 @@ public class HVHistogramGrapher implements Runnable {
             fitPrevious = fitY;
         }
 
-        g.setColor(Color.WHITE);
+        g.setColor(Color.BLACK);
         //draw axes
         g.drawLine(50, 249, 299, 249);
         g.drawLine(50, 0, 50, 249);
