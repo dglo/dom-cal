@@ -73,7 +73,7 @@ int amp_cal(calib_data *dom_calib) {
         halWriteDAC(DOM_HAL_DAC_INTERNAL_PULSER, pulser_settings[ch]);
 
         /* Wait just a bit */
-        halUSleep(500000);
+        halUSleep(DAC_SET_WAIT);
                 
         /* Warm up the ATWD */
         prescanATWD(trigger_mask);

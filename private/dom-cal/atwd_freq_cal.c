@@ -35,7 +35,7 @@ int atwd_freq_cal(calib_data *dom_calib) {
 
     /* ATWD sampling speeds to be tested */
     short speed_settings[NUMBER_OF_SPEED_SETTINGS] = 
-                                  { 750, 1000, 1250, 1500, 1750, 2000 };
+               { 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000 };
     
     /* Select oscillator analog mux input */
     halSelectAnalogMuxInput( DOM_HAL_MUX_OSC_OUTPUT );
@@ -102,7 +102,7 @@ int cal_loop( float *atwd_cal, short *speed_settings,
         halWriteDAC( ATWD_DAC_channel, speed_settings[i] );
 
         /* Wait */
-        halUSleep( 500000 );
+        halUSleep( DAC_SET_WAIT );
         
         /* Take  ATWD_FREQ_CAL_TRIG_CNT waveforms */
         for ( j = 0; j <  ATWD_FREQ_CAL_TRIG_CNT; j++ ) {

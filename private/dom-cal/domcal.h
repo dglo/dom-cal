@@ -28,6 +28,9 @@
 #define DOM_CLOCK_FREQ          20.0
 #endif
 
+/* Wait time after setting a DAC */
+#define DAC_SET_WAIT            5000000
+
 /* Error codes */
 #define FAILED_BINARY_CONVERSION -1;
 #define FAILED_FLASH_WRITE -2;
