@@ -197,26 +197,27 @@ int hv_gain_cal(calib_data *dom_calib) {
             /* Warm up the ATWD */
             prescanATWD(trigger_mask);
 
-            /* baseline */
-            short wf[128];
-
             /* read it! */
             hal_FPGA_TEST_trigger_forced(trigger_mask);
             while (!hal_FPGA_TEST_readout_done(trigger_mask));
             if (atwd == 0) {
-                hal_FPGA_TEST_readout(wf, NULL, NULL, NULL,
+                hal_FPGA_TEST_readout(channels[0], NULL, NULL, NULL,
                                       NULL, NULL, NULL, NULL,
-                                      128, NULL, 0, trigger_mask);
+                                      cnt, NULL, 0, trigger_mask);
             }
             else {
                 hal_FPGA_TEST_readout(NULL, NULL, NULL, NULL,
-                                      wf, NULL, NULL, NULL,
-                                      128, NULL, 0, trigger_mask);
+                                      channels[0], NULL, NULL, NULL,
+                                      cnt, NULL, 0, trigger_mask);
             }
 
             int i;
+
+            /* calibrated waveform */
+            float wf[128];
+
             /* calibrate waveform */
-            for (i = 0; i < 128; i++) wf[i] = getCalibV(wf[i], *dom_calib, atwd, 0, i, bias_v);
+            for (i = 0; i < 128; i++) wf[i] = getCalibV(channels[0][i], *dom_calib, atwd, 0, i, bias_v);
 
             /* look at the variance for evidence of signal */
             float mean, var;
@@ -230,7 +231,7 @@ int hv_gain_cal(calib_data *dom_calib) {
                 /* if we have too many bad 'baseline' readouts, maybe we're too stringent */
                 if (wf_bad == BASELINE_TRIG_CNT) {
                     wf_bad = 0;
-                    max_var *= 1.1;
+                    max_var *= 1.2;
                 }
 
                 continue;

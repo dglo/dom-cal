@@ -50,7 +50,7 @@
 #define BASELINE_TRIG_CNT      10
 
 /* Maximum allowed variance of PMT baseline ATWD readout */
-#define MAXIMUM_BASELINE_VARIANCE   0.001
+#define MAXIMUM_BASELINE_VARIANCE   0.01E-6
 
 /* Prototypes */
 int hv_gain_cal(calib_data *dom_calib);
