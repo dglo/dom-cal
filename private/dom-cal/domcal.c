@@ -426,7 +426,7 @@ int main(void) {
     
     /* Write calibration record to flash */
     printf( "Saving to flash...." );
-    int save_ret = save_results( &dom_calib );
+    int save_ret = save_results( dom_calib );
     if ( !save_ret ) {
         printf( "done.\r\n" );
     } else {
