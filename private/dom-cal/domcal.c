@@ -183,12 +183,12 @@ int get_bytes_from_float( float f, char *c, int offset ) {
 /* Routine to write a 4 byte memory image of a in into
  * an array of bytes at the specified offset
  */
-int get_bytes_from_int( int d, char *c, int offset ) {
+int get_bytes_from_long( long d, char *c, int offset ) {
     int i;
-    for ( i = 0; i < sizeof( int ); i++ ) {
+    for ( i = 0; i < sizeof( long ); i++ ) {
         c[offset + i] = *( ( char* )&d + i );
     }
-    return sizeof( int );
+    return sizeof( long );
 }
 
 /* Routine to write a 2 byte memory image of a short into
@@ -247,23 +247,16 @@ int write_dom_calib( calib_data *cal, char *bin_data ) {
 
     /* Write DOM ID, as true hex value (not ASCII) */
     char *id = cal->dom_id;
-    int val_lo = 0;
-    int val_hi = 0;
-    int *val_ptr;
-    for(i = 0; i < 12; i++) {
-        if (i < 4)
-            val_ptr = &val_hi;
-        else
-            val_ptr = &val_lo;
+    char id_lo[9];
+    char id_hi[5];
+    long val_lo, val_hi;
 
-        if (isdigit(id[i]))
-                *val_ptr += id[i]-'0';
-        else if (isalpha(id[i]))
-                *val_ptr += tolower(id[i])-'a'+10;
-        *val_ptr <<= 4;
-    }    
-    offset += get_bytes_from_int( val_lo, bin_data, offset);
-    offset += get_bytes_from_int( val_hi, bin_data, offset);
+    strncpy(id_hi, id, 4);
+    strncpy(id_lo, &(id[4]), 8);
+    val_lo = strtol(id_lo, NULL, 16);
+    val_hi = strtol(id_hi, NULL, 16);
+    offset += get_bytes_from_long( val_lo, bin_data, offset);
+    offset += get_bytes_from_long( val_hi, bin_data, offset);
 
     /* Write Kelvin temperature */
     offset += get_bytes_from_float( cal->temp, bin_data, offset );
