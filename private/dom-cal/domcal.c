@@ -407,8 +407,10 @@ int main(void) {
 #endif
    
     /* Reboot the DOM -- DOESN'T SEEM TO WORK */
-    hal_FPGA_TEST_request_reboot();
-    while (!hal_FPGA_TEST_is_reboot_granted());
+    halBoardReboot();
+
+    /* hal_FPGA_TEST_request_reboot();
+    while (!hal_FPGA_TEST_is_reboot_granted()); */
 
     return 0;
 }
