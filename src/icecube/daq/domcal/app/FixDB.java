@@ -36,6 +36,24 @@ public class FixDB
     FixDB(String[] args)
         throws DOMProdTestException, IOException, SQLException
     {
+        boolean clearData = false;
+
+        boolean badParam = false;
+        for (int i = 0; i < args.length; i++) {
+            if (args[i].equalsIgnoreCase("clear")) {
+                clearData = true;
+            } else {
+                System.err.println("Unknown parameter \"" + args[i] + "\"");
+                badParam = true;
+            }
+        }
+
+        if (badParam) {
+            System.err.println("Usage: " + getClass().getName() +
+                               " [clear]");
+            System.exit(1);
+        }
+
         BasicDB server = new BasicDB();
 
         Connection conn = server.getConnection();
@@ -43,6 +61,12 @@ public class FixDB
         try {
             if (isOldGainHv(conn)) {
                 fixGainHv(conn);
+                clearData = true;
+            }
+
+            if (clearData) {
+                clearData(conn);
+                System.err.println("Cleared old data from database");
             }
 
             addMissingModelValues(conn);
@@ -141,6 +165,74 @@ public class FixDB
         }
     }
 
+    private void clearData(Connection conn)
+        throws SQLException
+    {
+        Statement stmt;
+        try {
+            stmt = conn.createStatement();
+        } catch (SQLException se) {
+            System.err.println("Couldn't get initial statement: " +
+                               se.getMessage());
+            return;
+        }
+
+        final String[] cmds = new String[] {
+            "delete from DOMCal_ADC",
+            "delete from DOMCal_ATWD",
+            "delete from DOMCal_ATWDFreq",
+            "delete from DOMCal_ATWDFreqParam",
+            "delete from DOMCal_ATWDParam",
+            "delete from DOMCal_AmpGain",
+            "delete from DOMCal_ChargeData",
+            "delete from DOMCal_ChargeMain",
+            "delete from DOMCal_ChargeParam",
+            "delete from DOMCal_DAC",
+            "delete from DOMCal_HvGain",
+            "delete from DOMCal_Pulser",
+            "delete from DOMCal_PulserParam",
+            "delete from DOMCalibration",
+        };
+
+        try {
+            for (int i = 0; i < cmds.length; i++) {
+                stmt.executeUpdate(cmds[i]);
+            }
+        } finally {
+            try { stmt.close(); } catch (SQLException se) { }
+        }
+    }
+
+    private void fixGainHv(Connection conn)
+        throws SQLException
+    {
+        Statement stmt;
+        try {
+            stmt = conn.createStatement();
+        } catch (SQLException se) {
+            System.err.println("Couldn't get initial statement: " +
+                               se.getMessage());
+            return;
+        }
+
+        final String[] cmds = new String[] {
+            "drop table DOMCal_HvGain",
+            "create table DOMCal_HvGain(domcal_id int not null," +
+            "slope double not null,intercept double not null," +
+            "regression double not null,primary key(domcal_id))",
+        };
+
+        try {
+            for (int i = 0; i < cmds.length; i++) {
+                stmt.executeUpdate(cmds[i]);
+            }
+        } finally {
+            try { stmt.close(); } catch (SQLException se) { }
+        }
+
+        clearData(conn);
+    }
+
     private boolean isOldGainHv(Connection conn)
         throws SQLException
     {
@@ -166,49 +258,6 @@ public class FixDB
         rs.close();
 
         return isOldTable;
-    }
-
-    private void fixGainHv(Connection conn)
-        throws SQLException
-    {
-        Statement stmt;
-        try {
-            stmt = conn.createStatement();
-        } catch (SQLException se) {
-            System.err.println("Couldn't get initial statement: " +
-                               se.getMessage());
-            return;
-        }
-
-        final String[] cmds = new String[] {
-            "drop table DOMCal_HvGain",
-            "create table DOMCal_HvGain(domcal_id int not null," +
-            "slope double not null,intercept double not null," +
-            "regression double not null,primary key(domcal_id))",
-            "delete from DOMCal_ADC",
-            "delete from DOMCal_ATWD",
-            "delete from DOMCal_ATWDFreq",
-            "delete from DOMCal_ATWDFreqParam",
-            "delete from DOMCal_ATWDParam",
-            "delete from DOMCal_AmpGain",
-            "delete from DOMCal_ChargeData",
-            "delete from DOMCal_ChargeMain",
-            "delete from DOMCal_ChargeParam",
-            "delete from DOMCal_DAC",
-            "delete from DOMCal_Model",
-            "delete from DOMCal_Param",
-            "delete from DOMCal_Pulser",
-            "delete from DOMCal_PulserParam",
-            "delete from DOMCalibration",
-        };
-
-        try {
-            for (int i = 0; i < cmds.length; i++) {
-                stmt.executeUpdate(cmds[i]);
-            }
-        } finally {
-            try { stmt.close(); } catch (SQLException se) { }
-        }
     }
 
     /**
