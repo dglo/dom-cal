@@ -165,6 +165,7 @@ public class DOMCal implements Runnable {
             com.send( "zd\r" );
             com.receivePartial( "\r\n" );
             binaryData = com.zRead();
+            com.receive( "> " );
         } catch ( IOException e ) {
             logger.error( "IO Error downloading calibration from DOM" );
             die( e );
