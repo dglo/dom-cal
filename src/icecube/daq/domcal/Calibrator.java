@@ -16,6 +16,8 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Hashtable;
+import java.util.StringTokenizer;
+import java.util.NoSuchElementException;
 
 /**
  * DOM calibration class.  This class makes the XML calibration files produced
@@ -66,6 +68,7 @@ public class Calibrator {
     private double      ampGainErr[];
     private Calendar    calendar;
     private Hashtable   freqFits[];
+    private Hashtable   hvFit;
 
     /**
      * Constructor to obtain from URL location.
@@ -139,8 +142,12 @@ public class Calibrator {
         if (e.getAttribute("format").equals("raw")) {
             if (temp > 32768) temp -= 65536;
             temp /= 256.0;
+        } else if (e.getAttribute("format").equals("Kelvin")) {
+            temp -= 273;
         }
         e       = (Element) dc.getElementsByTagName("date").item(0);
+
+        /*
 
         try {
             calendar = Calendar.getInstance();
@@ -148,6 +155,22 @@ public class Calibrator {
             calendar.setTime(df.parse(e.getFirstChild().getNodeValue()));
         } catch (ParseException pe) {
             throw new DOMCalibrationException(pe.getMessage());
+        }
+
+        */
+
+        calendar = Calendar.getInstance();
+        calendar.clear();
+        try {
+            StringTokenizer st = new StringTokenizer( 
+                    e.getFirstChild().getNodeValue(), "-" );
+            calendar.set( Calendar.MONTH,
+                              Integer.parseInt( st.nextToken() ) - 1 );
+            calendar.set( Calendar.DAY_OF_MONTH,
+                                  Integer.parseInt( st.nextToken() ) );
+            calendar.set( Calendar.YEAR, Integer.parseInt( st.nextToken() ) );
+        } catch ( NoSuchElementException ex ) {
+            throw new DOMCalibrationException( ex.getMessage() );
         }
 
         parseAdcDacTags(dc.getElementsByTagName("dac"), dacs);
@@ -165,6 +188,16 @@ public class Calibrator {
         parseATWDFits(dc.getElementsByTagName("atwd"));
         parseAmplifierGain(dc.getElementsByTagName("amplifier"));
         parseFreqFits(dc.getElementsByTagName("atwdfreq"));
+        nodes = dc.getElementsByTagName("hvGainCal");
+        switch( nodes.getLength() ) {
+             case 0:
+                break;
+            case 1:
+                parseHvGainFit((Element) nodes.item(0));
+                break;
+            default:
+                throw new DOMCalibrationException("XML format error - more than one <hvGainCal> record");
+        }
     }
 
     /**
@@ -194,7 +227,11 @@ public class Calibrator {
     private void parseATWDFits(NodeList atwdNodes) {
         for (int i = 0; i < atwdNodes.getLength(); i++) {
             Element atwd = (Element) atwdNodes.item(i);
+            String atwdStr = atwd.getAttribute("id");
             int ch = Integer.parseInt(atwd.getAttribute("channel"));
+            if ( atwdStr != null ) {
+                ch += 3*( Integer.parseInt( atwdStr ) );
+            }
             int bin = Integer.parseInt(atwd.getAttribute("bin"));
             atwdFits[ch][bin] = parseFit((Element) atwd.getElementsByTagName("fit").item(0));
         }
@@ -206,6 +243,15 @@ public class Calibrator {
      */
     private void parsePulserFit(Element pulser) {
         pulserFit = parseFit((Element) pulser.getElementsByTagName("fit").item(0));
+    }
+
+    /**
+     * Parse the HV gain fit
+     * @param hv document node containing the fit.
+     */
+
+    private void parseHvGainFit(Element hv) {
+        hvFit = parseFit((Element) hv.getElementsByTagName("fit").item(0));
     }
 
     /**
@@ -311,6 +357,18 @@ public class Calibrator {
      */
     public double getPulserFitParam(String param) {
         return ((Double) pulserFit.get(param)).doubleValue();
+    }
+
+    /**
+     * Obtain the fit information for the DOM HV gain.
+     * It describes the relation between log PMT gain
+     * and log HV in volts.
+     * @param param Named fit paramter.  See the description
+     * of the ATWD fit parameters.
+     * @return pulser fit parameter value
+     */
+    public double getHvFitParam(String param) {
+        return ((Double) hvFit.get(param)).doubleValue();
     }
 
     /**
