@@ -62,7 +62,6 @@ int hv_gain_cal(calib_data *dom_calib) {
 
     /* Charge histogram data */
     static hv_histogram hv_hist_data[GAIN_CAL_HV_CNT];
-    dom_calib->num_histos = GAIN_CAL_HV_CNT;
 
 #ifdef DEBUG
     printf("Performing HV gain calibration (using ATWD%d)...\r\n", atwd);
@@ -147,11 +146,44 @@ int hv_gain_cal(calib_data *dom_calib) {
         hv_hist_data[hv_idx].voltage = hv;
         hv_hist_data[hv_idx].bin_count = GAIN_CAL_BINS;
         hv_hist_data[hv_idx].convergent = 0;
+        hv_hist_data[hv_idx].is_filled = 0;
         hv_hist_data[hv_idx].pv = 0.0;
 
         halWriteActiveBaseDAC(hv * 2);
         halUSleep(5000000);
 
+        /* SPE scaler data -- sum for averaging later */
+        float noise_sum = 0.0;
+        
+        /* Get several iterations of noise data */
+        int n_idx;
+        for (n_idx = 0; n_idx < NOISE_CNT; n_idx++) {
+            halUSleep(250000);
+            int rate = hal_FPGA_TEST_get_spe_rate() * 10;
+#ifdef DEBUG
+            printf("Noise iteration %d: noise rate: %d\r\n", n_idx, rate);
+#endif
+            noise_sum += rate;
+        }
+
+        /* calculate average */
+        float noise_rate = NOISE_CNT == 0 ? 0.0 : noise_sum / NOISE_CNT;
+        hv_hist_data[hv_idx].noise_rate = noise_rate;
+#ifdef DEBUG
+        printf("Noise rate: %f minimum allowed: %d\r\n", noise_rate, MIN_NOISE);
+#endif
+
+        /* if rate is too low, go on to the next voltage */
+        if (noise_rate < MIN_NOISE) {
+#ifdef DEBUG
+            printf("Noise rate too low -- skipping voltage %d\r\n", hv);
+#endif
+            continue;
+        }
+
+        /* ok to fill histogram with data */
+        hv_hist_data[hv_idx].is_filled = 1;
+        
         /* Number of points with negative charge */
         int bad_trig = 0;
 

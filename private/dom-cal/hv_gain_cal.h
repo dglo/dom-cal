@@ -43,5 +43,11 @@
 /* Error indicating too many negative charge points */
 #define NEG_WF			 -2
 
+/* Number of noise readings to take before determining if noise level is sane */
+#define NOISE_CNT                10
+
+/* Minimum acceptable noise level to fill histogram */
+#define MIN_NOISE                300
+
 /* Prototypes */
 int hv_gain_cal(calib_data *dom_calib);
