@@ -413,6 +413,39 @@ public class Calibrator {
      * @return ATWD array in V
      */
     public double[] atwdCalibrate(short[] atwdin, int ch, int offset) {
+        return atwdCalibrateHelper(atwdin, ch, offset, 1);
+    }
+
+    /**
+     * Calibrate raw ATWD counts passed in array atwdin to calibrated volts
+     * and remove amplification to obtain raw *inverted* PMT signal.
+     * Note this function assumes the ATWD input array is in raw order
+     * and returns an array with same ordering (time decreasing with increasing
+     * array index).
+     * @param atwdin input array of shorts
+     * @param ch specifies ATWD channel 0-3 ATWD-A, 4-7 ATWD-B
+     * @param offset specifies starting offset in ATWD to atwdin[0].  For example,
+     * if offset is 40 then atwdin[0] really holds the 40th bin of the ATWD.
+     * @return ATWD array in V
+     */
+
+    public double[] atwdCalibrateDeamplify(short[] atwdin, int ch, int offset)
+                                                                 throws DOMCalibrationException {
+        if ( getAmplifierGain(ch) == 0.0 ) {
+            throw new DOMCalibrationException( "Cannot calibrate out amplifier with zero gain" );
+        }
+        return atwdCalibrateHelper(atwdin, ch, offset, -1*getAmplifierGain(ch));
+    }
+
+    /*
+     * Helper method to calibrate ATWD....assumes amplification factor amp is nonzero
+     */
+
+    private double[] atwdCalibrateHelper(short[] atwdin, int ch, int offset, double amp) {
+        if ( amp == 0.0 ) {
+            throw new IllegalStateException( "Cannot calibrate out amplifier with zero gain" );
+        }
+        double ampInv = ( 1.0 / amp );
         double[] out = new double[atwdin.length];
         for (int i = 0; i < atwdin.length; i++) {
             int bin = i + offset;
@@ -420,6 +453,7 @@ public class Calibrator {
                 double m = ((Double)atwdFits[ch][bin].get("slope")).doubleValue();
                 double b = ((Double)atwdFits[ch][bin].get("intercept")).doubleValue();
                 out[i] = m*atwdin[i] + b;
+                out[i] *= ampInv;
             }
         }
         return out;
