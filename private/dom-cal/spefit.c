@@ -191,12 +191,20 @@ int spe_fit(float *xdata, float *ydata, int pts,
         start_bin++;
     }
 
-    /* if start_bin > pts / 10, we're better off starting at first nonzero bin */
-    if ( start_bin > pts / 10 )
-        start_bin = nonzero_bin;
+    /* if start_bin > pts / 20, we're better off starting at first nonzero bin + 2 -- +2 to get rid of disc effects*/
+    if ( start_bin > pts / 20 )
+        start_bin = nonzero_bin + 2;
+
+    /*  OK -- let's chop off the last 5% -- these are probably non-gaussian */
+    ndata = pts;
+    int tot = 0;
+    for (; ndata > start_bin; ndata--) {
+        tot += ydata[ndata-1];
+        if (tot > SPE_BAD_TAIL_FRACTION * num_samples) break;
+    }
 
     /* Determine the number of data points */
-    ndata = pts - start_bin;
+    ndata -= start_bin;
 
     /* Check to make sure histogram isn't empty */
     if (ndata == 0) {
@@ -286,9 +294,9 @@ int spe_fit(float *xdata, float *ydata, int pts,
 #ifdef DEBUG
         printf("SPE fit converged successfully\r\n");
 #endif
-        /* Check that all fit parameters are positive */
+        /* Check that all fit parameters are positive and sane */
         for (i = 0; i < SPE_FIT_PARAMS; i++) {
-            if (fit_params[i] <= 0.0)
+            if (fit_params[i] <= 0.0 || fit_params[i] > 10000)
                 err = SPE_FIT_ERR_BAD_FIT;
         }
 

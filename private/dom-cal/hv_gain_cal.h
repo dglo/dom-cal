@@ -44,7 +44,7 @@
 #define NOISE_CNT                10
 
 /* Minimum acceptable noise level to fill histogram */
-#define MIN_NOISE                300
+#define MIN_NOISE                400
 
 /* Number of PMT baseline ATWD readouts to take */
 #define BASELINE_TRIG_CNT      10
