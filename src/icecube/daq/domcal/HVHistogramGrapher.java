@@ -24,8 +24,10 @@ import java.io.*;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.StringTokenizer;
+import java.util.Properties;
 import java.awt.image.BufferedImage;
 import java.awt.*;
+import java.sql.*;
 
 import com.sun.image.codec.jpeg.JPEGCodec;
 import com.sun.image.codec.jpeg.JPEGImageEncoder;
@@ -40,6 +42,7 @@ public class HVHistogramGrapher implements Runnable {
     private String inDir;
     private String outDir;
     private String htmlRoot;
+    private Properties calProps;
 
     public static void main( String[] args) {
         try {
@@ -62,6 +65,15 @@ public class HVHistogramGrapher implements Runnable {
         this.inDir = inDir;
         this.outDir = outDir;
         this.htmlRoot = htmlRoot;
+        calProps = new Properties();
+        try {
+            File propFile = new File(System.getProperty("user.home") + "/.domcal.properties");
+            if (!propFile.exists()) propFile = new File("/usr/local/etc/domcal.properties");
+            calProps.load(new FileInputStream(propFile));
+        } catch (Exception e) {
+            calProps = null;
+            e.printStackTrace();
+        }
     }
 
     public void run() {
@@ -100,6 +112,8 @@ public class HVHistogramGrapher implements Runnable {
             System.out.println("IOException opening output HTML file " + e);
             return;
         }
+        doc.add("Name");
+        sumDoc.add("Name");
         doc.add("DOM Id");
         sumDoc.add("DOM Id");
         for (int i = 0; i < VOLTAGES.length; i++) {
@@ -110,13 +124,40 @@ public class HVHistogramGrapher implements Runnable {
         doc.addBr();
         sumDoc.add("Gain vs HV");
         sumDoc.addBr();
+        
         for (Iterator it = histTable.keySet().iterator(); it.hasNext();) {
             String domId = (String)it.next();
             Hashtable hTable = (Hashtable)histTable.get(domId);
             StringTokenizer st = new StringTokenizer(domId, ".xml");
             String id = st.nextToken();
-            doc.addNew(id);
-            sumDoc.addNew(id);
+            if (calProps != null) {
+                try {
+                    String driver = calProps.getProperty("icecube.daq.domcal.db.driver", "com.mysql.jdbc.Driver");
+                    Class.forName(driver);
+                    String url = calProps.getProperty("icecube.daq.domcal.db.url", "jdbc:mysql://localhost/fat");
+                    String user = calProps.getProperty("icecube.daq.domcal.db.user", "dfl");
+                    String passwd = calProps.getProperty("icecube.daq.domcal.db.passwd", "(D0Mus)");
+                    Connection jdbc = DriverManager.getConnection(url, user, passwd);
+                    Statement stmt = jdbc.createStatement();
+                    String sql = "select * from doms where mbid='" + id + "';";
+                    ResultSet s = stmt.executeQuery(sql);
+                    s.first();
+                    String name = s.getString("name");
+                    if (name != null) {
+                        doc.addNew(name);
+                        sumDoc.addNew(name);
+                    } else throw new Exception();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    doc.addNew("N/A");
+                    sumDoc.addNew("N/A");
+                }
+            } else {
+                doc.addNew("N/A");
+                sumDoc.addNew("N/A");
+            }
+            doc.add(id);
+            sumDoc.add(id);
             for (int i = 0; i < VOLTAGES.length; i++) {
                 HVHistogram currentHisto = (HVHistogram)hTable.get(new Short(VOLTAGES[i]));
                 if (currentHisto == null) {
