@@ -163,7 +163,7 @@ public class DOMCal implements Runnable {
             com.send( "zd\r" );
             com.receivePartial( "\r\n" );
             binaryData = com.zRead();
-            s.close();
+            //s.close();  -- stop breaking dom hub app!!!!!
         } catch ( IOException e ) {
             logger.error( "IO Error downloading calibration from DOM" );
             die( e );
