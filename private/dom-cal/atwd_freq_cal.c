@@ -56,12 +56,11 @@ int atwd_freq_cal(calib_data *dom_calib) {
     /* Fit and store ATWD1 calibration */
     linearFitFloat( speed_settingsf, atwd1_cal, NUMBER_OF_SPEED_SETTINGS,
                                              &dom_calib->atwd1_freq_calib );
+
     if ( ret0 != 0 ) {
         return ret0;
-    } else if ( ret1 != 0 ) {
-        return ret1;
     } else {
-        return 0;
+        return ret1;
     }
 }
 
@@ -88,11 +87,14 @@ int cal_loop( float *atwd_cal, short *speed_settings,
         
         /* Set speed DAC */
         halWriteDAC( ATWD_DAC_channel, speed_settings[i] );
-
+        
         /* Take  ATWD_FREQ_CAL_TRIG_CNT waveforms */
         for ( j = 0; j <  ATWD_FREQ_CAL_TRIG_CNT; j++ ) {
 
             /* Force ATWD readout */
+            hal_FPGA_TEST_trigger_forced( trigger_mask );
+            
+            /* Read ATWD ch3 waveform */
             if ( trigger_mask == HAL_FPGA_TEST_TRIGGER_ATWD0 ) {
                 hal_FPGA_TEST_readout( NULL, NULL, NULL, clock_waveform,
                                                NULL, NULL, NULL, NULL,
@@ -102,11 +104,6 @@ int cal_loop( float *atwd_cal, short *speed_settings,
                                              NULL, NULL, NULL, clock_waveform,
                                              128, NULL, 0, trigger_mask );
             }
- 
-            /* Read ATWD ch3 waveform */
-            hal_FPGA_TEST_readout( NULL, NULL, NULL, clock_waveform,
-                                               NULL, NULL, NULL, NULL,
-                                               128, NULL, 0, trigger_mask );
             
             /* Remove DC */
             int sum = 0;
@@ -129,8 +126,7 @@ int cal_loop( float *atwd_cal, short *speed_settings,
                 
                 /* Look for zero crossings with positive slope */
                 if ( normalized_waveform[k] < 0
-                           && normalized_waveform[k + 1] >= 0 ) {
-                    
+                           && !( normalized_waveform[k + 1] < 0 ) ) {
                     if ( first_crossing == 0 ) {
                         first_crossing = k + 1;
                     } else {
@@ -140,7 +136,7 @@ int cal_loop( float *atwd_cal, short *speed_settings,
                 }
             }
 
-            /* Data is bad if less than 2 zero crossings are found */
+            /* Need at least one cycle to analyze */
             if ( number_of_cycles < 1 ) {
                 return UNUSABLE_CLOCK_WAVEFORM;
             }
@@ -148,8 +144,8 @@ int cal_loop( float *atwd_cal, short *speed_settings,
             /* Calculate average number of bins per clock cycle --
              * this is the clock ratio
              */
-            float bins = final_crossing - first_crossing;
-            bin_count[j] = bins / number_of_cycles;
+            int bins = final_crossing - first_crossing;
+            bin_count[j] = ( float )bins / number_of_cycles;
         }
         
         /* Calculate average */
@@ -161,6 +157,5 @@ int cal_loop( float *atwd_cal, short *speed_settings,
         /* Store final average value */
         atwd_cal[i] = sum / ATWD_FREQ_CAL_TRIG_CNT;
     }
-    
     return 0;
 }
