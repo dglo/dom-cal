@@ -216,8 +216,8 @@ int spe_fit(float *xdata, float *ydata, int pts,
     
     /* Find a maximal bin with > 1.5% of total hits */
     int start_bin = 0;
-    while ( ( y[start_bin] < ( 0.015 * num_samples ) ) &&
-            ( start_bin < pts - 1 ) && ( y[start_bin] < y[start_bin + 1] ) ) {
+    while ( ( y[start_bin] < ( 0.015 * num_samples )  || y[start_bin] <
+                   y[start_bin + 1] ) && y[start_bin] < y[start_bin + 1] ) {
         start_bin++;
     }
 
