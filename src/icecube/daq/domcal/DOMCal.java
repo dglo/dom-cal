@@ -122,7 +122,13 @@ public class DOMCal implements Runnable {
         byte[] binaryData = null;
 
         try {
-            com.send( "s\" calib_data\" find if zd endif\r" );
+            com.send( "s\" calib_data\" find if ls endif\r" );
+            String ret = com.receive( "\r\n> " );
+            if ( ret.equals(  "s\" calib_data\" find if ls endif\r\n> " ) ) {
+                logger.error( "Cannot find binary data on DOM" );
+                return;
+            }
+            com.send( "zd\r" );
             com.receivePartial( "\r\n" );
             binaryData = com.zRead();
         } catch ( IOException e ) {
