@@ -33,7 +33,7 @@
 
 \subsection{DOM-Cal Output}
 
-Dom-cal writes calibration results to the DOM flash filesystem in a binary
+DOM-Cal writes calibration results to the DOM flash filesystem in a binary
 file named "calib\_data".  The format of this file is described in detail in
 table \ref{tbl:binary} and table \ref{tbl:linearfit}.
 
@@ -101,6 +101,33 @@ R-squared & Float & Quality of fit \\
 \end{table}
 
 \section{Java Interface to DOM-Cal}
+
+DOM-Cal may be easily accessed through the icecube.daq.domcal java package found
+in the dom-cal project.  Implimentations to read binary calibration data from a DOM
+or initiate a calibration cycle and read back calibration data are available.  DOM
+servers, such as dtsx and domserv, are required to read calibration data with the
+java client.  To read calibration data, type
+\begin{verbatim}
+java -cp {$BFD_HOME}/lib/dom-cal.jar icecube.daq.domcal.DOMCal [host] [port]
+[output directory]
+\end{verbatim}
+to download calibration data from a DOM on \$host at \$port and store xml-formatted
+output in \$output directory.  The xml calibration file is named by domId.  In many
+cases, it is advantageous to read calibration from many DOMs ant once from a sequence
+of ports.  To read calibration data from many ports, type
+\begin{verbatim}
+java -cp {$BFD_HOME}/lib/dom-cal.jar icecube.daq.domcal.DOMCal [host] [port]
+[num ports] [output directory]
+\end{verbatim}
+where \$num ports is the number of sequential ports to scan above \$port.  The ports
+need not be sequential, i.e. if three DOMs are available on ports 5000, 5003, and 5008,
+setting \$port = 5000 and \$num ports = 9 would access all three DOMs.  To initiate
+calibration, add the string "calibrate dom" at the end of your command line arguments:
+\begin{verbatim}
+java -cp {$BFD_HOME}/lib/dom-cal.jar icecube.daq.domcal.DOMCal [host] [port]
+[num ports] [output directory] calibrate dom
+\end{verbatim}
+would attempt to calibrate and read out \$num ports DOMs, starting from \$port.
 
 \subsection{XML Calibration Output}
 
