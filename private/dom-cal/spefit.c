@@ -51,16 +51,18 @@ void get_fit_initialization( float *x, float *y, int num, float *params ) {
     /* Exponential amplitude */
     params[0] = y[0];
                                                                                 
-    /* Gaussian amplitude */
-    params[2] = y[0];
-                                                                                
     /* Find mean and variance */
     float sum = 0;
+    float histmax = y[0];
     int i;
     for ( i = 0; i < num; i++ ) {
         /* we know y values are actually integers */
         sum += y[i];
+	if (y[i] > histmax) histmax = y[i];
     }
+
+    /* Gaussian amplitude */
+    params[2] = histmax;
     
     float *xvals = (float *) malloc((int)sum * sizeof(float));
 
