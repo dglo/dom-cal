@@ -120,7 +120,12 @@ void get_date(calib_data *dom_calib) {
 void init_dom(void) {
 
     /* Make sure HV is off */
-    /* halPowerDownBase(); */
+#ifdef REV3HAL
+    halDisablePMT_HV();
+#else
+    halPowerDownBase();
+#endif
+    halUSleep(250000);
 
     /* Set up DACs */
     halWriteDAC(DOM_HAL_DAC_ATWD0_TRIGGER_BIAS, ATWD_SAMPLING_SPEED_DAC);
