@@ -47,10 +47,6 @@ void f_spe(float x, float *a, float *y, float *dyda, int nparam) {
  */
 
 void get_fit_initialization( float *x, float *y, int num, float *params ) {
-    int k;
-    for ( k = 0; k < num; k++ ) {
-        printf( "Histogram %d %f\n", k, y[k] );
-    }
 	    
     /* Exponential amplitude */
     params[0] = y[0];
