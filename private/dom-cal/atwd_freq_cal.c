@@ -25,6 +25,10 @@ int atwd_freq_cal(calib_data *dom_calib) {
     float atwd0_cal[NUMBER_OF_SPEED_SETTINGS];
     float atwd1_cal[NUMBER_OF_SPEED_SETTINGS];
     
+    /* Record current DOM state */
+    int old_ATWD0_bias = halReadDAC( DOM_HAL_DAC_ATWD0_TRIGGER_BIAS );
+    int old_ATWD1_bias = halReadDAC( DOM_HAL_DAC_ATWD1_TRIGGER_BIAS );
+
     /* ATWD sampling speeds to be tested */
     short speed_settings[NUMBER_OF_SPEED_SETTINGS] = 
                                   { 750, 1000, 1250, 1500, 1750, 2000 };
@@ -56,6 +60,10 @@ int atwd_freq_cal(calib_data *dom_calib) {
     /* Fit and store ATWD1 calibration */
     linearFitFloat( speed_settingsf, atwd1_cal, NUMBER_OF_SPEED_SETTINGS,
                                              &dom_calib->atwd1_freq_calib );
+
+    /* Restore DOM state */
+    halWriteDAC( DOM_HAL_DAC_ATWD0_TRIGGER_BIAS, old_ATWD0_bias );
+    halWriteDAC( DOM_HAL_DAC_ATWD1_TRIGGER_BIAS, old_ATWD1_bias );
 
     if ( ret0 != 0 ) {
         return ret0;

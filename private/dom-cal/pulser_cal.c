@@ -22,13 +22,23 @@
 int pulser_cal(calib_data *dom_calib) {
     
     float pulser_cal_data[NUMBER_OF_SPE_SETTINGS];
+    int old_pedestal_value;
+    int old_spe_thresh;
+    int old_pulser_amplitude;
     
     /* ATWD sampling speeds to be tested */
     const short spe_settings[NUMBER_OF_SPE_SETTINGS] = 
              { 525, 550, 575, 600, 625, 650, 675, 700, 750, 800, 900, 1000 };
     
-     /* Select oscillator analog mux input */
+    /* Record current DAC values */
+    old_pedestal_value = halReadDAC( DOM_HAL_DAC_PMT_FE_PEDESTAL );
+    old_spe_thresh = halReadDAC( DOM_HAL_DAC_SINGLE_SPE_THRESH );
+    old_pulser_amplitude = halReadDAC( DOM_HAL_DAC_INTERNAL_PULSER );
+
+     /* Set pedestal value */
     halWriteDAC( DOM_HAL_DAC_PMT_FE_PEDESTAL, PEDESTAL_VALUE );
+    halUSleep( 100000 );
+    int bias = halReadDAC( DOM_HAL_DAC_PMT_FE_PEDESTAL );
     
     /* Turn pulser on */
     hal_FPGA_TEST_enable_pulser();
@@ -57,7 +67,7 @@ int pulser_cal(calib_data *dom_calib) {
             
             /* Set pulser amplitude and wait */
             halWriteDAC( DOM_HAL_DAC_INTERNAL_PULSER, amplitude );
-            halUSleep(250000);
+            halUSleep( 250000 );
 
             /* Retreive current spe rate */
             int spe_rate = hal_FPGA_TEST_get_spe_rate();
@@ -76,12 +86,18 @@ int pulser_cal(calib_data *dom_calib) {
     /* Convert SPE value to volts */
     float volt_spe_settings[NUMBER_OF_SPE_SETTINGS];
     for ( i = 0; i < NUMBER_OF_SPE_SETTINGS; i++ ) {
-        volt_spe_settings[i] = biasDAC2V( spe_settings[i] );
+        volt_spe_settings[i] = 
+               0.0000244 * ( 0.4 * spe_settings[i] - 0.1 * bias ) * 5;
     }
 
     /* Do linear fit, x-axis pulser amplitude, y-axis SPE thresh */
     linearFitFloat( pulser_cal_data, volt_spe_settings,
                   NUMBER_OF_SPE_SETTINGS, &dom_calib->pulser_calib );
+
+    /* Restore DAC values */
+    halWriteDAC( DOM_HAL_DAC_PMT_FE_PEDESTAL, old_pedestal_value );
+    halWriteDAC( DOM_HAL_DAC_SINGLE_SPE_THRESH, old_spe_thresh );
+    halWriteDAC( DOM_HAL_DAC_INTERNAL_PULSER, old_pulser_amplitude );
 
     /* Turn pulser off */
     hal_FPGA_TEST_disable_pulser();
