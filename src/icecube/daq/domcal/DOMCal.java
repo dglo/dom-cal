@@ -85,18 +85,10 @@ public class DOMCal implements Runnable {
 
             logger.debug( "Beginning DOM calibration routine" );
             try {
-                com.send( "s\" " + FPGA_NAME + "\" find if ls endif\r" );
-                String ret = com.receive( "\r\n> " );
-                if ( ret.equals(  "s\" " + FPGA_NAME + "\" find if ls endif\r\n> " ) ) {
-                    logger.error( "Failed fpga load....is " + FPGA_NAME + "  present?" );
-                    return;
-                }
-                com.send( "fpga\r" );
-                com.receive( "\r\n> " );
                 com.send( "s\" domcal\" find if ls endif\r" );
-                ret = com.receive( "\r\n> " );
+                String ret = com.receive( "\r\n> " );
                 if ( ret.equals(  "s\" domcal\" find if ls endif\r\n> " ) ) {
-                    logger.error( "Failed domcal load....is domcal  present?" );
+                    logger.error( "Failed domcal load....is domcal present?" );
                     return;
                 }
                 com.send( "exec\r" );
