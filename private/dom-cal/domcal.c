@@ -514,6 +514,7 @@ int main(void) {
     /* Reboot the DOM */
     halUSleep( 250000 );
     halBoardReboot();
-
-    return 0;
+    
+    /* Should never return */
+    return -1;
 }
