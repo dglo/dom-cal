@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 #include "hal/DOM_MB_hal.h"
 #include "hal/DOM_MB_fpga.h"
@@ -26,6 +27,88 @@
 #include "amp_cal.h"
 #include "pulser_cal.h"
 #include "atwd_freq_cal.h"
+
+/*---------------------------------------------------------------------------*/
+/* 
+ * Get a string from the terminal -- use instead of scanf
+ *
+ */
+static void getstr(char *str) {
+   while (1) {
+       const int nr = read(0, str, 1);
+       if (nr==1) {
+           if (*str == '\r') {
+               *str = 0;
+               return;
+           }
+           else {
+               write(1, str, 1);
+               str++;
+           }
+           
+       }
+   }
+}
+
+/*---------------------------------------------------------------------------*/
+/*
+ * get_date
+ * 
+ * Get the date from user to save in results file, since DOM is oblivious to
+ * current date.
+ *
+ */
+void get_date(calib_data *dom_calib) {
+
+    short day, month, year;
+    char buf[100];
+
+    /* Get year */
+    year = month = 0;
+    while ((year < 2004) || (year > 2050)) {
+        printf("Enter year (2004-...): ");
+        /* More robust than scanf with %d */
+        getstr(buf);
+        year = atoi(buf);
+    }
+    
+    /* Get month */
+    while ((month < 1) || (month > 12)) {
+        printf("Enter month (1-12): ");
+        getstr(buf);
+        month = atoi(buf);
+    }
+
+    /* Get day of the month */
+    short day_ok = 0;
+    short day_max;
+    while (!day_ok) {
+        if ((month == 1) || (month == 3) ||
+            (month == 5) || (month == 7) ||
+            (month == 8) || (month == 10) ||
+            (month == 12)) {
+            day_max = 31;
+        }
+        else if (month == 2) {
+            /* Presumably this will not be in use in 2100! */
+            day_max = 28 + ((year % 4 == 0) ? 1 : 0);
+        }
+        else {
+            day_max = 30;
+        }
+        
+        printf("Enter day (1-%d): ", day_max);
+        getstr(buf);
+        day = atoi(buf);
+
+        day_ok = ((day >= 1) && (day <= day_max));
+    }
+
+    /* Store results */
+    dom_calib->year = year;
+    dom_calib->month = month;
+    dom_calib->day = day;
+}
 
 /*---------------------------------------------------------------------------*/
 
@@ -268,7 +351,7 @@ int save_results(calib_data dom_calib) {
     }
 
     /* Write to flash */
-    const char name[10] = "calib_data";
+    const char name[11] = "calib_data";
     if ( fisCreate( name, binary_data, RECORD_LENGTH ) != 0 ) {
         err = FAILED_FLASH_WRITE;
     }
@@ -287,15 +370,16 @@ int main(void) {
     printf("Hello, world!  This is domcal version %d.%d\r\n", 
            MAJOR_VERSION, MINOR_VERSION);
 #endif
+
+    /* Get the date from the user */
+    get_date(&dom_calib);
     
     /* Initialize DOM state: DACs, HV setting, pulser, etc. */
     init_dom();
     
     /* Record DOM state, etc. */
     record_state(&dom_calib);
-    
-    /* FIX ME: get date, don't forget about version number */
-    
+
     /* Calibration modules:
      *  - pulser calibration
      *  - atwd calibration
