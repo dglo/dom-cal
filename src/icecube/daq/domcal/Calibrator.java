@@ -127,7 +127,7 @@ public class Calibrator {
         NodeList    nodes;
         Element     dc, e;
 
-        // Get the <domcal> tag
+        // Get the <DEFANGED_domcal> tag
         nodes = doc.getElementsByTagName("domcal");
         if (nodes.getLength() != 1) {
             throw new DOMCalibrationException("XML format error");
@@ -162,7 +162,7 @@ public class Calibrator {
         calendar = Calendar.getInstance();
         calendar.clear();
         try {
-            StringTokenizer st = new StringTokenizer( 
+            StringTokenizer st = new StringTokenizer(
                     e.getFirstChild().getNodeValue(), "-" );
             calendar.set( Calendar.MONTH,
                               Integer.parseInt( st.nextToken() ) - 1 );
@@ -183,7 +183,7 @@ public class Calibrator {
                 parsePulserFit((Element) nodes.item(0));
                 break;
             default:
-                throw new DOMCalibrationException("XML format error - more than one <pulser> record");
+                throw new DOMCalibrationException("XML format error - more than one <DEFANGED_pulser> record");
         }
         parseATWDFits(dc.getElementsByTagName("atwd"));
         parseAmplifierGain(dc.getElementsByTagName("amplifier"));
@@ -196,13 +196,13 @@ public class Calibrator {
                 parseHvGainFit((Element) nodes.item(0));
                 break;
             default:
-                throw new DOMCalibrationException("XML format error - more than one <hvGainCal> record");
+                throw new DOMCalibrationException("XML format error - more than one <DEFANGED_hvGainCal> record");
         }
     }
 
     /**
      * Private function to handle the fit tags.
-     * @param el The supporting <CODE><fit></CODE> Element
+     * @param el The supporting <CODE><DEFANGED_fit></CODE> Element
      */
     private static Hashtable parseFit(Element el) {
         Hashtable h = new Hashtable(5);
@@ -221,7 +221,7 @@ public class Calibrator {
     }
 
     /**
-     * Internal function to drive the parsing of <code><atwd></code> tags.
+     * Internal function to drive the parsing of <code><DEFANGED_atwd></code> tags.
      * @param atwdNodes
      */
     private void parseATWDFits(NodeList atwdNodes) {
@@ -238,7 +238,7 @@ public class Calibrator {
     }
 
     /**
-     * Parse the <code><pulser></code> tag
+     * Parse the <code><DEFANGED_pulser></code> tag
      * @param pulser
      */
     private void parsePulserFit(Element pulser) {
@@ -280,8 +280,8 @@ public class Calibrator {
     }
 
     /**
-     * Get FE amplifier gains from <code><amplifier></code> tags.
-     * @param amplifierNodes NodeList of <code><amplifier></code> nodes.
+     * Get FE amplifier gains from <code><DEFANGED_amplifier></code> tags.
+     * @param amplifierNodes NodeList of <code><DEFANGED_amplifier></code> nodes.
      */
     private void parseAmplifierGain(NodeList amplifierNodes) {
 
@@ -423,6 +423,119 @@ public class Calibrator {
             }
         }
         return out;
+    }
+
+    /* MKA Adding stuff here, Aug 12, 2004:
+    */
+    /**
+     * Method to calibrate domtest-format, pedestalpattern-subtracted and
+     * baseline-subtracted input arrays containing raw data into a pulse in
+     * units of Volts. Domtest format refers to pulses that are positive and
+     * time increases with sample index.
+     *
+     * @param domtestAtwdIn The domtest-formatted and pedestalpattern and
+     *                      baseline subtracted raw waveform in ATWD ticks
+     * @param iChannel      the channel that was used to record that data
+     * @return an array of doubles, holding the pulse in units of Volts in
+     * domtest-format
+     */
+    public double[] domtestAtwdCalibrate( short[] domtestAtwdIn, int iChannel ) {
+
+        int inputDataLength = domtestAtwdIn.length;
+
+        double[] domtestAtwdOut = new double[inputDataLength];
+
+        double slope;
+        for ( int iSample = 0; iSample < inputDataLength; iSample++ ) {
+
+            if ( atwdFits[iChannel][iSample].get( "model" ).equals( "linear" ) ) {
+
+                slope = ( (Double)atwdFits[iChannel][iSample].get( "slope" ) ).
+                        doubleValue();
+                domtestAtwdOut[inputDataLength - 1 - iSample] = ( (
+                        slope * domtestAtwdIn[inputDataLength - 1 - iSample] ) ) /
+                        this.getAmplifierGain( iChannel );
+            } else {
+
+                domtestAtwdOut[inputDataLength - 1 - iSample] = 0.;
+            }
+        }
+
+        return domtestAtwdOut;
+    }
+
+    /**
+     * Method to calibrate domtest-format, pedestalpattern-subtracted and
+     * baseline-subtracted input arrays containing raw data into a pulse in
+     * units of Volts. Domtest format refers to pulses that are positive and
+     * time increases with sample index.
+     *
+     * @param domtestAtwdIn The domtest-formatted and pedestalpattern and
+     *                      baseline subtracted raw waveform in ATWD ticks
+     * @param iChannel      the channel that was used to record that data
+     * @return an array of doubles, holding the pulse in units of Volts in
+     * domtest-format
+     */
+    public double[] domtestAtwdCalibrate( int[] domtestAtwdIn, int iChannel ) {
+
+        int inputDataLength = domtestAtwdIn.length;
+
+        double[] domtestAtwdOut = new double[inputDataLength];
+
+        double slope;
+        for ( int iSample = 0; iSample < inputDataLength; iSample++ ) {
+
+            if ( atwdFits[iChannel][iSample].get( "model" ).equals( "linear" ) ) {
+
+                slope = ( (Double)atwdFits[iChannel][iSample].get( "slope" ) ).
+                        doubleValue();
+                domtestAtwdOut[inputDataLength - 1 - iSample] = ( (
+                        slope * domtestAtwdIn[inputDataLength - 1 - iSample] ) ) /
+                        this.getAmplifierGain( iChannel );
+            } else {
+
+                domtestAtwdOut[inputDataLength - 1 - iSample] = 0.;
+            }
+        }
+
+        return domtestAtwdOut;
+    }
+
+    /**
+     * Method to calibrate domtest-format, pedestalpattern-subtracted and
+     * baseline-subtracted input arrays containing raw data into a pulse in
+     * units of Volts. Domtest format refers to pulses that are positive and
+     * time increases with sample index.
+     *
+     * @param domtestAtwdIn The domtest-formatted and pedestalpattern and
+     *                      baseline subtracted raw waveform in ATWD ticks
+     * @param iChannel      the channel that was used to record that data
+     * @return an array of doubles, holding the pulse in units of Volts in
+     * domtest-format
+     */
+    public double[] domtestAtwdCalibrate( double[] domtestAtwdIn, int iChannel ) {
+
+        int inputDataLength = domtestAtwdIn.length;
+
+        double[] domtestAtwdOut = new double[inputDataLength];
+
+        double slope;
+        for ( int iSample = 0; iSample < inputDataLength; iSample++ ) {
+
+            if ( atwdFits[iChannel][iSample].get( "model" ).equals( "linear" ) ) {
+
+                slope = ( (Double)atwdFits[iChannel][iSample].get( "slope" ) ).
+                        doubleValue();
+                domtestAtwdOut[inputDataLength - 1 - iSample] = ( (
+                        slope * domtestAtwdIn[inputDataLength - 1 - iSample] ) ) /
+                        this.getAmplifierGain( iChannel );
+            } else {
+
+                domtestAtwdOut[inputDataLength - 1 - iSample] = 0.;
+            }
+        }
+
+        return domtestAtwdOut;
     }
 
     /**
