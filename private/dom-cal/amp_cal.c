@@ -75,6 +75,9 @@ int amp_cal(calib_data *dom_calib) {
             /* Discriminator trigger the ATWD */
             hal_FPGA_TEST_trigger_disc(trigger_mask);
             
+            /* Wait for done */
+            while (!hal_FPGA_TEST_readout_done(trigger_mask));
+
             /* Read out one waveform for all channels except 3 */        
             hal_FPGA_TEST_readout(channels[0], channels[1], channels[2], NULL, 
                                   NULL, NULL, NULL, NULL,

@@ -105,6 +105,9 @@ int cal_loop( float *atwd_cal, short *speed_settings,
 
             /* Force ATWD readout */
             hal_FPGA_TEST_trigger_forced( trigger_mask );
+
+            /* Wait for done */
+            while (!hal_FPGA_TEST_readout_done(trigger_mask)) ;
             
             /* Read ATWD ch3 waveform */
             if ( trigger_mask == HAL_FPGA_TEST_TRIGGER_ATWD0 ) {

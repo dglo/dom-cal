@@ -24,8 +24,8 @@ int atwd_cal(calib_data *dom_calib) {
     int atwd, ch, bin, trig;
     float biases[BIAS_CNT];
     
-    /* Channel readout buffers for each ATWD, channel, and bin */
-    short channels[2][3][128];
+    /* Channel readout buffers for each channel, and bin */
+    short channels[3][128];
 
     /* 
      * Allocate pedestal waveform buffers for each ATWD, 
@@ -44,9 +44,6 @@ int atwd_cal(calib_data *dom_calib) {
     /* Turn off clamping amplifier */
     halWriteDAC(DOM_HAL_DAC_FE_AMP_LOWER_CLAMP, 0);
 
-    /* Trigger both ATWDs */
-    trigger_mask = HAL_FPGA_TEST_TRIGGER_ATWD0 | HAL_FPGA_TEST_TRIGGER_ATWD1;
-
     /* Loop over several FE bias levels */
     bias_idx = 0;
     for (bias = BIAS_LOW; bias <= BIAS_HIGH; bias += BIAS_STEP) {
@@ -63,26 +60,45 @@ int atwd_cal(calib_data *dom_calib) {
             for(ch=0; ch<3; ch++)
                 for(bin=0; bin<cnt; bin++)
                     atwd_pedestal[atwd][ch][bin][bias_idx] = 0.0;
-        
-        /* Warm up the ATWD */
-        prescanATWD(trigger_mask);
-        
-        for (trig=0; trig<(int)ATWD_CAL_TRIG_CNT; trig++) {
-            
-            /* CPU-trigger the ATWD */
-            hal_FPGA_TEST_trigger_forced(trigger_mask);
-            
-            /* Read out one waveform for all channels except 3 */        
-            hal_FPGA_TEST_readout(channels[0][0], channels[0][1], channels[0][2], NULL, 
-                                  channels[1][0], channels[1][1], channels[1][2], NULL,
-                                  cnt, NULL, 0, trigger_mask);
-            
-            /* Sum the waveform */
-            for(atwd=0; atwd<2; atwd++)
-                for(ch=0; ch<3; ch++)
-                    for(bin=0; bin<cnt; bin++)
-                            atwd_pedestal[atwd][ch][bin][bias_idx] += channels[atwd][ch][bin];  
 
+        /* Do NOT record both ATWDs at the same time -- this can change the baseline */
+        /* and affect the calibration */
+        for (atwd=0; atwd<2; atwd++) {
+
+            /* Trigger a single ATWD at a time */
+            trigger_mask = (atwd == 0) ? HAL_FPGA_TEST_TRIGGER_ATWD0 : 
+                HAL_FPGA_TEST_TRIGGER_ATWD1;
+        
+            /* Warm up the ATWD */
+            prescanATWD(trigger_mask);
+        
+            for (trig=0; trig<(int)ATWD_CAL_TRIG_CNT; trig++) {
+            
+                /* CPU-trigger the ATWD */
+                hal_FPGA_TEST_trigger_forced(trigger_mask);
+            
+                /* Wait for done */
+                while (!hal_FPGA_TEST_readout_done(trigger_mask));
+            
+                /* Read out one waveform for all channels except 3 */        
+                if (atwd == 0) {
+                    hal_FPGA_TEST_readout(channels[0], channels[1], channels[2], NULL, 
+                                          NULL, NULL, NULL, NULL,
+                                          cnt, NULL, 0, trigger_mask);
+                }
+                else {
+                    hal_FPGA_TEST_readout(NULL, NULL, NULL, NULL,
+                                          channels[0], channels[1], channels[2], NULL, 
+                                          cnt, NULL, 0, trigger_mask);
+                }
+            
+                /* Sum the waveform */
+                for(atwd=0; atwd<2; atwd++)
+                    for(ch=0; ch<3; ch++)
+                        for(bin=0; bin<cnt; bin++)
+                            atwd_pedestal[atwd][ch][bin][bias_idx] += channels[ch][bin];  
+
+            }
         }
         
         /* 
