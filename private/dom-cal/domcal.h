@@ -8,8 +8,8 @@
 /* Version of calibration program -- Major version must
  * be incremented when changing structure of binary output
  */
-#define MAJOR_VERSION 4
-#define MINOR_VERSION 4
+#define MAJOR_VERSION 5
+#define MINOR_VERSION 0
 
 /* Default number of bytes in binary output */
 #define DEFAULT_RECORD_LENGTH 9388
@@ -59,9 +59,15 @@ typedef struct {
     float* fit;
     float pv;
     float noise_rate;
-    float pmt_baseline;
     short is_filled;
 } hv_histogram;
+
+/* HV baselines */
+typedef struct {
+    short voltage;
+    float atwd0_hv_baseline[3];
+    float atwd1_hv_baseline[3];
+} hv_baselines;
 
 /* Calibration data structure */
 typedef struct {
@@ -89,6 +95,10 @@ typedef struct {
     linear_fit atwd0_gain_calib[3][128];
     linear_fit atwd1_gain_calib[3][128];
     
+    /* ATWD baseline calibration (no HV) */
+    float atwd0_baseline[3];
+    float atwd1_baseline[3];
+
     /* FE amplifier calibration */
     value_error amplifier_calib[3];
     
@@ -98,6 +108,9 @@ typedef struct {
 
     /* Valid bit for HV calibration */
     short hv_gain_valid;
+
+    /* HV baselines */
+    hv_baselines* baseline_data;
 
     /* Log(HV) vs. Log(gain) HV calibration fit */
     linear_fit hv_gain_calib;

@@ -104,11 +104,13 @@ int amp_cal(calib_data *dom_calib) {
                 /* Using ATWD calibration data, convert to actual V */
                 if (atwd == 0) {
                     peak_v = (float)(channels[ch][bin]) * dom_calib->atwd0_gain_calib[ch][bin].slope
-                        + dom_calib->atwd0_gain_calib[ch][bin].y_intercept;
+                        + dom_calib->atwd0_gain_calib[ch][bin].y_intercept
+                        - dom_calib->atwd0_baseline[ch];
                 }
                 else {
                     peak_v = (float)(channels[ch][bin]) * dom_calib->atwd1_gain_calib[ch][bin].slope
-                        + dom_calib->atwd1_gain_calib[ch][bin].y_intercept;
+                        + dom_calib->atwd1_gain_calib[ch][bin].y_intercept
+                        - dom_calib->atwd1_baseline[ch];
                 }
 
                 /* Also subtract out bias voltage */
@@ -137,6 +139,9 @@ int amp_cal(calib_data *dom_calib) {
         meanVarFloat(peaks[ch], AMP_CAL_TRIG_CNT, &mean, &var);
         dom_calib->amplifier_calib[ch].value = mean / pulser_v;
         dom_calib->amplifier_calib[ch].error =  sqrt(var)/(pulser_v*sqrt(AMP_CAL_TRIG_CNT));
+
+        /* FIX ME */
+        printf("Gain for ch %d: %g\r\n", ch, (mean/pulser_v));
 
     }
 
