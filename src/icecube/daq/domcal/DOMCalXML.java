@@ -59,6 +59,8 @@ public class DOMCalXML {
             out.print("  </atwdfreq>\n");
         }
 
+        formatBaseline(rec.getBaseline(), out);
+
         if ( rec.isHvCalValid() ) {
             
             out.print("  <hvGainCal>\n");
@@ -69,6 +71,7 @@ public class DOMCalXML {
 
 
         for (int i = 0; i < rec.getNumHVHistograms(); i++) {
+            formatBaseline(rec.getBaseline(), out);
             formatHisto(rec.getHVHistogram(i), out);
         }
 
@@ -86,8 +89,7 @@ public class DOMCalXML {
     private static void formatHisto(HVHistogram histo, PrintWriter out) {
         out.print("  <histo voltage=\"" + histo.getVoltage() + "\" convergent=\"" +
                                    histo.isConvergent() + "\" pv=\"" + histo.getPV() + "\" noiseRate=\"" +
-                                   histo.getNoiseRate() + "\" pmtBaseline=\"" +
-                                   histo.getPmtBaseline() + "\" isFilled=\"" + histo.isFilled() + "\">\n");
+                                   histo.getNoiseRate() + "\" isFilled=\"" + histo.isFilled() + "\">\n");
         float[] fitParams = histo.getFitParams();
         out.print("    <param name=\"exponential amplitude\">" + fitParams[0] + "</param>\n");
         out.print("    <param name=\"exponential width\">" + fitParams[1] + "</param>\n");
@@ -102,5 +104,15 @@ public class DOMCalXML {
         }
         out.print("    </histogram>\n");
         out.print("  </histo>\n");
+    }
+
+    private static void formatBaseline(Baseline base, PrintWriter out) {
+        out.print("  <baseline voltage=\"" + base.getVoltage() + "\">\n");
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 3; j++) {
+                out.print("    <base atwd=\"" + i + "\" ch=\"" + j + "\" value=\"" + base.getBaseline(i,j) + "\"/>\n");
+            }
+        }
+        out.print("  </baseline>");
     }
 }

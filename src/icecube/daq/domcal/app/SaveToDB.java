@@ -72,7 +72,7 @@ public class SaveToDB
      * @throws IOException if there is a problem with the XML file
      * @throws SQLException if there is a problem with the database
      */
-    SaveToDB(String fileName, boolean verbose)
+    public SaveToDB(String fileName, boolean verbose)
         throws DOMCalibrationException, DOMProdTestException, IOException,
                SQLException
     {

@@ -12,6 +12,8 @@
 
 package icecube.daq.domcal;
 
+import icecube.daq.domcal.app.SaveToDB;
+
 import org.apache.log4j.Logger;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
@@ -21,7 +23,6 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.io.*;
 import java.util.*;
-import java.sql.*;
 
 public class DOMCal implements Runnable {
     
@@ -42,8 +43,6 @@ public class DOMCal implements Runnable {
     private boolean calibrate;
     private boolean calibrateHv;
     private DOMCalRecord rec;
-    private Connection jdbc;
-    private Properties calProps;
     private String version;
 
     public DOMCal( String host, int port, String outDir ) {
@@ -64,22 +63,6 @@ public class DOMCal implements Runnable {
         }
         this.calibrate = calibrate;
         this.calibrateHv = calibrateHv;
-        calProps = new Properties();
-        File propFile = new File(System.getProperty("user.home") +
-                "/.domcal.properties"
-        );
-        if (!propFile.exists()) {
-            propFile = new File("/usr/local/etc/domcal.properties");
-        }
-
-        try {
-            calProps.load(new FileInputStream(propFile));
-        } catch (IOException e) {
-            logger.warn("Cannot access the domcal.properties file " +
-                    "- using compiled defaults.",
-                    e
-            );
-        }
     }
 
     public void run() {
@@ -188,9 +171,10 @@ public class DOMCal implements Runnable {
         String domId = rec.getDomId();
 
         logger.debug( "Saving output to " + outDir );
+        String fn = outDir + "domcal_" + domId + ".xml";
 
         try {
-            PrintWriter out = new PrintWriter( new FileWriter( outDir + "domcal_" + domId + ".xml", false ), false );
+            PrintWriter out = new PrintWriter(new FileWriter(fn, false ), false );
             DOMCalXML.format( version, rec, out );
             out.flush();
             out.close();
@@ -201,58 +185,15 @@ public class DOMCal implements Runnable {
         }
 
         logger.debug( "Document saved" );
-
-        // If there is gain calibration data put into database
-        if (rec.isHvCalValid()) {
-
-            String driver = calProps.getProperty(
-                    "icecube.daq.domcal.db.driver",
-                    "com.mysql.jdbc.Driver");
-            try {
-                Class.forName(driver);
-            } catch (ClassNotFoundException x) {
-                logger.error( "No MySQL driver class found - PMT HV not stored in DB." );
-            }
-
-            /*
-             * Compute the 10^7 point from fit information
-             */
-            LinearFit fit = rec.getHvGainCal();
-            double slope = fit.getSlope();
-            double inter = fit.getYIntercept();
-            int hv = new Double(Math.pow(10.0, (7.0 - inter) / slope)).intValue();
-
-            if (hv > 2000 || hv < 0) {
-                logger.error("Bad HV calibration for DOM " + domId + " HV=" + hv);
-                return;
-            }
-
-            try {
-                String url = calProps.getProperty("icecube.daq.domcal.db.url",
-                        "jdbc:mysql://localhost/fat");
-                String user = calProps.getProperty(
-                        "icecube.daq.domcal.db.user",
-                        "dfl"
-                );
-                String passwd = calProps.getProperty(
-                        "icecube.daq.domcal.db.passwd",
-                        "(D0Mus)"
-                );
-                jdbc = DriverManager.getConnection(
-                        url,
-                        user,
-                        passwd
-                );
-                Statement stmt = jdbc.createStatement();
-                String updateSQL = "UPDATE domtune SET hv=" + hv +
-                    " WHERE mbid='" + domId + "';";
-                System.out.println( "Executing stmt: " + updateSQL );
-                stmt.executeUpdate(updateSQL);
-            } catch (SQLException e) {
-                logger.error("Unable to insert into database: ", e);
-            }
-
+ 
+        logger.debug("Saving calibration data to database");
+        try {
+            new SaveToDB(fn, false);
+        } catch (Exception ex) {
+            logger.debug("Failed!", ex);
+            return;
         }
+        logger.debug("SUCCESS");
 
     }
 
@@ -330,7 +271,7 @@ public class DOMCal implements Runnable {
                 try {
                     Thread.sleep( 1000 );
                 } catch ( InterruptedException e ) {
-                    logger.warn( "Wait interrupted -- compensating" );
+                    logger.warn( "Wait interrupted" );
                     i--;
                 }
                 boolean done = true;
@@ -344,7 +285,7 @@ public class DOMCal implements Runnable {
                     System.exit( 0 );
                 }
             }
-            logger.warn( "Timeout reached....probably not significant" );
+            logger.warn( "Timeout reached." );
             System.exit( 0 );
         } catch ( Exception e ) {
             usage();

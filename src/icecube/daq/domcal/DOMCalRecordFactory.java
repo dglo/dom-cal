@@ -101,6 +101,8 @@ public class DOMCalRecordFactory {
         atwdFrequencyCalibration[0] = LinearFitFactory.parseLinearFit( bb );
         atwdFrequencyCalibration[1] = LinearFitFactory.parseLinearFit( bb );
 
+        Baseline baseline = Baseline.parseBaseline(bb);
+
         short hvCalValidShort = bb.getShort();
         boolean hvCalValid = ( hvCalValidShort == 0 ) ? false : true;
 
@@ -108,9 +110,11 @@ public class DOMCalRecordFactory {
 
         short numHVHistograms = bb.getShort();
         HVHistogram[] histos = new HVHistogram[numHVHistograms];
+        Baseline[] hvBaselines = new Baseline[numHVHistograms];
 
         for (int i = 0; i < numHVHistograms; i++) {
             histos[i] = HVHistogram.parseHVHistogram(bb);
+            hvBaselines[i] = Baseline.parseHvBaseline(bb);
         }     
 
         if ( hvCalValid ) {
@@ -120,7 +124,7 @@ public class DOMCalRecordFactory {
 
         return new DefaultDOMCalRecord( pulserCalibration, atwdCalibration, atwdFrequencyCalibration,
                 amplifierCalibration, amplifierCalibrationError, temperature, year, month, day, domId, dacValues,
-               adcValues, fadcValues, version, hvCalValid, hvGainFit, numHVHistograms, histos);
+               adcValues, fadcValues, version, hvCalValid, hvGainFit, numHVHistograms, histos, baseline, hvBaselines);
     }
     
     private static class DefaultDOMCalRecord implements DOMCalRecord {
@@ -157,12 +161,17 @@ public class DOMCalRecordFactory {
         private short numHVHistograms;
         private HVHistogram[] hvHistos;
 
+        private Baseline baseline;
+        private Baseline[] hvBaselines;
+
         public DefaultDOMCalRecord( LinearFit pulserCalibration, LinearFit[][][] atwdCalibration, LinearFit[]
                  atwdFrequencyCalibration, float[] amplifierCalibration, float[] amplifierCalibrationError, float
                  temperature, short year, short month, short day, String domId, short[] dacValues, short[] adcValues,
                  short[] fadcValues, short version, boolean hvCalValid, LinearFit hvGainCal, 
-                                                                short numHVHistograms, HVHistogram[] hvHistos ) {
+                                                                short numHVHistograms, HVHistogram[] hvHistos, Baseline baseline, Baseline[] hvBaselines) {
 
+            this.baseline = baseline;
+            this.hvBaselines = hvBaselines;
             this.pulserCalibration = pulserCalibration;
             this.atwdCalibration = atwdCalibration;
             this.atwdFrequencyCalibration = atwdFrequencyCalibration;
@@ -303,6 +312,22 @@ public class DOMCalRecordFactory {
             }
             return hvHistos[iter];
         }
+
+        public short getNumHVBaselines() {
+            return numHVHistograms;
+        }
+
+        public Baseline getHVBaseline(int iter) {
+            if (iter >= numHVHistograms || iter < 0) {
+                throw new IndexOutOfBoundsException("" + iter);
+            }
+            return hvBaselines[iter];
+        }
+
+        public Baseline getBaseline() {
+            return baseline;
+        }
+
 
     }
         
