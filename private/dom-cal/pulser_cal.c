@@ -32,7 +32,7 @@ int pulser_cal(calib_data *dom_calib) {
 
     /* SPE settings to be tested */
     const short spe_settings[NUMBER_OF_SPE_SETTINGS] = 
-             { 525, 550, 575, 600, 625, 650, 675, 700, 750, 800, 900, 1000 };
+             { 550, 575, 600, 625, 650, 675, 700, 750, 800, 900, 1000 };
     
     /* Record current DAC values */
     old_pedestal_value = halReadDAC( DOM_HAL_DAC_PMT_FE_PEDESTAL );

@@ -3,7 +3,7 @@
  */
 
 /* Number of SPE threshold settings to fit */
-#define NUMBER_OF_SPE_SETTINGS  12
+#define NUMBER_OF_SPE_SETTINGS  11
 
 /* Pedestal value setting for pulser calibration */
 #ifdef DOMCAL_REV5
