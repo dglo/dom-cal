@@ -252,6 +252,8 @@ int write_dom_calib( calib_data *cal, char *bin_data ) {
 
     strncpy(id_hi, id, 4);
     strncpy(id_lo, &(id[4]), 8);
+    id_hi[5] = 0;
+    id_lo[9] = 0;
 
     printf("DEBUG: strings %s %s\r\n", id_hi, id_lo);
 
