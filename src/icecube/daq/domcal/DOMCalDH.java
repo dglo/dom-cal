@@ -159,7 +159,7 @@ public class DOMCalDH {
     private void calibrateHub(DOMHubCom dh) {
 
         try {
-            DOMStatusList doms = dh.discoverAllDOMs();
+            DOMStatusList doms = dh.getDOMStatusList();
             if (doms.getDOMCount() == 0 ) {
                 dh.powerUpAllChannels();
                 doms = dh.getDOMStatusList();
