@@ -4,6 +4,8 @@ import icecube.daq.db.domprodtest.BasicDB;
 import icecube.daq.db.domprodtest.DOMProdTestException;
 import icecube.daq.db.domprodtest.DOMProdTestUtil;
 
+import icecube.daq.domcal.HVHistogram;
+
 import java.io.IOException;
 
 import java.sql.Connection;
@@ -21,16 +23,6 @@ public class FixDB
 {
     private static final String[] modelVals = new String[] {
         "linear",
-    };
-
-    private static final String[] paramVals = new String[] {
-        "intercept",
-        "slope",
-        "exponential amplitude",
-        "exponential width",
-        "gaussian amplitude",
-        "gaussian mean",
-        "gaussian width",
     };
 
     /**
@@ -69,6 +61,24 @@ public class FixDB
     private void addMissingParameterValues(Connection conn)
         throws SQLException
     {
+        ArrayList params = new ArrayList();
+        params.add("intercept");
+        params.add("slope");
+
+        int num = 0;
+        while (true) {
+            final String name = HVHistogram.getParameterName(num);
+            if (name == null) {
+                break;
+            }
+
+            params.add(name);
+            num++;
+        }
+
+        String[] paramVals = new String[params.size()];
+        params.toArray(paramVals);
+
         addMissingRows(conn, "DOMCal_Param", "dc_param_id", "name", paramVals);
     }
 
