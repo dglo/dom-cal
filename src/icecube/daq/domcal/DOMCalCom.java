@@ -22,7 +22,7 @@ import java.util.zip.InflaterInputStream;
 
 public class DOMCalCom {
     
-    public static final int CONNECT_TIMEOUT_MSEC = 2000;
+    public static final int CONNECT_TIMEOUT_MSEC = 3000;
     
     private InputStream in;
     private OutputStream out;
@@ -155,8 +155,9 @@ public class DOMCalCom {
 
         public void run() {
             try {
-                com.send( "\r" );
+                com.send( "r\r" );
                 com.receive( "\r\n> " );
+                com.receive( "\r\n> ", 100 );
                 return;
             } catch ( IOException e ) {
             }
