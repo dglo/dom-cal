@@ -162,6 +162,10 @@ public class DOMCalDH {
 
         try {
             DOMStatusList doms = dh.discoverAllDOMs();
+            if (doms.getDOMCount() == 0 ) {
+                dh.powerUpAllChannels();
+                doms = dh.getDOMStatusList();
+            }
             logger.info("Found " + doms.getDOMCount() + " on DOMHub.");
 
             for (int i = 0; i < doms.getDOMCount(); i++) {
