@@ -344,6 +344,7 @@ public class Calibrator {
      * @return double value of the fit parameter.
      */
     public double getATWDFitParam(int ch, int bin, String param) {
+        if (ch == 3 || ch == 7) throw new IllegalArgumentException("Calibration of channels 3 and 7 not allowed!");
         return ((Double) atwdFits[ch][bin].get(param)).doubleValue();
     }
 
@@ -413,6 +414,7 @@ public class Calibrator {
      * @return ATWD array in V
      */
     public double[] atwdCalibrate(short[] atwdin, int ch, int offset) {
+        if (ch == 3 || ch == 7) throw new IllegalArgumentException("Calibration of channels 3 and 7 not allowed!");
         double[] out = new double[atwdin.length];
         for (int i = 0; i < atwdin.length; i++) {
             int bin = i + offset;
@@ -440,6 +442,8 @@ public class Calibrator {
      * domtest-format
      */
     public double[] domtestAtwdCalibrate( short[] domtestAtwdIn, int iChannel ) {
+
+        if (iChannel == 3 || iChannel == 7) throw new IllegalArgumentException("Calibration of channels 3 and 7 not allowed!");
 
         int inputDataLength = domtestAtwdIn.length;
 
@@ -478,6 +482,8 @@ public class Calibrator {
      */
     public double[] domtestAtwdCalibrate( int[] domtestAtwdIn, int iChannel ) {
 
+        if (iChannel == 3 || iChannel == 7) throw new IllegalArgumentException("Calibration of channels 3 and 7 not allowed!");
+
         int inputDataLength = domtestAtwdIn.length;
 
         double[] domtestAtwdOut = new double[inputDataLength];
@@ -514,6 +520,8 @@ public class Calibrator {
      * domtest-format
      */
     public double[] domtestAtwdCalibrate( double[] domtestAtwdIn, int iChannel ) {
+
+        if (iChannel == 3 || iChannel == 7) throw new IllegalArgumentException("Calibration of channels 3 and 7 not allowed!");
 
         int inputDataLength = domtestAtwdIn.length;
 
@@ -552,6 +560,8 @@ public class Calibrator {
 
     public double[] atwdCalibrateToPmtSig(short[] atwdin, int ch, int offset, int biasDAC)
                                                                       throws DOMCalibrationException {
+        if(ch == 3 || ch == 7) throw new IllegalArgumentException("Calibration of channels 3 and 7 not allowed!");
+
         double amp = getAmplifierGain(ch);
         if ( amp == 0.0 ) {
             throw new DOMCalibrationException( "Ampifier calibration canno be zero" );
@@ -580,6 +590,7 @@ public class Calibrator {
      * @return  raw ATWD array, cast back to shorts.
      */
     public short[] atwdDecalibrate(double[] v, int ch, int offset) {
+        if (ch == 3 || ch == 7) throw new IllegalArgumentException("Calibration of channels 3 and 7 not allowed!");
         short[] out = new short[v.length];
         for (int i = 0; i < v.length; i++) {
             int bin = i + offset;

@@ -25,9 +25,13 @@ public class HVHistogram {
     private float[] yVals;
     private float pv;
     private boolean convergent;
+    private float noiseRate;
+    private boolean isFilled;
 
     public static HVHistogram parseHVHistogram(ByteBuffer bb) {
         short voltage = bb.getShort();
+        float noiseRate = (bb.getFloat());
+        boolean isFilled = (bb.getShort() != 0);
         boolean convergent = (bb.getShort() != 0);
         float[] fitParams = new float[5];
         for (int i = 0; i < 5; i++) {
@@ -41,13 +45,15 @@ public class HVHistogram {
             yVals[i] = bb.getFloat();
         }
         float pv = bb.getFloat();
-        return new HVHistogram(voltage, fitParams, xVals, yVals, convergent, pv);
+        return new HVHistogram(voltage, fitParams, xVals, yVals, convergent, pv, noiseRate, isFilled);
     }
 
     public static HVHistogram parseHVHistogram(Element histo) {
         short voltage = Short.parseShort(histo.getAttribute("voltage"));
         boolean convergent = (new Boolean(histo.getAttribute("convergent"))).booleanValue();
-        float pv = Float.parseFloat(histo.getAttribute("pv")); 
+        float pv = Float.parseFloat(histo.getAttribute("pv"));
+        float noiseRate = Float.parseFloat(histo.getAttribute("noiseRate"));
+        boolean isFilled = (new Boolean(histo.getAttribute("isFilled"))).booleanValue();
         float[] fitParams = new float[5];
         NodeList fitP = histo.getElementsByTagName("param");
         for (int i = 0; i < fitP.getLength(); i++) {
@@ -78,16 +84,19 @@ public class HVHistogram {
             yData[num] = Float.parseFloat(currentBin.getAttribute("count"));
         }
 
-        return new HVHistogram(voltage, fitParams, xData, yData, convergent, pv);
+        return new HVHistogram(voltage, fitParams, xData, yData, convergent, pv, noiseRate, isFilled);
     }
 
-    public HVHistogram(short voltage, float[] fitParams, float[] xVals, float[] yVals, boolean convergent, float pv) {
+    public HVHistogram(short voltage, float[] fitParams, float[] xVals, float[] yVals,
+                                   boolean convergent, float pv, float noiseRate, boolean isFilled) {
         this.voltage = voltage;
         this.fitParams = fitParams;
         this.xVals = xVals;
         this.yVals = yVals;
         this.convergent = convergent;
         this.pv = pv;
+        this.noiseRate = noiseRate;
+        this.isFilled = isFilled;
     }
 
     public short getVoltage() {
@@ -112,5 +121,13 @@ public class HVHistogram {
 
     public float getPV() {
         return pv;
+    }
+
+    public float getNoiseRate() {
+        return noiseRate;
+    }
+
+    public boolean isFilled() {
+        return isFilled;
     }
 }
