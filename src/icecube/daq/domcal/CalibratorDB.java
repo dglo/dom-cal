@@ -605,10 +605,18 @@ public class CalibratorDB
                 final String name = rs.getString(1);
                 final float value = rs.getFloat(2);
 
-                for (int j = 0; j < params.length; j++) {
-                    if (name.equals(HVHistogram.getParameterName(j))) {
+                boolean foundParam = false;
+                for (int j = 0; !foundParam && j < params.length; j++) {
+                    final String paramName = HVHistogram.getParameterName(j);
+                    if (name.equals(paramName)) {
                         params[j] = value;
+                        foundParam = true;
                     }
+                }
+
+                if (!foundParam) {
+                    System.err.println("Unknown HvHistogram parameter \"" +
+                                       name + "\"");
                 }
             }
 
