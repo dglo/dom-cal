@@ -103,22 +103,11 @@ int atwd_cal(calib_data *dom_calib) {
                            &(dom_calib->atwd0_gain_calib[ch][bin])); 
             linearFitFloat(atwd_pedestal[1][ch][bin], biases, BIAS_CNT, 
                            &(dom_calib->atwd1_gain_calib[ch][bin])); 
-#ifdef DEBUG
-            printf("ATWD0: Ch: %d Bin: %d Slope: %.6g Int: %.6g R^2: %.6f\r\n",
-                   ch, bin, dom_calib->atwd0_gain_calib[ch][bin].slope, 
-                   dom_calib->atwd0_gain_calib[ch][bin].y_intercept,
-                   dom_calib->atwd0_gain_calib[ch][bin].r_squared);
-            
-            printf("ATWD1: Ch: %d Bin: %d Slope: %.6g Int: %.6g R^2: %.6f\r\n",
-                   ch, bin, dom_calib->atwd1_gain_calib[ch][bin].slope, 
-                   dom_calib->atwd1_gain_calib[ch][bin].y_intercept,
-                   dom_calib->atwd1_gain_calib[ch][bin].r_squared);
-#endif
         }
     }
                 
     /* FIX ME: turn clamping back on? */
-
+    /* FIX ME: return real error code? */
     return 0;
 
 }

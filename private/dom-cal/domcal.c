@@ -84,17 +84,40 @@ void record_state(calib_data *dom_calib) {
 
 int save_results(calib_data dom_calib) {
 
-    int i;
+    int i, ch, bin;
     int err = 0;
 
     /* FIX ME: For now, just print everything out */
 #ifdef DEBUG
     printf("ID: %s\r\n", dom_calib.dom_id);
+
     for (i = 0; i < 16; i++)
         printf("DAC %d: %d\r\n", i, dom_calib.dac_values[i]);
+
     for (i = 0; i < 24; i++)
         printf("ADC %d: %d\r\n", i, dom_calib.adc_values[i]);
+
     printf("Temp: %.1f\r\n", dom_calib.temp);
+
+    for(ch = 0; ch < 3; ch++)
+        for(bin = 0; bin < 128; bin++)
+            printf("ATWD0 Ch %d Bin %d Fit: m=%.6g b=%.6g r^2=%.6g\r\n",
+                   ch, bin, dom_calib.atwd0_gain_calib[ch][bin].slope,
+                   dom_calib.atwd0_gain_calib[ch][bin].y_intercept,
+                   dom_calib.atwd0_gain_calib[ch][bin].r_squared);
+
+    for(ch = 0; ch < 3; ch++)
+        for(bin = 0; bin < 128; bin++)
+            printf("ATWD1 Ch %d Bin %d Fit: m=%.6g b=%.6g r^2=%.6g\r\n",
+                   ch, bin, dom_calib.atwd1_gain_calib[ch][bin].slope,
+                   dom_calib.atwd1_gain_calib[ch][bin].y_intercept,
+                   dom_calib.atwd1_gain_calib[ch][bin].r_squared);
+
+    for(ch = 0; ch < 3; ch++)
+        printf("Channel %d gain=%.6g error=%.6g\r\n", ch,
+               dom_calib.amplifier_calib[ch].value,
+               dom_calib.amplifier_calib[ch].error);
+
 #endif
 
     return err;

@@ -39,11 +39,6 @@ int amp_cal(calib_data *dom_calib) {
     /* Peak arrays for each channel, in Volts */
     float peaks[3][AMP_CAL_TRIG_CNT];
 
-    /* Initialize the peak array */
-    for (ch = 0; ch < 3; ch++) 
-        for (trig = 0; trig < AMP_CAL_TRIG_CNT; trig++)
-            peaks[ch][trig] = 0.0;
-
     printf("Performing amplifier calibration...\r\n");
 
     /* Set discriminator and bias level */
@@ -87,12 +82,17 @@ int amp_cal(calib_data *dom_calib) {
             for (bin=0; bin<cnt; bin++) {
 
                 /* Using ATWD calibration data, convert to actual V */
-                /* FIX ME!!!!!!!! */
-                peak_v = (float)(channels[ch][bin]) * -1.0;
+                peak_v = (float)(channels[ch][bin]) * dom_calib->atwd0_gain_calib[ch][bin].slope
+                    + dom_calib->atwd0_gain_calib[ch][bin].y_intercept;
 
                 /* Note "peak" is actually a minimum */
-                peaks[ch][trig] = (peak_v < peaks[ch][trig]) ? 
-                    peak_v : peaks[ch][trig];
+                if (bin == 0) {
+                    peaks[ch][trig] = peak_v;
+                }
+                else {
+                    peaks[ch][trig] = (peak_v < peaks[ch][trig]) ? 
+                        peak_v : peaks[ch][trig];
+                }
             }
 
             printf("Trig %d peak %.4f\r\n", trig, peaks[ch][trig]);
@@ -109,6 +109,9 @@ int amp_cal(calib_data *dom_calib) {
         gain = mean / pulser_v;
         error = sqrt(var)/(pulser_v*sqrt(AMP_CAL_TRIG_CNT));
 
+        dom_calib->amplifier_calib[ch].value = gain;
+        dom_calib->amplifier_calib[ch].error = error;
+        
 #ifdef DEBUG
         printf(" Channel %d: gain %.6g, error %.6g\r\n", ch, gain, error);
 #endif
