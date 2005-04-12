@@ -57,13 +57,13 @@ void getBaseline(calib_data *dom_calib, float max_var, float base[2][3]) {
         while (trig < BASELINE_CAL_TRIG_CNT) {
             
             wf_bad = 0;
-            
+
             /* Warm up the ATWD */
             prescanATWD(trigger_mask);
-            
+   
             /* CPU-trigger the ATWD */
             hal_FPGA_TEST_trigger_forced(trigger_mask);
-            
+        
             /* Wait for done */
             while (!hal_FPGA_TEST_readout_done(trigger_mask));
             
@@ -132,7 +132,7 @@ void getBaseline(calib_data *dom_calib, float max_var, float base[2][3]) {
             }
             
         } /* End trigger loop */
-        
+
         /* Get average variance of channel 0 */
         var_avg /= (float)BASELINE_CAL_TRIG_CNT;
         /* Get the average baseline waveform */
@@ -141,7 +141,7 @@ void getBaseline(calib_data *dom_calib, float max_var, float base[2][3]) {
             for(bin = 0; bin < cnt; bin++) {
                 baseline[atwd][ch][bin] /= (float)BASELINE_CAL_TRIG_CNT;
             }
-            
+             
             /* Just get the mean */
             /* Don't use first 3 samples -- "nook" in baseline is not understood */
             meanVarFloat(baseline[atwd][ch]+3, cnt-3, &(base[atwd][ch]), &var);

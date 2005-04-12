@@ -2,7 +2,7 @@
  * hv_amp_cal
  *
  * Amplifier recalibration routine -- record waveform peaks in 
- * ATWD channels for a muons and use ATWD calibration to find 
+ * ATWD channels for muons and use ATWD calibration to find 
  * gain of each amplifier.  Uses only one ATWD.
  *
  */
@@ -17,6 +17,7 @@
 #include "amp_cal.h"
 #include "hv_amp_cal.h"
 #include "calUtils.h"
+#include "baseline_cal.h"
 
 /*---------------------------------------------------------------------------*/
 int hv_amp_cal(calib_data *dom_calib) {
@@ -51,6 +52,7 @@ int hv_amp_cal(calib_data *dom_calib) {
     /* Increase sampling speed to make sure we see peak */
     short origSampDAC = halReadDAC((atwd == 0) ? DOM_HAL_DAC_ATWD0_TRIGGER_BIAS : 
                                    DOM_HAL_DAC_ATWD1_TRIGGER_BIAS);
+    short old_led_value = halReadDAC(DOM_HAL_DAC_LED_BRIGHTNESS);
 
     /* Set discriminator and bias level */
     halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, AMP_CAL_PEDESTAL_DAC);   
@@ -83,30 +85,53 @@ int hv_amp_cal(calib_data *dom_calib) {
     halWriteActiveBaseDAC(hv * 2);
     halUSleep(5000000);
 
-    /* Find the proper hv_baselines for this voltage */
-    hv_baselines *hv_baseline = NULL;
-   
-    int i;
-    for(i = 0; i < dom_calib->num_histos; i++) {
-        if (dom_calib->baseline_data[i].voltage == hv) {
-            hv_baseline = &dom_calib->baseline_data[i];
- 
-            /* FIX ME DEBUG */
-            printf("Found baseline at %d volts \n", dom_calib->baseline_data[i].voltage);
-        }
-    }
-
-    if (hv_baseline == NULL) {
-        printf("HV Baseline calibration data not found...aborting");
-        return -1;
-    }
-    
     /* Trigger one ATWD only */
     trigger_mask = (atwd == 0) ? HAL_FPGA_TEST_TRIGGER_ATWD0 : HAL_FPGA_TEST_TRIGGER_ATWD1;
 
     /* Loop over channels and pulser settings for each channel */
     for (ch = 1; ch < 3; ch++) {
 
+        /* Check rate -- do we need to turn on LED? */
+        float rate = 0;
+
+        /* LED amplitude */
+        short led_amplitude = 0;
+
+        rate = measure_rate(atwd, ch-1);
+
+        while (rate < MIN_PULSE_RATE) {
+
+            /* OK -- not enough signal, we're probably deep in ice */
+            /* Turn on MB LED if off -- otherwise inc amlitude until */
+            /* we can see it */
+            if (led_amplitude == 0) {
+                 
+                hal_FPGA_TEST_enable_LED();
+                halEnableLEDPS();
+                led_amplitude = INIT_LED_AMPLITUDE;
+            } else {
+                led_amplitude += LED_AMPLITUDE_INC;
+            }
+
+            /* Can't do calibration if rate is too low */
+            if (led_amplitude > LED_MAX_AMPLITUDE) return ERR_LOW_RATE;
+
+            /* Apply new setting and wait */
+            halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, led_amplitude);
+            halUSleep(DAC_SET_WAIT);
+
+            /* Measure rate */ 
+            rate = measure_rate(atwd, ch-1);
+
+        }
+
+        /* OK -- we have illumination.  Let's re-check the baseline because */
+        /* just about everything affects it -- possibly even including the  */
+        /* position of Jupiter and recent solar activity..... */
+
+        float baseline[2][3];
+        getBaseline(dom_calib, BASELINE_CAL_MAX_VAR, baseline);
+      
         for (trig=0; trig<(int)AMP_CAL_TRIG_CNT; trig++) {
                 
             /* Warm up the ATWD */
@@ -130,7 +155,7 @@ int hv_amp_cal(calib_data *dom_calib) {
                                       cnt, NULL, 0, trigger_mask);
             }
 
-            /* Look at raw ATWD data of higher gain channel, which should be
+            /* Look at raw ATWD data of higher gain channel, whose amplifier should be
              * calibrated already, to check range
              */
             short max = 0;
@@ -141,7 +166,7 @@ int hv_amp_cal(calib_data *dom_calib) {
             }
 
             /* OK -- we have a reasonable muon pulse */
-            
+
             /* Find and record peak.  Make sure it is in range */ 
             for (bin=AMP_CAL_START_BIN; bin<cnt; bin++) {
 
@@ -150,18 +175,18 @@ int hv_amp_cal(calib_data *dom_calib) {
                 if (atwd == 0) {
                     peak_v = (float)(channels[ch][bin]) * dom_calib->atwd0_gain_calib[ch][bin].slope
                         + dom_calib->atwd0_gain_calib[ch][bin].y_intercept
-                        - hv_baseline->atwd0_hv_baseline[ch];
+                        - baseline[atwd][ch];
                     hpeak_v = (float)(channels[ch-1][bin]) * dom_calib->atwd0_gain_calib[ch-1][bin].slope
                         + dom_calib->atwd0_gain_calib[ch-1][bin].y_intercept
-                        - hv_baseline->atwd0_hv_baseline[ch-1];
+                        - baseline[atwd][ch-1];
                 }
                 else {
                     peak_v = (float)(channels[ch][bin]) * dom_calib->atwd1_gain_calib[ch][bin].slope
                         + dom_calib->atwd1_gain_calib[ch][bin].y_intercept
-                        - hv_baseline->atwd1_hv_baseline[ch];
+                        - baseline[atwd][ch];
                     hpeak_v = (float)(channels[ch-1][bin]) * dom_calib->atwd1_gain_calib[ch-1][bin].slope
                         + dom_calib->atwd1_gain_calib[ch-1][bin].y_intercept
-                        - hv_baseline->atwd1_hv_baseline[ch-1];
+                        - baseline[atwd][ch-1];
                 }
 
                 /* Also subtract out bias voltage */
@@ -181,6 +206,11 @@ int hv_amp_cal(calib_data *dom_calib) {
                 }
             }
         }
+
+        /* Turn off LED and LED PS between channel calibration */
+        halDisableLEDPS();
+        hal_FPGA_TEST_disable_LED();
+        halUSleep(DAC_SET_WAIT);
     }
 
     float mean, var;
@@ -216,6 +246,7 @@ int hv_amp_cal(calib_data *dom_calib) {
     halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, origDiscDAC);
     halWriteDAC((atwd == 0) ? DOM_HAL_DAC_ATWD0_TRIGGER_BIAS : 
                 DOM_HAL_DAC_ATWD1_TRIGGER_BIAS, origSampDAC);
+    halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, old_led_value);
 
     /* Won't turn off the HV for now...*/
 
@@ -223,3 +254,64 @@ int hv_amp_cal(calib_data *dom_calib) {
     return 0;
 
 }
+
+float measure_rate(int atwd, int ch) {
+
+    /* LED rate is >1KHz, so no prescan needed in this loop */
+
+    /* ATWD readout */
+    short channels[2][128];
+
+    /* Trigger one ATWD only */
+    int trigger_mask = (atwd == 0) ? HAL_FPGA_TEST_TRIGGER_ATWD0 : HAL_FPGA_TEST_TRIGGER_ATWD1;
+
+    /* Readout length */
+    int cnt = 128;
+
+    /* Number of pulses above threshold */
+    int p_cnt = 0;
+
+    /* store start clk for rate measurement */
+    long long clk_st = hal_FPGA_TEST_get_local_clock();
+
+    long long clk;
+    for (clk = hal_FPGA_TEST_get_local_clock();
+            clk - clk_st < TEST_TRIG_TIME * FPGA_HAL_TICKS_PER_SEC;
+            clk = hal_FPGA_TEST_get_local_clock()) {
+
+        /* LED trigger the ATWD */
+        hal_FPGA_TEST_trigger_disc(trigger_mask);
+
+
+        /* Wait for done */
+        while (!hal_FPGA_TEST_readout_done(trigger_mask));
+
+
+        /* Read out one waveform for all channels except 2, 3 */
+        if (atwd == 0) {
+            hal_FPGA_TEST_readout(channels[0], channels[1], NULL , NULL,
+                                      NULL, NULL, NULL, NULL,
+                                      cnt, NULL, 0, trigger_mask);
+        }
+        else {
+            hal_FPGA_TEST_readout(NULL, NULL, NULL, NULL,
+                                  channels[0], channels[1], NULL, NULL,
+                                  cnt, NULL, 0, trigger_mask);
+        }
+
+
+        /* Look at raw ATWD data of higher gain channel, whose amplifier should be
+         * calibrated already, to check range
+         */
+        short max = 0;
+        int bin;
+        for (bin = 0; bin < cnt; bin++) max = channels[ch][bin] > max ? channels[ch][bin] : max;
+
+        /* Is pulse of acceptable amplitude */
+        if (max > HV_AMP_CAL_MIN_PULSE && max < HV_AMP_CAL_MAX_PULSE) p_cnt++;
+    }
+
+    return (float)p_cnt / TEST_TRIG_TIME;
+}
+
+

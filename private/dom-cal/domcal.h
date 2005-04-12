@@ -121,5 +121,4 @@ typedef struct {
     /* Histograms */
     hv_histogram* histogram_data;
 
-
 } calib_data;
