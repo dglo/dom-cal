@@ -38,7 +38,7 @@ public class HVHistogram {
 
     public static HVHistogram parseHVHistogram(ByteBuffer bb) {
         short voltage = bb.getShort();
-        float noiseRate = (bb.getFloat());
+        float noiseRate = bb.getFloat();
         boolean isFilled = (bb.getShort() != 0);
         boolean convergent = (bb.getShort() != 0);
         float[] fitParams = new float[5];

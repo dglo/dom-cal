@@ -56,4 +56,10 @@ public interface DOMCalRecord {
 
     public HVHistogram getHVHistogram(int iter);
 
+    public short getNumHVBaselines();
+
+    public Baseline getHVBaseline(int iter);
+
+    public Baseline getBaseline();
+
 }

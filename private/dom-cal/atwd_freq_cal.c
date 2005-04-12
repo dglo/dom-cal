@@ -68,7 +68,7 @@ int atwd_freq_cal(calib_data *dom_calib) {
     /* Restore DOM state */
     halWriteDAC( DOM_HAL_DAC_ATWD0_TRIGGER_BIAS, old_ATWD0_bias );
     halWriteDAC( DOM_HAL_DAC_ATWD1_TRIGGER_BIAS, old_ATWD1_bias );
-    halSelectAnalogMuxInput( DOM_HAL_MUX_FLASHER_LED_CURRENT );
+    halDisableAnalogMux();
 
     if ( ret0 != 0 ) {
         return ret0;

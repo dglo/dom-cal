@@ -108,13 +108,21 @@ int spe_find_valley(float *a, float *valley_x, float *valley_y) {
      
     /* Find valley (first minimum) with Newton-Raphson search for zero
        of first derivative */
-    x = a[3] / 2;
+
+    /* First guess -- set exponential and gaussian equal */
+    float root = sqrt(a[1]*a[1] + 4*a[3]*a[4]*a[1] - 4*a[4]*log(a[0]/a[2]));
+    x = (a[1] + 2*a[3]*a[4] - root) / (2 * a[4]);
+
+
     int iter = 0;
     int done = 0;
     int converged = 0;
     int err = 0;
 
     while (!done) {
+
+        /* FIX ME DEBUG */
+        printf("iter: %d x: %f\n", iter, x);
     
         xoff = x - a[3];
         e1 = exp(-a[1] * x);

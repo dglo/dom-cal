@@ -59,6 +59,8 @@ public class DOMCalXML {
             out.print("  </atwdfreq>\n");
         }
 
+        formatBaseline(rec.getBaseline(), out);
+
         if ( rec.isHvCalValid() ) {
             
             out.print("  <hvGainCal>\n");
@@ -69,6 +71,7 @@ public class DOMCalXML {
 
 
         for (int i = 0; i < rec.getNumHVHistograms(); i++) {
+            formatBaseline(rec.getHVBaseline(i), out);
             formatHisto(rec.getHVHistogram(i), out);
         }
 
@@ -101,5 +104,15 @@ public class DOMCalXML {
         }
         out.print("    </histogram>\n");
         out.print("  </histo>\n");
+    }
+
+    private static void formatBaseline(Baseline base, PrintWriter out) {
+        out.print("  <baseline voltage=\"" + base.getVoltage() + "\">\n");
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 3; j++) {
+                out.print("    <base atwd=\"" + i + "\" ch=\"" + j + "\" value=\"" + base.getBaseline(i,j) + "\"/>\n");
+            }
+        }
+        out.print("  </baseline>\n");
     }
 }
