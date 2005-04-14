@@ -92,6 +92,8 @@ public class Calibrator
     private HashMap[] freqFits;
     /** gain vs. HV fit data. */
     private HashMap gainFit;
+    /** transit time fit data. */
+    private HashMap transitFit;
     /** HV histogram data. */
     private HashMap histoMap;
     /** Baselines at various HV settings */
@@ -368,6 +370,25 @@ public class Calibrator
         // Take log10
         double logGain = Math.log(gain) / Math.log(10);
         return Math.pow(10.0, (logGain - b)/m);
+    }
+
+    /**
+     *
+     * @param voltage  Voltage applied to PMT
+     * @return transit time for given voltage
+     * @throws DOMCalibrationException if no transit time data is present
+     */
+
+    public double getTransitTime(double voltage) throws DOMCalibrationException {
+        if (transitFit == null) throw new DOMCalibrationException("No transit time fit");
+
+        double m = ((Double) transitFit.get("slope")).doubleValue();
+        double b = ((Double) transitFit.get("intercept")).doubleValue();
+
+        double logv = Math.log(voltage) / Math.log(10);
+        double logt = m*logv + b;
+        return Math.pow(10.0, logt);
+
     }
 
     /**
@@ -944,6 +965,16 @@ public class Calibrator
     }
 
     /**
+     * Is there transit time fit data for this calibration file?
+     *
+     * @return <tt>true</tt> if there is transit time slope/intercept data
+     */
+    public boolean hasTransitTimeFit()
+    {
+        return (transitFit != null);
+    }
+
+    /**
      * Save the calibration data to the database.
      *
      *
@@ -1256,6 +1287,7 @@ public class Calibrator
             parseGainVsHV(dc.getElementsByTagName("hvGainCal"));
             parseHistograms(dc.getElementsByTagName("histo"));
             parseBaselines(dc.getElementsByTagName("baseline"));
+            parseTransitTime(dc.getElementsByTagName("pmtTransitTime"));
         }
 
         /**
@@ -1345,7 +1377,7 @@ public class Calibrator
         private void parseFreqFits(NodeList freqNodes) {
             for (int i = 0; i < freqNodes.getLength(); i++) {
                 Element freq = (Element) freqNodes.item(i);
-                int chip = Integer.parseInt(freq.getAttribute("chip"));
+                int chip = Integer.parseInt(freq.getAttribute("atwd"));
                 Element elem =
                     (Element) freq.getElementsByTagName("fit").item(0);
                 freqFits[chip] = parseFit(elem);
@@ -1377,6 +1409,28 @@ public class Calibrator
         }
 
         /**
+         * Parses new transit time data
+         * @param nodes
+         * @throws DOMCalibrationException
+         */
+
+        private void parseTransitTime(NodeList nodes)
+            throws DOMCalibrationException
+        {
+            switch (nodes.getLength()) {
+            case 0:
+                break;
+            case 1:
+                transitFit = parseFit((Element) nodes.item(0));
+                break;
+            default:
+                final String errMsg =
+                    "XML format error - more than one <pmtTransitTime> record";
+                throw new DOMCalibrationException(errMsg);
+            }
+        }
+
+        /**
          * Parses new domcal baseline data
          *
          */
@@ -1391,7 +1445,7 @@ public class Calibrator
                 for (int j = 0; j < baselist.getLength(); j++) {
                     Element base = (Element)baselist.item(j);
                     int atwd = Integer.parseInt(base.getAttribute("atwd"));
-                    int ch = Integer.parseInt(base.getAttribute("ch"));
+                    int ch = Integer.parseInt(base.getAttribute("channel"));
                     float value = Float.parseFloat(base.getAttribute("value"));
                     values[atwd][ch] = value;
                 }
