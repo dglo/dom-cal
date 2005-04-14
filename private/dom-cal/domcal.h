@@ -9,7 +9,7 @@
  * be incremented when changing structure of binary output
  */
 #define MAJOR_VERSION 5
-#define MINOR_VERSION 0
+#define MINOR_VERSION 1
 
 /* Default number of bytes in binary output */
 #define DEFAULT_RECORD_LENGTH 9388
@@ -69,6 +69,12 @@ typedef struct {
     float atwd1_hv_baseline[3];
 } hv_baselines;
 
+/* Transit times */
+typedef struct {
+    short voltage;
+    value_error transit_data;
+} transit_times;
+
 /* Calibration data structure */
 typedef struct {
     
@@ -119,7 +125,7 @@ typedef struct {
     short num_tt_pts;
 
     /* transit time vs hv array */
-    value_error *transit_calib;
+    transit_times *transit_calib;
 
     /* Number of histograms returned */
     short num_histos;
