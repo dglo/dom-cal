@@ -103,13 +103,12 @@ public class DOMCalRecordFactory {
 
         Baseline baseline = Baseline.parseBaseline(bb);
         
-        short transitTimeCalValidShort = bb.getShort();
-        boolean transitTimeCalVaild = (transitTimeCalValidShort == 0 ) ? false : true;
+        short numTransitTimePts = bb.getShort();
         
-        LinearFit transitTimeFit = null;
-        
-        if (transitTimeCalVaild) {
-            transitTimeFit = LinearFitFactory.parseLinearFit(bb);
+        TransitTimes[] tt = new TransitTimes[numTransitTimePts];
+
+        for (int i = 0; i < numTransitTimePts; i++) {
+            tt[i] = TransitTimes.parseTransitTimes(bb);
         }
 
         short hvCalValidShort = bb.getShort();
@@ -134,7 +133,7 @@ public class DOMCalRecordFactory {
         return new DefaultDOMCalRecord( pulserCalibration, atwdCalibration, atwdFrequencyCalibration,
                 amplifierCalibration, amplifierCalibrationError, temperature, year, month, day, domId, dacValues,
                adcValues, fadcValues, version, hvCalValid, hvGainFit, numHVHistograms, histos, baseline, hvBaselines,
-                                                                                transitTimeCalVaild, transitTimeFit);
+                                                  numTransitTimePts, tt);
     }
     
     private static class DefaultDOMCalRecord implements DOMCalRecord {
@@ -161,10 +160,11 @@ public class DOMCalRecordFactory {
         private short version;
 
         private boolean hvCalValid;
-        private boolean transitTimeCalValid;
-        
-        private LinearFit transitTimeCal;
+
         private LinearFit hvGainCal;
+
+        private short transitTimeCalPts;
+        private TransitTimes[] tt;
 
         private short numPVPts;
         private float[] pvData;
@@ -181,7 +181,7 @@ public class DOMCalRecordFactory {
                  temperature, short year, short month, short day, String domId, short[] dacValues, short[] adcValues,
                  short[] fadcValues, short version, boolean hvCalValid, LinearFit hvGainCal, 
                  short numHVHistograms, HVHistogram[] hvHistos, Baseline baseline, Baseline[] hvBaselines,
-                                                  boolean transitTimeCalValid, LinearFit transitTimeCal) {
+                                        short numTransitCalPts, TransitTimes[] tt) {
 
             this.baseline = baseline;
             this.hvBaselines = hvBaselines;
@@ -206,8 +206,8 @@ public class DOMCalRecordFactory {
             this.pvVoltageData = pvVoltageData;
             this.numHVHistograms = numHVHistograms;
             this.hvHistos = hvHistos;
-            this.transitTimeCal = transitTimeCal;
-            this.transitTimeCalValid = transitTimeCalValid;
+            this.transitTimeCalPts = numTransitCalPts;
+            this.tt = tt;
         }
 
         public short getVersion() {
@@ -295,13 +295,15 @@ public class DOMCalRecordFactory {
             return hvCalValid;
         }
 
-        public boolean isTransitTimeCalValid() {
-            return transitTimeCalValid;
+        public short getNumTransitTimePts() {
+            return transitTimeCalPts;
         }
 
-        public LinearFit getTransitTimeCal() {
-            return transitTimeCal;
+        public TransitTimes getTransitTime(int iter) {
+            if (iter >= transitTimeCalPts || iter < 0) throw new IndexOutOfBoundsException();
+            return tt[iter];
         }
+
 
         public LinearFit getHvGainCal() {
             return hvGainCal;

@@ -44,9 +44,9 @@ public interface DOMCalRecord {
     
     public boolean isHvCalValid();
 
-    public boolean isTransitTimeCalValid();
+    public short getNumTransitTimePts();
 
-    public LinearFit getTransitTimeCal();
+    public TransitTimes getTransitTime(int iter);
 
     public LinearFit getHvGainCal();
 

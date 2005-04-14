@@ -61,11 +61,14 @@ public class DOMCalXML {
 
         formatBaseline(rec.getBaseline(), out);
 
-        if (rec.isTransitTimeCalValid()) {
-            out.print("  <pmtTransitTime>\n");
-            format( rec.getTransitTimeCal(), out );
-            out.print("  </pmtTransitTime>\n");
+        out.print("  <pmtTransitTime>\n");
+        for (int i = 0; i < rec.getNumTransitTimePts(); i++) {
+            TransitTimes tt = rec.getTransitTime(i);
+            out.print("    <transitTime voltage=\"" + tt.getVoltage() +
+                                        "\" value=\"" + tt.getValue() + "\" error=\"" + tt.getError() + "\"/>");
         }
+        out.print("  </pmtTransitTime>\n");
+
 
         if ( rec.isHvCalValid() ) {
             
