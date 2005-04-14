@@ -375,7 +375,7 @@ public class Calibrator
     /**
      *
      * @param voltage  Voltage applied to PMT
-     * @return transit time for given voltage
+     * @return transit time for given voltage in ns
      * @throws DOMCalibrationException if no transit time data is present
      */
 
