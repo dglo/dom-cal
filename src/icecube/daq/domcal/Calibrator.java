@@ -93,7 +93,7 @@ public class Calibrator
     /** gain vs. HV fit data. */
     private HashMap gainFit;
     /** transit time fit data. */
-    private HashMap transitFit;
+    private HashMap transitTimes;
     /** HV histogram data. */
     private HashMap histoMap;
     /** Baselines at various HV settings */
@@ -380,14 +380,23 @@ public class Calibrator
      */
 
     public double getTransitTime(double voltage) throws DOMCalibrationException {
-        if (transitFit == null) throw new DOMCalibrationException("No transit time fit");
+        TransitTimes t = null;
+        if (transitTimes != null) {
+            Set s = transitTimes.keySet();
+            int abs = 10000;
+            for (Iterator it = s.iterator(); it.hasNext();) {
+                TransitTimes tt = (TransitTimes)(transitTimes.get(it.next()));
+                int diff = (int)Math.abs(tt.getVoltage() - voltage);
+                if (diff < abs) {
+                    t = tt;
+                    abs = diff;
+                }
+            }
+        }
 
-        double m = ((Double) transitFit.get("slope")).doubleValue();
-        double b = ((Double) transitFit.get("intercept")).doubleValue();
+        if (t != null) return t.getValue();
+        throw new DOMCalibrationException("Transit time data for voltage " + voltage + " unavailable.");
 
-        double logv = Math.log(voltage) / Math.log(10);
-        double logt = m*logv + b;
-        return Math.pow(10.0, logt);
 
     }
 
@@ -965,16 +974,6 @@ public class Calibrator
     }
 
     /**
-     * Is there transit time fit data for this calibration file?
-     *
-     * @return <tt>true</tt> if there is transit time slope/intercept data
-     */
-    public boolean hasTransitTimeFit()
-    {
-        return (transitFit != null);
-    }
-
-    /**
      * Save the calibration data to the database.
      *
      *
@@ -1287,7 +1286,7 @@ public class Calibrator
             parseGainVsHV(dc.getElementsByTagName("hvGainCal"));
             parseHistograms(dc.getElementsByTagName("histo"));
             parseBaselines(dc.getElementsByTagName("baseline"));
-            parseTransitTime(dc.getElementsByTagName("pmtTransitTime"));
+            parseTransitTimes(dc.getElementsByTagName("pmtTransitTime"));
         }
 
         /**
@@ -1409,24 +1408,19 @@ public class Calibrator
         }
 
         /**
-         * Parses new transit time data
-         * @param nodes
-         * @throws DOMCalibrationException
+         * Parses new domcal baseline data
+         *
          */
 
-        private void parseTransitTime(NodeList nodes)
-            throws DOMCalibrationException
-        {
-            switch (nodes.getLength()) {
-            case 0:
-                break;
-            case 1:
-                transitFit = parseFit((Element) nodes.item(0));
-                break;
-            default:
-                final String errMsg =
-                    "XML format error - more than one <pmtTransitTime> record";
-                throw new DOMCalibrationException(errMsg);
+        private void parseTransitTimes(NodeList nodes) {
+            transitTimes = new HashMap();
+            for (int i = 0; i < nodes.getLength(); i++) {
+                Element tEl = (Element)(nodes.item(i));
+                short voltage = Short.parseShort(tEl.getAttribute("voltage"));
+                float value = Float.parseFloat(tEl.getAttribute("value"));
+                float error = Float.parseFloat(tEl.getAttribute("error"));
+                Integer v = new Integer(voltage);
+                transitTimes.put(v, new TransitTimes(voltage, value, error));
             }
         }
 
