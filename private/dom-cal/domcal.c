@@ -352,11 +352,11 @@ int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
     offset += write_baseline(cal->atwd0_baseline, bin_data, offset);
     offset += write_baseline(cal->atwd1_baseline, bin_data, offset);
 
-    /* Write transit cal isValid flag */
-    offset += get_bytes_from_short(cal->num_histos == 0 ? 0 : 1, bin_data, offset);
+    /* Write transit cal num pts */
+    offset += get_bytes_from_short(cal->num_tt_pts, bin_data, offset);
    
-    /* Write transit time data if necessary */
-    if (cal->num_histos != 0) offset += write_fit(&cal->transit_calib, bin_data, offset);
+    /* Write transit time data */
+    for (i = 0; i < cal->num_tt_pts; i++) offset += write_value_error(&cal->transit_calib[i], bin_data, offset);
 
     /* Write HV gain cal isValid */
     offset += get_bytes_from_short( cal->hv_gain_valid, bin_data, offset );
@@ -467,13 +467,11 @@ int save_results(calib_data dom_calib) {
     r_size += dom_calib.num_histos * 2; //baseline voltages
 
     
-    /* Transit cal isValid flag */
+    /* Transit cal num pts */
     r_size += 2;
 
-    /* We have pmt transit time data if num_histos != 0 */
-    if (dom_calib.num_histos != 0) {
-        r_size += 12;
-    }
+    /* Transit time array */
+    r_size += dom_calib.num_tt_pts * 8;
 
     r_size += 2 * 3 * 4; //baselines
 

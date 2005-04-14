@@ -115,8 +115,11 @@ typedef struct {
     /* Log(HV) vs. Log(gain) HV calibration fit */
     linear_fit hv_gain_calib;
 
-    /* Log(time) vs Log(HV) transit time fit */
-    linear_fit transit_calib;
+    /* Number of transit time pts */
+    short num_tt_pts;
+
+    /* transit time vs hv array */
+    value_error *transit_calib;
 
     /* Number of histograms returned */
     short num_histos;
