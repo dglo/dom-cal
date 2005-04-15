@@ -1376,7 +1376,11 @@ public class Calibrator
         private void parseFreqFits(NodeList freqNodes) {
             for (int i = 0; i < freqNodes.getLength(); i++) {
                 Element freq = (Element) freqNodes.item(i);
-                int chip = Integer.parseInt(freq.getAttribute("chip"));
+                String chipStr = freq.getAttribute("atwd");
+                if (chipStr.length() == 0) {
+                    chipStr = freq.getAttribute("chip");
+                }
+                int chip = Integer.parseInt(chipStr);
                 Element elem =
                     (Element) freq.getElementsByTagName("fit").item(0);
                 freqFits[chip] = parseFit(elem);
@@ -1439,7 +1443,11 @@ public class Calibrator
                 for (int j = 0; j < baselist.getLength(); j++) {
                     Element base = (Element)baselist.item(j);
                     int atwd = Integer.parseInt(base.getAttribute("atwd"));
-                    int ch = Integer.parseInt(base.getAttribute("ch"));
+                    String chanStr = base.getAttribute("channel");
+                    if (chanStr.length() == 0) {
+                        chanStr = base.getAttribute("ch");
+                    }
+                    int ch = Integer.parseInt(chanStr);
                     float value = Float.parseFloat(base.getAttribute("value"));
                     values[atwd][ch] = value;
                 }

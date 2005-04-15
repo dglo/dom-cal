@@ -54,7 +54,7 @@ public class DOMCalXML {
             out.print("  </amplifier>\n");
         }
         for ( int i = 0; i < 2; i++ ) {
-            out.print("  <atwdfreq chip=\"" + i + "\">\n");
+            out.print("  <atwdfreq atwd=\"" + i + "\">\n");
             format( rec.getATWDFrequencyCalibration( i ), out );
             out.print("  </atwdfreq>\n");
         }
@@ -119,7 +119,8 @@ public class DOMCalXML {
         out.print("  <baseline voltage=\"" + base.getVoltage() + "\">\n");
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 3; j++) {
-                out.print("    <base atwd=\"" + i + "\" ch=\"" + j +  "\"value=\"" + base.getBaseline(i,j) + "\"/>\n");
+                out.print("    <base atwd=\"" + i + "\" channel=\"" + j +
+                                                                     "\"value=\"" + base.getBaseline(i,j) + "\"/>\n");
             }
         }
         out.print("  </baseline>\n");
