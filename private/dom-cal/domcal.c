@@ -29,6 +29,8 @@
 #include "atwd_freq_cal.h"
 #include "hv_gain_cal.h"
 #include "baseline_cal.h"
+#include "hv_amp_cal.h"
+#include "transit_cal.h"
 
 /*---------------------------------------------------------------------------*/
 /* 
@@ -521,7 +523,7 @@ int main(void) {
     get_date(&dom_calib);
     
     /* Ask user if they want an HV calibration */
-    printf("Do you want to perform an HV gain calibration (y/n)? ");
+    printf("Do you want to perform the HV portion of the calibration (y/n)? ");
     fflush(stdout);
     getstr(buf);
     printf("\r\n");
@@ -562,6 +564,7 @@ int main(void) {
     amp_cal(&dom_calib);
     atwd_freq_cal(&dom_calib);
     if (doHVCal) {
+        transit_cal(&dom_calib);
         hv_baseline_cal(&dom_calib);
         hv_amp_cal(&dom_calib);
         hv_gain_cal(&dom_calib);
