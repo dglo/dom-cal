@@ -56,6 +56,7 @@ public class CalibratorDBTest
         /* Setup the logging infrastructure */
         BasicConfigurator.configure();
 
+	ProductType.clearStatic();
         MockCalDB.initStatic();
     }
 
@@ -67,9 +68,9 @@ public class CalibratorDBTest
     protected void tearDown()
         throws Exception
     {
-        super.tearDown();
-
         MockCalDB.verifyStatic();
+
+        super.tearDown();
     }
 
     public void testSave()
