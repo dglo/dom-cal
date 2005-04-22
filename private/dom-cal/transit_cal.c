@@ -131,11 +131,8 @@ int transit_cal(calib_data *dom_calib) {
     }
 
     /* Get the average */
-    /* printf("Pedestal pattern:\r\n"); */
-    for (bin = 0; bin<cnt; bin++) {
+    for (bin = 0; bin<cnt; bin++)
         pedestal[bin] /= TRANSIT_CAL_TRIG_CNT;
-        /* printf("%.2f\r\n", pedestal[bin]); */
-    }
 
     /* Turn on the LED power */
     halEnableLEDPS();
@@ -150,10 +147,11 @@ int transit_cal(calib_data *dom_calib) {
     for (hv_idx = 0; hv_idx < TRANSIT_CAL_HV_CNT; hv_idx++) {
 
         float peak_avg = 0.0;
+        float current_peak_avg = 0.0;
 
         /* Set high voltage and give it time to stabilize */
         hv = (hv_idx * TRANSIT_CAL_HV_INC) + TRANSIT_CAL_HV_LOW;      
-        
+
 #ifdef DEBUG
         printf(" Setting HV to %d V\r\n", hv);
 #endif
@@ -191,11 +189,7 @@ int transit_cal(calib_data *dom_calib) {
             /* FIX ME -- CHECK AMPLITUDE? */
             ch = TRANSIT_CAL_CH;
 
-            /* Find the peak in the ATWD waveform */                
-            /* FIX ME DEBUG */
-            /* if (trig == 0) 
-               printf("Channel %d\r\n", ch); */
-            
+            /* Find the peak in the ATWD waveform */            
             peak_idx = 0;
             if (atwd == 0) {
                 peak_v = (float)channels[ch][0] * dom_calib->atwd0_gain_calib[ch][0].slope
@@ -231,9 +225,6 @@ int transit_cal(calib_data *dom_calib) {
                     peak_v = bin_v;
                 }
                 
-                /* FIX ME DEBUG */
-                if (trig==0)
-                    printf("%d %g\r\n", bin, bin_v);
             }
             
             /* Calculate peak average, for kicks */
@@ -264,9 +255,6 @@ int transit_cal(calib_data *dom_calib) {
                 last_bin_v = bin_v;
             }
            
-            /* FIX ME DEBUG */
-            /* printf("atwd LE: %.1f\r\n", le_atwd_idx); */
-
             /* Find the peak and leading edge in the current waveform */
             /* Note polarity of pedestal subtraction to keep peak a minimum like in ATWD */
             peak_v = pedestal[0] - channels[3][0];
@@ -278,12 +266,10 @@ int transit_cal(calib_data *dom_calib) {
                     peak_idx = bin;
                     peak_v = bin_v;
                 }
-
-                /* FIX ME DEBUG */
-                /* if (trig==0)
-                   printf("%d %g\r\n", bin, bin_v); */
-
             }           
+
+            /* Calculate peak average, for kicks */
+            current_peak_avg += peak_v;
 
             /* Now find leading edge in current waveform */
             last_bin_v = peak_v;
@@ -297,11 +283,7 @@ int transit_cal(calib_data *dom_calib) {
                     break;
                 }
                 last_bin_v = bin_v;
-            }
-            
-            /* FIX ME DEBUG */
-            /* printf("current LE: %.1f\r\n", le_current_idx); */
-            
+            }            
             /* FIX ME CHECK FOR FREAKING ERRORS */
         
             /* Save transit time in ns = samples * 1000 / freq in MHz */
@@ -311,14 +293,20 @@ int transit_cal(calib_data *dom_calib) {
 
         /* Print average peak amplitude */
         peak_avg /= TRANSIT_CAL_TRIG_CNT;
-        printf("V %d Avg peak %.2f\r\n", hv, peak_avg);
+        current_peak_avg /= TRANSIT_CAL_TRIG_CNT;
+
+#ifdef DEBUG
+        printf("V %d Avg signal peak %.2f  Avg current peak %.2f\r\n", hv, peak_avg, current_peak_avg);
+#endif
 
         /* Find mean and error */
         float var;
         meanVarFloat(transits, TRANSIT_CAL_TRIG_CNT, 
                      &(transit_array[hv_idx].transit_data.value), &var);
 
+#ifdef DEBUG
         printf("Sqrt(var): %.3f\r\n", sqrt(var));
+#endif
 
         transit_array[hv_idx].transit_data.error = sqrt(var) / sqrt(TRANSIT_CAL_TRIG_CNT);        
         transit_array[hv_idx].voltage = hv;
@@ -326,15 +314,28 @@ int transit_cal(calib_data *dom_calib) {
     } /* End HV loop */
 
     /*---------------------------------------------------------------------------*/
-    /* Save results */
+
+    /* Attempt some sort of fit */
+    float x[TRANSIT_CAL_HV_CNT], y[TRANSIT_CAL_HV_CNT];    
+    for (hv_idx = 0; hv_idx < TRANSIT_CAL_HV_CNT; hv_idx++) {
+        x[hv_idx] = 1 / sqrt((hv_idx * TRANSIT_CAL_HV_INC) + TRANSIT_CAL_HV_LOW);
+        y[hv_idx] = transit_array[hv_idx].transit_data.value; 
+    }
+    linear_fit fit;
+    linearFitFloat(x, y, TRANSIT_CAL_HV_CNT, &fit);
 
 #ifdef DEBUG
-    printf("HV value error\r\n");
+    printf("Fit: m %g b %g r2 %g\r\n", fit.slope, fit.y_intercept, fit.r_squared);
+    printf("HV_idx hv 1/sqrt(v) value error\r\n");
     for (hv_idx = 0; hv_idx < TRANSIT_CAL_HV_CNT; hv_idx++) {        
-        printf("%d %g %g\r\n", hv_idx,  transit_array[hv_idx].transit_data.value,
-               transit_array[hv_idx].transit_data.error);
+        printf("%d %d %g %g %g\r\n", hv_idx,  ((hv_idx * TRANSIT_CAL_HV_INC) + TRANSIT_CAL_HV_LOW), 
+            x[hv_idx], transit_array[hv_idx].transit_data.value,
+            transit_array[hv_idx].transit_data.error);
     }    
 #endif
+
+    /* Save results */
+    dom_calib->num_tt_pts = TRANSIT_CAL_HV_CNT;
     dom_calib->transit_calib = transit_array;
 
     /*---------------------------------------------------------------------------*/

@@ -8,8 +8,6 @@
 #define TRANSIT_CAL_HV_INC         100
 #define TRANSIT_CAL_HV_CNT           8
 
-/* LED amplitude */
-#define TRANSIT_CAL_LED_AMPLITUDE   300
 
 /* Specific DAC values for this test */
 #ifdef DOMCAL_REV5
@@ -25,6 +23,11 @@
 
 /* Which channel to use */
 #define TRANSIT_CAL_CH                1
+
+/* Flasher brightness */
+/* 600 is about the maximim reliable value */
+/* (minimum brightness) */
+#define TRANSIT_CAL_LED_AMPLITUDE   600
 
 /* How many waveforms to measure */
 #define TRANSIT_CAL_TRIG_CNT        250
