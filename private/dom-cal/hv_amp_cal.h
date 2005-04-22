@@ -16,13 +16,13 @@
 #define TEST_TRIG_TIME 15 //seconds
 
 /* LED initial amplitude -- used if not enough muons are present */
-#define INIT_LED_AMPLITUDE 300
+#define INIT_LED_AMPLITUDE 200
 
 /* LED amplitude increment */
 #define LED_AMPLITUDE_INC 50 
 
 /* Minimum acceptable rate of pulses capable of amp calibration */
-#define MIN_PULSE_RATE 0.5
+#define MIN_PULSE_RATE 3.0
 
 /* Maximum amplitude of LED */
 #define LED_MAX_AMPLITUDE 1023
