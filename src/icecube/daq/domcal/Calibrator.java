@@ -129,6 +129,22 @@ public class Calibrator
      * @throws IOException if there is a problem reading the stream
      * @throws DOMCalibrationException if there is a formatting error
      */
+    public Calibrator(InputStream is, CalibratorDB calDB) throws
+            IOException,
+            DOMCalibrationException {
+        this(is);
+
+        this.calDB = calDB;
+    }
+
+    /**
+     * Constructor from initialized InputStream object.
+     * The XML stream is read into a DOM tree over this object.
+     * @param is an initialized, open InputStream object pointing
+     * to the XML file.
+     * @throws IOException if there is a problem reading the stream
+     * @throws DOMCalibrationException if there is a formatting error
+     */
     public Calibrator(InputStream is) throws
             IOException,
             DOMCalibrationException {
@@ -152,17 +168,37 @@ public class Calibrator
     public Calibrator(String mbSerial, Date date, double temp)
         throws DOMCalibrationException, IOException, SQLException
     {
+        this(mbSerial, date, temp, null);
+    }
+
+    /**
+     * Load calibration data from the database.
+     *
+     * @param mbSerial mainboard serial number of DOM being loaded
+     * @param date date of data being loaded
+     * @param temp temperature of data being loaded
+     *
+     * @throws DOMCalibrationException if an argument is invalid
+     * @throws IOException if there is a problem reading the stream
+     * @throws SQLException if there is a database problem
+     */
+    public Calibrator(String mbSerial, Date date, double temp,
+                      CalibratorDB calDB)
+        throws DOMCalibrationException, IOException, SQLException
+    {
         this();
 
-        if (calDB == null) {
+        if (calDB != null) {
+            this.calDB = calDB;
+        } else {
             try {
-                calDB = new CalibratorDB();
+                this.calDB = new CalibratorDB();
             } catch (DOMProdTestException dpte) {
                 throw new DOMCalibrationException(dpte.getMessage());
             }
         }
 
-        calDB.load(this, mbSerial, date, temp);
+        this.calDB.load(this, mbSerial, date, temp);
     }
 
     /**

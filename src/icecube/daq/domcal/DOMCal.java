@@ -12,8 +12,6 @@
 
 package icecube.daq.domcal;
 
-import icecube.daq.domcal.app.SaveToDB;
-
 import org.apache.log4j.Logger;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
@@ -188,7 +186,7 @@ public class DOMCal implements Runnable {
  
         logger.debug("Saving calibration data to database");
         try {
-            new SaveToDB(fn, false);
+            CalibratorDB.save(fn, logger);
         } catch (Exception ex) {
             logger.debug("Failed!", ex);
             return;

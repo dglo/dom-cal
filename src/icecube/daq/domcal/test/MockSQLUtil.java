@@ -448,12 +448,16 @@ abstract class MockSQLUtil
              " and temperature<=" + (temp + 5.0)) +
             " order by date desc";
 
-        final Object[] qryObjs = new Object[] {
-            new Integer(domcalId),
-            date,
-            new Double(temp)
-        };
-        stmt.addExpectedQuery(qStr, "mainQry", qryObjs);
+        if (domcalId < 0) {
+            stmt.addExpectedQuery(qStr, "mainQry", null);
+        } else {
+            final Object[] qryObjs = new Object[] {
+                new Integer(domcalId),
+                date,
+                new Double(temp)
+            };
+            stmt.addExpectedQuery(qStr, "mainQry", qryObjs);
+        }
     }
 
     public static final void addModelTypeSQL(MockStatement stmt)
@@ -534,8 +538,6 @@ abstract class MockSQLUtil
             "values(" + domcalId + "," + MODEL_LINEAR_ID + "," + regression +
             ")";
         stmt.addExpectedUpdate(rStr, 1);
-
-        addParamTypeSQL(stmt);
 
         final String sStr =
             "insert into DOMCal_PulserParam(domcal_id,dc_param_id,value)" +
