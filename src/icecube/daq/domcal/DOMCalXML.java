@@ -62,11 +62,7 @@ public class DOMCalXML {
         formatBaseline(rec.getBaseline(), out);
 
         out.print("  <pmtTransitTime>\n");
-        for (int i = 0; i < rec.getNumTransitTimePts(); i++) {
-            TransitTimes tt = rec.getTransitTime(i);
-            out.print("    <transitTime voltage=\"" + tt.getVoltage() +
-                                        "\" value=\"" + tt.getValue() + "\" error=\"" + tt.getError() + "\"/>");
-        }
+        format(rec.getTransitTimeFit(), out);
         out.print("  </pmtTransitTime>\n");
 
 
@@ -120,7 +116,7 @@ public class DOMCalXML {
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 3; j++) {
                 out.print("    <base atwd=\"" + i + "\" channel=\"" + j +
-                                                                     "\"value=\"" + base.getBaseline(i,j) + "\"/>\n");
+                                                                     "\" value=\"" + base.getBaseline(i,j) + "\"/>\n");
             }
         }
         out.print("  </baseline>\n");

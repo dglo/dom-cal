@@ -44,17 +44,9 @@ public interface DOMCalRecord {
     
     public boolean isHvCalValid();
 
-    public short getNumTransitTimePts();
-
-    public TransitTimes getTransitTime(int iter);
+    public LinearFit getTransitTimeFit();
 
     public LinearFit getHvGainCal();
-
-    public short getNumPVPts();
-
-    public float getPVValue( int iter );
-
-    public float getPVVoltageData( int iter );
 
     public short getNumHVHistograms();
 
