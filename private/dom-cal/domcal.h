@@ -9,7 +9,7 @@
  * be incremented when changing structure of binary output
  */
 #define MAJOR_VERSION 5
-#define MINOR_VERSION 1
+#define MINOR_VERSION 2
 
 /* Default number of bytes in binary output */
 #define DEFAULT_RECORD_LENGTH 9388
