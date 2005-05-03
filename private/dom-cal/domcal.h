@@ -69,12 +69,6 @@ typedef struct {
     float atwd1_hv_baseline[3];
 } hv_baselines;
 
-/* Transit times */
-typedef struct {
-    short voltage;
-    value_error transit_data;
-} transit_times;
-
 /* Calibration data structure */
 typedef struct {
     
@@ -121,11 +115,8 @@ typedef struct {
     /* Log(HV) vs. Log(gain) HV calibration fit */
     linear_fit hv_gain_calib;
 
-    /* Number of transit time pts */
-    short num_tt_pts;
-
     /* transit time vs hv array */
-    transit_times *transit_calib;
+    linear_fit transit_calib;
 
     /* Number of histograms returned */
     short num_histos;

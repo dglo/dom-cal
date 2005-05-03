@@ -44,7 +44,7 @@ int transit_cal(calib_data *dom_calib) {
     float transits[TRANSIT_CAL_TRIG_CNT];
 
     /* Results -- mean and error at each point */
-    static transit_times transit_array[TRANSIT_CAL_HV_CNT];
+    float transit_data[TRANSIT_CAL_HV_CNT];
 
 #ifdef DEBUG
     printf("Performing PMT transit time calibration (using ATWD%d)...\r\n", atwd);
@@ -302,14 +302,11 @@ int transit_cal(calib_data *dom_calib) {
         /* Find mean and error */
         float var;
         meanVarFloat(transits, TRANSIT_CAL_TRIG_CNT, 
-                     &(transit_array[hv_idx].transit_data.value), &var);
+                              &(transit_data[hv_idx]), &var);
 
 #ifdef DEBUG
         printf("Sqrt(var): %.3f\r\n", sqrt(var));
 #endif
-
-        transit_array[hv_idx].transit_data.error = sqrt(var) / sqrt(TRANSIT_CAL_TRIG_CNT);        
-        transit_array[hv_idx].voltage = hv;
 
     } /* End HV loop */
 
@@ -319,24 +316,19 @@ int transit_cal(calib_data *dom_calib) {
     float x[TRANSIT_CAL_HV_CNT], y[TRANSIT_CAL_HV_CNT];    
     for (hv_idx = 0; hv_idx < TRANSIT_CAL_HV_CNT; hv_idx++) {
         x[hv_idx] = 1 / sqrt((hv_idx * TRANSIT_CAL_HV_INC) + TRANSIT_CAL_HV_LOW);
-        y[hv_idx] = transit_array[hv_idx].transit_data.value; 
+        y[hv_idx] = transit_data[hv_idx]; 
     }
-    linear_fit fit;
-    linearFitFloat(x, y, TRANSIT_CAL_HV_CNT, &fit);
+    linearFitFloat(x, y, TRANSIT_CAL_HV_CNT, &dom_calib->transit_calib);
 
 #ifdef DEBUG
-    printf("Fit: m %g b %g r2 %g\r\n", fit.slope, fit.y_intercept, fit.r_squared);
+    printf("Fit: m %g b %g r2 %g\r\n", dom_calib->transit_calib.slope,
+            dom_calib->transit_calib.y_intercept, dom_calib->transit_calib.r_squared);
     printf("HV_idx hv 1/sqrt(v) value error\r\n");
     for (hv_idx = 0; hv_idx < TRANSIT_CAL_HV_CNT; hv_idx++) {        
-        printf("%d %d %g %g %g\r\n", hv_idx,  ((hv_idx * TRANSIT_CAL_HV_INC) + TRANSIT_CAL_HV_LOW), 
-            x[hv_idx], transit_array[hv_idx].transit_data.value,
-            transit_array[hv_idx].transit_data.error);
+        printf("%d %d %g %g\r\n", hv_idx,  ((hv_idx * TRANSIT_CAL_HV_INC) + TRANSIT_CAL_HV_LOW), 
+            x[hv_idx], transit_data[hv_idx]);
     }    
 #endif
-
-    /* Save results */
-    dom_calib->num_tt_pts = TRANSIT_CAL_HV_CNT;
-    dom_calib->transit_calib = transit_array;
 
     /*---------------------------------------------------------------------------*/
     /* Turn off LED and LED power supply*/

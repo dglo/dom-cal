@@ -239,14 +239,6 @@ int write_baseline(float *baseline, char *bin_data, int offset) {
     return bytes_written;
 }
 
-int write_transit_times(transit_times *tt, char *bin_data, int offset) {
-    int bytes_written = get_bytes_from_short(tt->voltage, bin_data, offset);
-    bytes_written += get_bytes_from_float(tt->transit_data.value, bin_data, offset + bytes_written);
-    bytes_written += get_bytes_from_float(tt->transit_data.error, bin_data, offset + bytes_written);
-    return bytes_written;
-}
-
-
 int write_hv_baseline(hv_baselines *hv_baseline, char *bin_data, int offset ) {
     int bytes_written = get_bytes_from_short(hv_baseline->voltage, bin_data, offset);
     bytes_written += write_baseline(hv_baseline->atwd0_hv_baseline, bin_data, offset + bytes_written);
@@ -362,11 +354,8 @@ int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
     offset += write_baseline(cal->atwd0_baseline, bin_data, offset);
     offset += write_baseline(cal->atwd1_baseline, bin_data, offset);
 
-    /* Write transit cal num pts */
-    offset += get_bytes_from_short(cal->num_tt_pts, bin_data, offset);
-   
     /* Write transit time data */
-    for (i = 0; i < cal->num_tt_pts; i++) offset += write_transit_times(&cal->transit_calib[i], bin_data, offset);
+    offset += write_fit(&cal->transit_calib, bin_data, offset);
 
     /* Write HV gain cal isValid */
     offset += get_bytes_from_short( cal->hv_gain_valid, bin_data, offset );
@@ -477,11 +466,8 @@ int save_results(calib_data dom_calib) {
     r_size += dom_calib.num_histos * 2; //baseline voltages
 
     
-    /* Transit cal num pts */
-    r_size += 2;
-
-    /* Transit time array */
-    r_size += dom_calib.num_tt_pts * 10;
+    /* Transit cal */
+    r_size += 12;
 
     r_size += 2 * 3 * 4; //baselines
 

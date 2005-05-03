@@ -121,9 +121,6 @@ int spe_find_valley(float *a, float *valley_x, float *valley_y) {
 
     while (!done) {
 
-        /* FIX ME DEBUG */
-        printf("iter: %d x: %f\n", iter, x);
-    
         xoff = x - a[3];
         e1 = exp(-a[1] * x);
         e2 = exp(-xoff * xoff * a[4]);
