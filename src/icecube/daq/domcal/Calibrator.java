@@ -92,6 +92,8 @@ public class Calibrator
     private HashMap[] freqFits;
     /** gain vs. HV fit data. */
     private HashMap gainFit;
+    /** transit time fit data. */
+    private HashMap transitFit;
     /** HV histogram data. */
     private HashMap histoMap;
     /** Baselines at various HV settings */
@@ -127,6 +129,22 @@ public class Calibrator
      * @throws IOException if there is a problem reading the stream
      * @throws DOMCalibrationException if there is a formatting error
      */
+    public Calibrator(InputStream is, CalibratorDB calDB) throws
+            IOException,
+            DOMCalibrationException {
+        this(is);
+
+        this.calDB = calDB;
+    }
+
+    /**
+     * Constructor from initialized InputStream object.
+     * The XML stream is read into a DOM tree over this object.
+     * @param is an initialized, open InputStream object pointing
+     * to the XML file.
+     * @throws IOException if there is a problem reading the stream
+     * @throws DOMCalibrationException if there is a formatting error
+     */
     public Calibrator(InputStream is) throws
             IOException,
             DOMCalibrationException {
@@ -150,17 +168,37 @@ public class Calibrator
     public Calibrator(String mbSerial, Date date, double temp)
         throws DOMCalibrationException, IOException, SQLException
     {
+        this(mbSerial, date, temp, null);
+    }
+
+    /**
+     * Load calibration data from the database.
+     *
+     * @param mbSerial mainboard serial number of DOM being loaded
+     * @param date date of data being loaded
+     * @param temp temperature of data being loaded
+     *
+     * @throws DOMCalibrationException if an argument is invalid
+     * @throws IOException if there is a problem reading the stream
+     * @throws SQLException if there is a database problem
+     */
+    public Calibrator(String mbSerial, Date date, double temp,
+                      CalibratorDB calDB)
+        throws DOMCalibrationException, IOException, SQLException
+    {
         this();
 
-        if (calDB == null) {
+        if (calDB != null) {
+            this.calDB = calDB;
+        } else {
             try {
-                calDB = new CalibratorDB();
+                this.calDB = new CalibratorDB();
             } catch (DOMProdTestException dpte) {
                 throw new DOMCalibrationException(dpte.getMessage());
             }
         }
 
-        calDB.load(this, mbSerial, date, temp);
+        this.calDB.load(this, mbSerial, date, temp);
     }
 
     /**
@@ -368,6 +406,26 @@ public class Calibrator
         // Take log10
         double logGain = Math.log(gain) / Math.log(10);
         return Math.pow(10.0, (logGain - b)/m);
+    }
+
+    /**
+     *
+     * @param voltage  Voltage applied to PMT
+     * @return transit time for given voltage in ns
+     * @throws DOMCalibrationException if no transit time data is present
+     */
+
+    public double getTransitTime(double voltage) throws DOMCalibrationException {
+        if (transitFit == null) {
+            throw new DOMCalibrationException("No transit time fit");
+        }
+
+        double m = ((Double) transitFit.get("slope")).doubleValue();
+        double b = ((Double) transitFit.get("intercept")).doubleValue();
+
+        double sqrtV = Math.sqrt(voltage);
+        return m/sqrtV + b;
+
     }
 
     /**
@@ -1256,6 +1314,7 @@ public class Calibrator
             parseGainVsHV(dc.getElementsByTagName("hvGainCal"));
             parseHistograms(dc.getElementsByTagName("histo"));
             parseBaselines(dc.getElementsByTagName("baseline"));
+            parseTransitTimes(dc.getElementsByTagName("pmtTransitTime"));
         }
 
         /**
@@ -1345,7 +1404,11 @@ public class Calibrator
         private void parseFreqFits(NodeList freqNodes) {
             for (int i = 0; i < freqNodes.getLength(); i++) {
                 Element freq = (Element) freqNodes.item(i);
-                int chip = Integer.parseInt(freq.getAttribute("chip"));
+                String chipStr = freq.getAttribute("atwd");
+                if (chipStr.length() == 0) {
+                    chipStr = freq.getAttribute("chip");
+                }
+                int chip = Integer.parseInt(chipStr);
                 Element elem =
                     (Element) freq.getElementsByTagName("fit").item(0);
                 freqFits[chip] = parseFit(elem);
@@ -1377,6 +1440,27 @@ public class Calibrator
         }
 
         /**
+         * Parses new domcal transit time data
+         *
+         */
+
+        private void parseTransitTimes(NodeList nodes)
+            throws DOMCalibrationException
+        {
+            switch (nodes.getLength()) {
+            case 0:
+                break;
+            case 1:
+                transitFit = parseFit((Element) nodes.item(0));
+                break;
+            default:
+                final String errMsg =
+                    "XML format error - more than one <pmtTransitTime> record";
+                throw new DOMCalibrationException(errMsg);
+            }
+        }
+
+        /**
          * Parses new domcal baseline data
          *
          */
@@ -1391,7 +1475,11 @@ public class Calibrator
                 for (int j = 0; j < baselist.getLength(); j++) {
                     Element base = (Element)baselist.item(j);
                     int atwd = Integer.parseInt(base.getAttribute("atwd"));
-                    int ch = Integer.parseInt(base.getAttribute("ch"));
+                    String chanStr = base.getAttribute("channel");
+                    if (chanStr.length() == 0) {
+                        chanStr = base.getAttribute("ch");
+                    }
+                    int ch = Integer.parseInt(chanStr);
                     float value = Float.parseFloat(base.getAttribute("value"));
                     values[atwd][ch] = value;
                 }

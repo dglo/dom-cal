@@ -109,10 +109,6 @@ void getBaseline(calib_data *dom_calib, float max_var, float base[2][3]) {
                         wf_bad = 1;
                         wf_bad_cnt++;
                         if (wf_bad_cnt > BASELINE_CAL_TRIG_CNT) {
-                            
-#ifdef DEBUG
-                            printf("Too many bad waveforms... scaling variance up!\r\n");
-#endif
                             max_var *= 1.5;
                             wf_bad_cnt = 0;
                         }

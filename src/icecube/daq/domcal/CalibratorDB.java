@@ -6,6 +6,8 @@ import icecube.daq.db.domprodtest.DOMProdTestUtil;
 import icecube.daq.db.domprodtest.DOMProduct;
 import icecube.daq.db.domprodtest.Laboratory;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 
 import java.sql.Connection;
@@ -13,6 +15,9 @@ import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+
+import java.text.FieldPosition;
+import java.text.SimpleDateFormat;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,8 +33,7 @@ public class CalibratorDB
     extends DOMProdTestDB
 {
     /** Log message handler. */
-    private static Logger logger =
-        Logger.getLogger(CalibratorDB.class.getName());
+    private static Logger logger = Logger.getLogger(CalibratorDB.class);
 
     /** List of model types. */
     private static ModelType modelType;
@@ -65,6 +69,50 @@ public class CalibratorDB
         throws DOMProdTestException, IOException, SQLException
     {
         super(props);
+    }
+
+    /**
+     * Clear all cached entries.
+     */
+    public static void clearStatic()
+    {
+        modelType = null;
+        paramType = null;
+    }
+
+    /**
+     * Return a formatted creation date string.
+     *
+     * @param cal calibration data
+     *
+     * @return formatted creation date
+     */
+    private static final String formatDate(Calibrator cal)
+    {
+        SimpleDateFormat dateFmt = new SimpleDateFormat("MMM-dd-yyyy");
+        StringBuffer dateBuf = new StringBuffer();
+        FieldPosition fldPos = new FieldPosition(0);
+
+        dateFmt.format(cal.getCalendar().getTime(), dateBuf, fldPos);
+
+        return dateBuf.toString();
+    }
+
+    /**
+     * Return a formatted temperature string.
+     *
+     * @param cal calibration data
+     *
+     * @return formatted temperature
+     */
+    private static final String formatTemperature(Calibrator cal)
+    {
+        final String dblStr = Double.toString(cal.getTemperature());
+        final int dotIdx = dblStr.indexOf('.');
+        if (dblStr.length() <= dotIdx + 3) {
+            return dblStr;
+        }
+        return dblStr.substring(0, dotIdx + 3);
     }
 
     /**
@@ -709,21 +757,34 @@ public class CalibratorDB
             " order by date desc";
 
         ResultSet rs = stmt.executeQuery(qStr);
-        if (!rs.next()) {
-            final String errMsg = "No calibration information for DOM " +
-                mbSerial + (date == null ? "" : ", date " + date) +
-                (Double.isNaN(temp) ? "" : ", temperature " + temp);
-            throw new DOMCalibrationException(errMsg);
-        }
 
-        final int domcalId = rs.getInt(1);
-        final Date dcDate = rs.getDate(2);
-        final double dcTemp = rs.getDouble(3);
+        boolean hasNext = rs.next();
+
+        final int domcalId;
+        final Date dcDate;
+        final double dcTemp;
+
+        if (!hasNext) {
+            domcalId = Integer.MIN_VALUE;
+            dcDate = null;
+            dcTemp = 0.0;
+        } else {
+            domcalId = rs.getInt(1);
+            dcDate = rs.getDate(2);
+            dcTemp = rs.getDouble(3);
+        }
 
         try {
             rs.close();
         } catch (SQLException se) {
             // ignore errors on close
+        }
+
+        if (!hasNext) {
+            final String errMsg = "No calibration information for DOM " +
+                mbSerial + (date == null ? "" : ", date " + date) +
+                (Double.isNaN(temp) ? "" : ", temperature " + temp);
+            throw new DOMCalibrationException(errMsg);
         }
 
         cal.setMain(domcalId, mbSerial, dcProd, dcDate, dcTemp);
@@ -781,6 +842,76 @@ public class CalibratorDB
             rs.close();
         } catch (SQLException se) {
             // ignore errors on close
+        }
+    }
+
+    /**
+     * Save specified file to the database.
+     *
+     * @param fileName file name
+     * @param logger error logger
+     *
+     * @throws DOMProdTestException if there is a problem creating the object
+     * @throws IOException if there is a problem reading the properties.
+     * @throws SQLException if there is a problem initializing the database.
+     */
+    public static final void save(String fileName, Logger logger)
+        throws DOMCalibrationException, IOException, SQLException
+    {
+        save(fileName, logger, null, false);
+    }
+
+    /**
+     * Save specified file to the database.
+     *
+     * @param fileName file name
+     * @param logger error logger
+     * @param calDB database interface (one will be created if this
+     *              is not <code>null</code>
+     * @param verbose <code>true</code> for verbose comparison
+     *
+     * @throws DOMProdTestException if there is a problem creating the object
+     * @throws IOException if there is a problem reading the properties.
+     * @throws SQLException if there is a problem initializing the database.
+     */
+    public static final void save(String fileName, Logger logger,
+                                  CalibratorDB calDB, boolean verbose)
+        throws DOMCalibrationException, IOException, SQLException
+    {
+        FileInputStream fis = new FileInputStream(fileName);
+
+        Calibrator cal = new Calibrator(fis, calDB);
+
+        try {
+            fis.close();
+        } catch (IOException ioe) {
+            // ignore errors on close
+        }
+
+        Calibrator dbCal;
+        try {
+            dbCal = new Calibrator(cal.getDOMId(), cal.getCalendar().getTime(),
+                                   cal.getTemperature(), calDB);
+        } catch (DOMCalibrationException dce) {
+            dbCal = null;
+        }
+
+        if (dbCal != null &&
+            CalibratorComparator.compare(cal, dbCal, verbose) == 0)
+        {
+            logger.info("Calibration data for DOM " + cal.getDOMId() +
+                        "/" + formatDate(cal) + "/" +
+                        formatTemperature(cal) + " degrees already in DB");
+        } else {
+            cal.save();
+            cal.close();
+            logger.info("Saved calibration data for DOM " + cal.getDOMId() +
+                        "/" + formatDate(cal) + "/" + formatTemperature(cal) +
+                        " degrees");
+        }
+
+        if (dbCal != null) {
+            dbCal.close();
         }
     }
 

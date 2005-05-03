@@ -24,8 +24,9 @@ int hv_amp_cal(calib_data *dom_calib) {
 
     const int cnt = 128;
     int trigger_mask;
-    int ch, bin, trig;
-    float bias_v, peak_v, hpeak_v;
+    int ch, bin, trig, i;
+    float bias_v;
+    float peak_vdat[2][128];
 
     int hv;
     
@@ -36,11 +37,11 @@ int hv_amp_cal(calib_data *dom_calib) {
     /* This test only uses one ATWD */
     short channels[3][128];
 
-    /* Peak arrays for each channel, in Volts */
-    float peaks[3][AMP_CAL_TRIG_CNT];
+    /* Charge arrays for each channel, in Volts */
+    float charges[3][AMP_CAL_TRIG_CNT];
 
-    /* Peak arrays for higher gain channels, for later comparison, in Volts */
-    float hpeaks[3][AMP_CAL_TRIG_CNT];
+    /* Charge arrays for higher gain channels, for later comparison, in Volts */
+    float hcharges[3][AMP_CAL_TRIG_CNT];
 
 #ifdef DEBUG
     printf("Performing HV amplifier calibration (using ATWD%d)...\r\n", atwd);
@@ -102,7 +103,7 @@ int hv_amp_cal(calib_data *dom_calib) {
         while (rate < MIN_PULSE_RATE) {
 
             /* OK -- not enough signal, we're probably deep in ice */
-            /* Turn on MB LED if off -- otherwise inc amlitude until */
+            /* Turn on MB LED if off -- otherwise inc amplitude until */
             /* we can see it */
             if (led_amplitude == 0) {
                  
@@ -110,11 +111,11 @@ int hv_amp_cal(calib_data *dom_calib) {
                 halEnableLEDPS();
                 led_amplitude = INIT_LED_AMPLITUDE;
             } else {
-                led_amplitude += LED_AMPLITUDE_INC;
+                led_amplitude -= LED_AMPLITUDE_DEC;
             }
 
             /* Can't do calibration if rate is too low */
-            if (led_amplitude > LED_MAX_AMPLITUDE) return ERR_LOW_RATE;
+            if (led_amplitude < 0) return ERR_LOW_RATE;
 
             /* Apply new setting and wait */
             halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, led_amplitude);
@@ -124,6 +125,8 @@ int hv_amp_cal(calib_data *dom_calib) {
             rate = measure_rate(atwd, ch-1);
 
         }
+
+        short led_center_amplitude = led_amplitude;
 
         /* OK -- we have illumination.  Let's re-check the baseline because */
         /* just about everything affects it -- possibly even including the  */
@@ -158,53 +161,84 @@ int hv_amp_cal(calib_data *dom_calib) {
             /* Look at raw ATWD data of higher gain channel, whose amplifier should be
              * calibrated already, to check range
              */
+
             short max = 0;
-            for (bin = 0; bin < cnt; bin++) max = channels[ch-1][bin] > max ? channels[ch-1][bin] : max;
+            for (bin = 0; bin < cnt; bin++) max = channels[ch-1][bin] > max ? 
+                                                             channels[ch-1][bin] : max;
             if (max < HV_AMP_CAL_MIN_PULSE || max > HV_AMP_CAL_MAX_PULSE) {
                 trig--;
                 continue;
             }
 
             /* OK -- we have a reasonable muon pulse */
+            float current_v[2];
+            float peak_v[2];
+            int peak_bin[2];
 
-            /* Find and record peak.  Make sure it is in range */ 
+            /* Find and record charge.  Make sure it is in range */ 
             for (bin=AMP_CAL_START_BIN; bin<cnt; bin++) {
 
 
                 /* Using ATWD calibration data, convert to actual V */
                 if (atwd == 0) {
-                    peak_v = (float)(channels[ch][bin]) * dom_calib->atwd0_gain_calib[ch][bin].slope
+                    current_v[0] = (float)(channels[ch][bin]) * dom_calib->atwd0_gain_calib[ch][bin].slope
                         + dom_calib->atwd0_gain_calib[ch][bin].y_intercept
                         - baseline[atwd][ch];
-                    hpeak_v = (float)(channels[ch-1][bin]) * dom_calib->atwd0_gain_calib[ch-1][bin].slope
+                    current_v[1] = (float)(channels[ch-1][bin]) * dom_calib->atwd0_gain_calib[ch-1][bin].slope
                         + dom_calib->atwd0_gain_calib[ch-1][bin].y_intercept
                         - baseline[atwd][ch-1];
                 }
                 else {
-                    peak_v = (float)(channels[ch][bin]) * dom_calib->atwd1_gain_calib[ch][bin].slope
+                    current_v[0] = (float)(channels[ch][bin]) * dom_calib->atwd1_gain_calib[ch][bin].slope
                         + dom_calib->atwd1_gain_calib[ch][bin].y_intercept
                         - baseline[atwd][ch];
-                    hpeak_v = (float)(channels[ch-1][bin]) * dom_calib->atwd1_gain_calib[ch-1][bin].slope
+                    current_v[1] = (float)(channels[ch-1][bin]) * dom_calib->atwd1_gain_calib[ch-1][bin].slope
                         + dom_calib->atwd1_gain_calib[ch-1][bin].y_intercept
                         - baseline[atwd][ch-1];
                 }
 
                 /* Also subtract out bias voltage */
-                peak_v -= bias_v;
-                hpeak_v -= bias_v;
+                for (i = 0; i < 2; i++) current_v[i] -= bias_v;
 
                 /* Note "peak" is actually a minimum */
                 if (bin == AMP_CAL_START_BIN) {
-                    peaks[ch][trig] = peak_v;
-                    hpeaks[ch-1][trig] = hpeak_v;
+                    for (i = 0; i < 2; i++) {
+                        peak_v[i] = current_v[i];
+                        peak_bin[i] = bin;
+                    } 
+                } else {
+                    for (i = 0; i < 2; i++) {
+                        if (current_v[i] < peak_v[i]) {
+                            peak_bin[i] = bin;
+                            peak_v[i] = current_v[i];
+                        }
+                    }
                 }
-                else {
-                    peaks[ch][trig] = (peak_v < peaks[ch][trig]) ? 
-                        peak_v : peaks[ch][trig];
-                    hpeaks[ch-1][trig] = (hpeak_v < hpeaks[ch-1][trig]) ?
-                        hpeak_v : hpeaks[ch-1][trig];
-                }
+                        
+                /* Save voltage data for integration */
+                for (i = 0; i < 2; i++) peak_vdat[i][bin] = current_v[i];
             }
+
+            /* Integrate around peak bin */
+            /* Set limits */
+            int mins[2];
+            int maxes[2];
+            for (i = 0; i < 2; i++) {
+                mins[i] = peak_bin[i] - CHARGE_FOW_BINS < AMP_CAL_START_BIN ? AMP_CAL_START_BIN : peak_bin[i] - CHARGE_FOW_BINS;
+                maxes[i] = peak_bin[i] + CHARGE_REV_BINS > cnt-1 ? cnt-1 : peak_bin[i] + CHARGE_REV_BINS;
+            }   
+
+            float charge_data[2];
+            for (i = 0; i < 2; i++) charge_data[i] = 0;
+
+            /* Integrate charge */
+            for (i = 0; i < 2; i++) {
+                for (bin = mins[i]; bin <= maxes[i]; bin++) charge_data[i] += peak_vdat[i][bin];
+            }
+
+            charges[ch][trig] = charge_data[0];
+            hcharges[ch-1][trig] = charge_data[1];
+
         }
 
         /* Turn off LED and LED PS between channel calibration */
@@ -215,15 +249,16 @@ int hv_amp_cal(calib_data *dom_calib) {
 
     float mean, var;
     for (ch = 1; ch < 3; ch++) {
-        /* Divide by peaks in higher gain ch to get amp ratio */
+        /* Divide by charges in higher gain ch to get amp ratio */
         /* Multiply by known amplification factor to find gain */
         for (bin = 0; bin < AMP_CAL_TRIG_CNT; bin++) {
-            peaks[ch][bin] /= hpeaks[ch-1][bin];
-            peaks[ch][bin] *= dom_calib->amplifier_calib[ch-1].value;
+
+            charges[ch][bin] /= hcharges[ch-1][bin];
+            charges[ch][bin] *= dom_calib->amplifier_calib[ch-1].value;
         }
 
         /* Find mean and var */
-        meanVarFloat(peaks[ch], AMP_CAL_TRIG_CNT, &mean, &var);
+        meanVarFloat(charges[ch], AMP_CAL_TRIG_CNT, &mean, &var);
 
         /* FIX ME */
 #ifdef DEBUG
@@ -313,5 +348,3 @@ float measure_rate(int atwd, int ch) {
 
     return (float)p_cnt / TEST_TRIG_TIME;
 }
-
-

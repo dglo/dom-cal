@@ -9,7 +9,7 @@
  * be incremented when changing structure of binary output
  */
 #define MAJOR_VERSION 5
-#define MINOR_VERSION 0
+#define MINOR_VERSION 2
 
 /* Default number of bytes in binary output */
 #define DEFAULT_RECORD_LENGTH 9388
@@ -114,6 +114,9 @@ typedef struct {
 
     /* Log(HV) vs. Log(gain) HV calibration fit */
     linear_fit hv_gain_calib;
+
+    /* transit time vs hv array */
+    linear_fit transit_calib;
 
     /* Number of histograms returned */
     short num_histos;

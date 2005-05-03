@@ -448,12 +448,16 @@ abstract class MockSQLUtil
              " and temperature<=" + (temp + 5.0)) +
             " order by date desc";
 
-        final Object[] qryObjs = new Object[] {
-            new Integer(domcalId),
-            date,
-            new Double(temp)
-        };
-        stmt.addExpectedQuery(qStr, "mainQry", qryObjs);
+        if (domcalId < 0) {
+            stmt.addExpectedQuery(qStr, "mainQry", null);
+        } else {
+            final Object[] qryObjs = new Object[] {
+                new Integer(domcalId),
+                date,
+                new Double(temp)
+            };
+            stmt.addExpectedQuery(qStr, "mainQry", qryObjs);
+        }
     }
 
     public static final void addModelTypeSQL(MockStatement stmt)
@@ -490,15 +494,7 @@ abstract class MockSQLUtil
     public static final void addProductTypeSQL(MockStatement stmt,
                                                int domTypeId, int mainbdTypeId)
     {
-        final String domQuery = "select prodtype_id from ProductType" +
-            " where name='DOM' or keyname='DOM'";
-        stmt.addExpectedQuery(domQuery, "DOM prodType",
-                              new Object[] { new Integer(domTypeId) });
-
-        final String mbQuery = "select prodtype_id from ProductType" +
-            " where name='Main Board' or keyname='Main Board'";
-        stmt.addExpectedQuery(mbQuery, "MainBd prodType",
-                              new Object[] { new Integer(mainbdTypeId) });
+        icecube.daq.db.domprodtest.test.MockSQLUtil.addProductTypeQueries(stmt, domTypeId, mainbdTypeId);
     }
 
     public static final void addProductSQL(MockStatement stmt,
@@ -508,22 +504,26 @@ abstract class MockSQLUtil
                                            int domId, String domTagSerial)
     {
         final String mbQry =
-            "select prod_id,tag_serial from Product where prodtype_id=" +
-            mainbdTypeId + " and hardware_serial='" + mbHardSerial + "'";
+            "select prod_id,lab_id,tag_serial from Product" +
+            " where prodtype_id=" + mainbdTypeId +
+            " and hardware_serial='" + mbHardSerial + "'";
 
         stmt.addExpectedQuery(mbQry, "MainBd",
                               new Object[] {
                                   new Integer(mainbdId),
+                                  new Integer(Integer.MAX_VALUE),
                                   mbTagSerial,
                               });
 
-        final String dQry = "select p.prod_id,p.tag_serial from Assembly a" +
-            ",AssemblyProduct ap,Product p where ap.prod_id=" + mainbdId +
+        final String dQry = "select p.prod_id,p.lab_id,p.tag_serial" +
+            " from Assembly a,AssemblyProduct ap,Product p" +
+            " where ap.prod_id=" + mainbdId +
             " and ap.assem_id=a.assem_id and p.prod_id=a.prod_id" +
             " and p.prodtype_id=" + domTypeId;
 
         stmt.addExpectedQuery(dQry, "DOM",
                               new Object[] { new Integer(domId),
+                                             new Integer(Integer.MAX_VALUE),
                                              domTagSerial });
     }
 
@@ -538,8 +538,6 @@ abstract class MockSQLUtil
             "values(" + domcalId + "," + MODEL_LINEAR_ID + "," + regression +
             ")";
         stmt.addExpectedUpdate(rStr, 1);
-
-        addParamTypeSQL(stmt);
 
         final String sStr =
             "insert into DOMCal_PulserParam(domcal_id,dc_param_id,value)" +

@@ -29,6 +29,8 @@
 #include "atwd_freq_cal.h"
 #include "hv_gain_cal.h"
 #include "baseline_cal.h"
+#include "hv_amp_cal.h"
+#include "transit_cal.h"
 
 /*---------------------------------------------------------------------------*/
 /* 
@@ -352,6 +354,9 @@ int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
     offset += write_baseline(cal->atwd0_baseline, bin_data, offset);
     offset += write_baseline(cal->atwd1_baseline, bin_data, offset);
 
+    /* Write transit time data */
+    offset += write_fit(&cal->transit_calib, bin_data, offset);
+
     /* Write HV gain cal isValid */
     offset += get_bytes_from_short( cal->hv_gain_valid, bin_data, offset );
 
@@ -460,6 +465,10 @@ int save_results(calib_data dom_calib) {
     r_size += dom_calib.num_histos * 2 * 3 * 4; //hv_baselines
     r_size += dom_calib.num_histos * 2; //baseline voltages
 
+    
+    /* Transit cal */
+    r_size += 12;
+
     r_size += 2 * 3 * 4; //baselines
 
     char binary_data[r_size];
@@ -500,7 +509,7 @@ int main(void) {
     get_date(&dom_calib);
     
     /* Ask user if they want an HV calibration */
-    printf("Do you want to perform an HV gain calibration (y/n)? ");
+    printf("Do you want to perform the HV portion of the calibration (y/n)? ");
     fflush(stdout);
     getstr(buf);
     printf("\r\n");
@@ -541,6 +550,7 @@ int main(void) {
     amp_cal(&dom_calib);
     atwd_freq_cal(&dom_calib);
     if (doHVCal) {
+        transit_cal(&dom_calib);
         hv_baseline_cal(&dom_calib);
         hv_amp_cal(&dom_calib);
         hv_gain_cal(&dom_calib);
