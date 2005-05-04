@@ -14,7 +14,7 @@ import icecube.daq.domcal.DOMCalibrationException;
 import icecube.daq.domcal.HVHistogram;
 
 import java.io.IOException;
-import java.io.StringBufferInputStream;
+import java.io.ByteArrayInputStream;
 
 import java.sql.Date;
 import java.sql.SQLException;
@@ -189,8 +189,8 @@ public class RandomXMLTest
 
         final String xmlStr = xml.toString();
 
-        StringBufferInputStream strIn =
-            new StringBufferInputStream(xmlStr);
+        ByteArrayInputStream strIn =
+            new ByteArrayInputStream(xmlStr.getBytes());
 
         Calibrator fiCal = new Calibrator(strIn);
 
