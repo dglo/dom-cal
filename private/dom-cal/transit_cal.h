@@ -35,5 +35,14 @@
 /* Trigger delay for ATWDs */
 #define TRANSIT_CAL_LAUNCH_DELAY      2
 
+/* Worst sigma, in ns, of a transit time distribution we will consider stable */
+#define TRANSIT_CAL_MAX_SIGMA       5.0
+
+/* How many times we will crank up the brightness */
+#define TRANSIT_CAL_MAX_BAD_VAR_CNT   5
+
+/* Error code for variance failure */
+#define TRANSIT_TIME_VARIANCE_ERR     3
+
 /* Prototypes */
 int transit_cal(calib_data *dom_calib);
