@@ -138,9 +138,11 @@ int transit_cal(calib_data *dom_calib) {
     halEnableLEDPS();
 
     /* Set the LED brightness */
-    halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, TRANSIT_CAL_LED_AMPLITUDE);
+    int brightness = TRANSIT_CAL_LED_AMPLITUDE; 
+    halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, brightness);
 
     /* Loop over HV settings */
+    int variance_fails = 0;
     int hv_idx, peak_idx;
     float le_atwd_idx, le_current_idx;
 
@@ -226,7 +228,7 @@ int transit_cal(calib_data *dom_calib) {
                 }
                 
             }
-            
+
             /* Calculate peak average, for kicks */
             peak_avg += peak_v;
 
@@ -283,9 +285,8 @@ int transit_cal(calib_data *dom_calib) {
                     break;
                 }
                 last_bin_v = bin_v;
-            }            
-            /* FIX ME CHECK FOR FREAKING ERRORS */
-        
+            }
+            
             /* Save transit time in ns = samples * 1000 / freq in MHz */
             transits[trig] = (le_current_idx - le_atwd_idx) * 1.0E3 / freq;
 
@@ -307,6 +308,30 @@ int transit_cal(calib_data *dom_calib) {
 #ifdef DEBUG
         printf("Sqrt(var): %.3f\r\n", sqrt(var));
 #endif
+
+        /* Check sigma for poor calibration */
+        /* Drive LED brighter to try and clean things up */
+        if (sqrt(var) > TRANSIT_CAL_MAX_SIGMA) {
+            if (variance_fails < TRANSIT_CAL_MAX_BAD_VAR_CNT) {
+                brightness -= 25;
+                halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, brightness);           
+#ifdef DEBUG
+                printf("Bad sigma -- increasing LED brightness to %d\r\n", brightness);
+                printf("Trying same voltage again...\r\n");
+#endif
+                variance_fails++;
+                hv_idx--;
+            }
+            else {
+#ifdef DEBUG
+                printf("Too many bad variance points -- aborting transit time calibration!\r\n");
+#endif
+                dom_calib->transit_calib.slope = 0.0; 
+                dom_calib->transit_calib.y_intercept = 0.0;
+                dom_calib->transit_calib.r_squared = 0.0;
+                return TRANSIT_TIME_VARIANCE_ERR;
+            }            
+        }
 
     } /* End HV loop */
 
@@ -347,7 +372,6 @@ int transit_cal(calib_data *dom_calib) {
     
     /* Won't turn off the HV for now...*/
     
-    /* FIX ME: return real error code */
     return 0;
     
 }

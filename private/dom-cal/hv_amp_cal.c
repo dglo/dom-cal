@@ -126,7 +126,7 @@ int hv_amp_cal(calib_data *dom_calib) {
 
         }
 
-        short led_center_amplitude = led_amplitude;
+        /* short led_center_amplitude = led_amplitude; */
 
         /* OK -- we have illumination.  Let's re-check the baseline because */
         /* just about everything affects it -- possibly even including the  */
