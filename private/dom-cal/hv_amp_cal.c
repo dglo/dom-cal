@@ -118,6 +118,14 @@ int hv_amp_cal(calib_data *dom_calib) {
             if (led_amplitude < 0) {
                 /* FIX ME -- flag failure using ch2 gain error */
                 dom_calib->amplifier_calib[2].error = -1.0;
+
+                /* Put the DACs back to original state */
+                halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, origBiasDAC);
+                halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, origDiscDAC);
+                halWriteDAC((atwd == 0) ? DOM_HAL_DAC_ATWD0_TRIGGER_BIAS :
+                                DOM_HAL_DAC_ATWD1_TRIGGER_BIAS, origSampDAC);
+                halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, old_led_value);
+                
                 return ERR_LOW_RATE;
             }
 
