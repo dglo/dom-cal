@@ -22,7 +22,7 @@
 #define LED_AMPLITUDE_DEC 25 
 
 /* Minimum acceptable rate of pulses capable of amp calibration */
-#define MIN_PULSE_RATE 30.0
+#define MIN_PULSE_RATE 3.0
 
 /* Maximum amplitude of LED */
 #define LED_MAX_AMPLITUDE 1023

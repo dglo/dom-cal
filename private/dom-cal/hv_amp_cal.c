@@ -96,7 +96,7 @@ int hv_amp_cal(calib_data *dom_calib) {
         float rate = 0;
 
         /* LED amplitude */
-        short led_amplitude = 0;
+        short led_amplitude = LED_MAX_AMPLITUDE;
 
         rate = measure_rate(atwd, ch-1);
 
@@ -105,7 +105,7 @@ int hv_amp_cal(calib_data *dom_calib) {
             /* OK -- not enough signal, we're probably deep in ice */
             /* Turn on MB LED if off -- otherwise inc amplitude until */
             /* we can see it */
-            if (led_amplitude == 0) {
+            if (led_amplitude == LED_MAX_AMPLITUDE) {
                  
                 hal_FPGA_TEST_enable_LED();
                 halEnableLEDPS();
@@ -115,7 +115,11 @@ int hv_amp_cal(calib_data *dom_calib) {
             }
 
             /* Can't do calibration if rate is too low */
-            if (led_amplitude < 0) return ERR_LOW_RATE;
+            if (led_amplitude < 0) {
+                /* FIX ME -- flag failure using ch2 gain error */
+                dom_calib->amplifier_calib[2].error = -1.0;
+                return ERR_LOW_RATE;
+            }
 
             /* Apply new setting and wait */
             halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, led_amplitude);
@@ -125,8 +129,6 @@ int hv_amp_cal(calib_data *dom_calib) {
             rate = measure_rate(atwd, ch-1);
 
         }
-
-        /* short led_center_amplitude = led_amplitude; */
 
         /* OK -- we have illumination.  Let's re-check the baseline because */
         /* just about everything affects it -- possibly even including the  */
@@ -340,7 +342,9 @@ float measure_rate(int atwd, int ch) {
          */
         short max = 0;
         int bin;
-        for (bin = 0; bin < cnt; bin++) max = channels[ch][bin] > max ? channels[ch][bin] : max;
+        for (bin = AMP_CAL_START_BIN; bin < cnt; bin++) {
+            if (channels[ch][bin] > max) max = channels[ch][bin];
+        }
 
         /* Is pulse of acceptable amplitude */
         if (max > HV_AMP_CAL_MIN_PULSE && max < HV_AMP_CAL_MAX_PULSE) p_cnt++;
