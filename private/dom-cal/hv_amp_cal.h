@@ -3,26 +3,26 @@
  */
 
 /* HV setting for calibration MUST be an exact voltage used in hv_baseline calibration*/
-#define HV_AMP_CAL_VOLTS 1200
+#define HV_AMP_CAL_VOLTS 1400
 
 /* Disc setting to eliminate most SPE */
-#define HV_AMP_CAL_DISC_DAC  1000
+#define HV_AMP_CAL_DISC_DAC  900
 
 /* Max and min atwd bin cnt of ch i to calibrate ch i+1 */
 #define HV_AMP_CAL_MIN_PULSE 600
 #define HV_AMP_CAL_MAX_PULSE 800
 
 /* Time constant for rate measurement */
-#define TEST_TRIG_TIME 15 //seconds
-
-/* LED initial amplitude -- used if not enough muons are present */
-#define INIT_LED_AMPLITUDE 700
+#define TEST_TRIG_TIME 7 //seconds
 
 /* LED amplitude decrement */
-#define LED_AMPLITUDE_DEC 25 
+#define LED_AMPLITUDE_DEC 10
+
+/* LED amplitude setting to denote LED is off */
+#define LED_OFF 0x6fff 
 
 /* Minimum acceptable rate of pulses capable of amp calibration */
-#define MIN_PULSE_RATE 3.0
+#define MIN_PULSE_RATE 5.0
 
 /* Maximum amplitude of LED */
 #define LED_MAX_AMPLITUDE 1023
