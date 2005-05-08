@@ -63,12 +63,6 @@ int hv_amp_cal(calib_data *dom_calib) {
 
     bias_v = biasDAC2V(AMP_CAL_PEDESTAL_DAC);
 
-    /* Give user a final warning */
-#ifdef DEBUG
-    printf(" *** WARNING: enabling HV in 5 seconds! ***\r\n");
-#endif
-    halUSleep(5000000);
-                                                                                                                                               
     /* Turn on high voltage base */
 #if defined DOMCAL_REV2 || defined DOMCAL_REV3
     halEnablePMT_HV();
@@ -96,7 +90,7 @@ int hv_amp_cal(calib_data *dom_calib) {
         float rate = 0;
 
         /* LED amplitude */
-        short led_amplitude = LED_MAX_AMPLITUDE;
+        short led_amplitude = LED_OFF;
 
         rate = measure_rate(atwd, ch-1);
 
@@ -105,11 +99,11 @@ int hv_amp_cal(calib_data *dom_calib) {
             /* OK -- not enough signal, we're probably deep in ice */
             /* Turn on MB LED if off -- otherwise inc amplitude until */
             /* we can see it */
-            if (led_amplitude == LED_MAX_AMPLITUDE) {
+            if (led_amplitude == LED_OFF) {
                  
                 hal_FPGA_TEST_enable_LED();
                 halEnableLEDPS();
-                led_amplitude = INIT_LED_AMPLITUDE;
+                led_amplitude = LED_MAX_AMPLITUDE;
             } else {
                 led_amplitude -= LED_AMPLITUDE_DEC;
             }
@@ -125,6 +119,8 @@ int hv_amp_cal(calib_data *dom_calib) {
                 halWriteDAC((atwd == 0) ? DOM_HAL_DAC_ATWD0_TRIGGER_BIAS :
                                 DOM_HAL_DAC_ATWD1_TRIGGER_BIAS, origSampDAC);
                 halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, old_led_value);
+                halDisableLEDPS();
+                hal_FPGA_TEST_disable_LED();
                 
                 return ERR_LOW_RATE;
             }
@@ -144,9 +140,9 @@ int hv_amp_cal(calib_data *dom_calib) {
 
         float baseline[2][3];
         getBaseline(dom_calib, BASELINE_CAL_MAX_VAR, baseline);
-      
+
         for (trig=0; trig<(int)AMP_CAL_TRIG_CNT; trig++) {
-                
+
             /* Warm up the ATWD */
             prescanATWD(trigger_mask);
             
@@ -344,10 +340,7 @@ float measure_rate(int atwd, int ch) {
                                   cnt, NULL, 0, trigger_mask);
         }
 
-
-        /* Look at raw ATWD data of higher gain channel, whose amplifier should be
-         * calibrated already, to check range
-         */
+        /* Find max from raw ATWD data */
         short max = 0;
         int bin;
         for (bin = AMP_CAL_START_BIN; bin < cnt; bin++) {
