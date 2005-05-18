@@ -71,6 +71,9 @@ int hv_amp_cal(calib_data *dom_calib) {
     halEnableBaseHV();
 #endif
 
+    /* Ensure HV base exists before performing calibration */
+    if (!checkHVBase()) return 0;
+
     hv = HV_AMP_CAL_VOLTS;
                                                                                                                                                
 #ifdef DEBUG

@@ -121,6 +121,12 @@ typedef struct {
     /* Number of histograms returned */
     short num_histos;
 
+    /* Valid bit for HV baseline calibration */
+    short hv_baselines_valid;
+
+    /* Valid bit for PMT transit calibration */
+    short transit_calib_valid;
+
     /* Histograms */
     hv_histogram* histogram_data;
 

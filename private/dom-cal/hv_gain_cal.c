@@ -96,12 +96,6 @@ int hv_gain_cal(calib_data *dom_calib) {
 
     freq = getCalibFreq(atwd, *dom_calib, samp_dac);
 
-    /* Give user a final warning */
-#ifdef DEBUG
-    printf(" *** WARNING: enabling HV in 5 seconds! ***\r\n");
-#endif
-    halUSleep(5000000);
-
     /* Turn on high voltage base */
 #if defined DOMCAL_REV2 || defined DOMCAL_REV3
     halEnablePMT_HV();
@@ -112,11 +106,7 @@ int hv_gain_cal(calib_data *dom_calib) {
 
     /* Check to make sure there *is* a HV base by looking at ID */
     /* Avoids running on, say, the sync board */
-    const char *hv_id = halHVSerial();
-#ifdef DEBUG
-    printf("HV ID is %s\r\n", hv_id);
-#endif
-    if (strcmp(hv_id, "000000000000") == 0) {
+    if (!checkHVBase()) {
 #ifdef DEBUG
         printf("All-zero HV ID!  No HV base attached; aborting gain calibration.\r\n");
 #endif
