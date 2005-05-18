@@ -115,6 +115,21 @@ void prescanATWD(unsigned int trigger_mask) {
    }
 }
 
+
+/*---------------------------------------------------------------------------*/
+/*
+ * checkHVBase
+ *
+ * Check to make sure there *is* a HV base by looking at ID
+ * Avoids running on, say, the sync board
+ *
+ * Assume base has already been enabled 
+ */
+int checkHVBase() {
+    const char *hv_id = halHVSerial();
+    return strcmp(hv_id, "000000000000") == 0 ? 0 : 1;
+}
+
 /*---------------------------------------------------------------------------*/
 /*
  * meanVarFloat

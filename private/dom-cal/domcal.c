@@ -354,19 +354,33 @@ int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
     offset += write_baseline(cal->atwd0_baseline, bin_data, offset);
     offset += write_baseline(cal->atwd1_baseline, bin_data, offset);
 
-    /* Write transit time data */
-    offset += write_fit(&cal->transit_calib, bin_data, offset);
+    /* Write transit cal isValid */
+    offset += get_bytes_from_short( cal->transit_calib_valid, bin_data, offset );
 
-    /* Write HV gain cal isValid */
-    offset += get_bytes_from_short( cal->hv_gain_valid, bin_data, offset );
+    /* Write transit time data if necessary */
+    if (cal->transit_calib_valid) {
+        offset += write_fit(&cal->transit_calib, bin_data, offset);
+    }
 
     /* Write number of histos */
     offset += get_bytes_from_short(cal->num_histos, bin_data, offset );
 
+    /* Write hv baselines valid */
+    offset += get_bytes_from_short( cal->hv_baselines_valid, bin_data, offset );
+
+    /* Write baselines if necessary */
+    if (cal->hv_baselines_valid) {
+        for (i = 0; i < cal->num_histos; i++) {
+            offset += write_hv_baseline(&cal->baseline_data[i], bin_data, offset);
+        }
+    }
+
+    /* Write HV gain cal isValid */
+    offset += get_bytes_from_short( cal->hv_gain_valid, bin_data, offset );
+
     /* Write each histo and baseline */
     for (i = 0; i < cal->num_histos; i++) {
         offset += write_histogram(&cal->histogram_data[i], bin_data, offset);
-        offset += write_hv_baseline(&cal->baseline_data[i], bin_data, offset);
     }
 
     /* Write HV gain cal data if necessary */
@@ -462,12 +476,19 @@ int save_results(calib_data dom_calib) {
     r_size += dom_calib.num_histos * 4; //PV data
     r_size += dom_calib.num_histos * 4; //Noise rate
     r_size += dom_calib.num_histos * 2; //is_filled flag
-    r_size += dom_calib.num_histos * 2 * 3 * 4; //hv_baselines
-    r_size += dom_calib.num_histos * 2; //baseline voltages
 
     
-    /* Transit cal */
-    r_size += 12;
+    r_size += 2; //hv_baselines_valid
+    if (dom_calib.hv_baselines_valid) {
+        r_size += dom_calib.num_histos * 2 * 3 * 4; //hv_baselines
+        r_size += dom_calib.num_histos * 2; //baseline voltages
+    }
+
+    r_size += 2; //transit_calib_valid
+    if (dom_calib.transit_calib_valid) {
+        /* Transit cal */
+        r_size += 12;
+    }
 
     r_size += 2 * 3 * 4; //baselines
 
@@ -524,6 +545,8 @@ int main(void) {
 #endif
     }
     dom_calib.hv_gain_valid = 0;
+    dom_calib.hv_baselines_valid = 0;
+    dom_calib.transit_calib_valid = 0;
 
     /* Init # histos returned */
     dom_calib.num_histos = doHVCal ? GAIN_CAL_HV_CNT : 0;

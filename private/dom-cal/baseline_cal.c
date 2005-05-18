@@ -202,6 +202,12 @@ int hv_baseline_cal(calib_data *dom_calib) {
     halEnableBaseHV();
 #endif
 
+    /* Ensure HV base exists before performing calibration */
+    if (!checkHVBase()) {
+        dom_calib->hv_baselines_valid = 0;
+        return 0;
+    }
+
     short hv_idx = 0;
     short hv;
 
@@ -234,6 +240,7 @@ int hv_baseline_cal(calib_data *dom_calib) {
     }
 
     dom_calib->baseline_data = hv_base_data;
+    dom_calib->hv_baselines_valid = 1;
 
     return 0;
 

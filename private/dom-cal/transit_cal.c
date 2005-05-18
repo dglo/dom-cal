@@ -87,6 +87,12 @@ int transit_cal(calib_data *dom_calib) {
     halEnableBaseHV();
 #endif
 
+    /* Ensure HV base exists before performing calibration */
+    if (!checkHVBase()) {
+        dom_calib->transit_calib_valid = 0;
+        return 0;
+    }
+
     /*---------------------------------------------------------------------------*/    
     /* Turn on the LED power supply before measuring pedestal */                
 
@@ -344,6 +350,7 @@ int transit_cal(calib_data *dom_calib) {
         y[hv_idx] = transit_data[hv_idx]; 
     }
     linearFitFloat(x, y, TRANSIT_CAL_HV_CNT, &dom_calib->transit_calib);
+    dom_calib->transit_calib_valid = 1;
 
 #ifdef DEBUG
     printf("Fit: m %g b %g r2 %g\r\n", dom_calib->transit_calib.slope,
