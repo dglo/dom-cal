@@ -61,10 +61,12 @@ public class DOMCalXML {
 
         formatBaseline(rec.getBaseline(), out);
 
-        out.print("  <pmtTransitTime>\n");
-        format(rec.getTransitTimeFit(), out);
-        out.print("  </pmtTransitTime>\n");
 
+        if (rec.isTransitCalValid()) {
+            out.print("  <pmtTransitTime>\n");
+            format(rec.getTransitTimeFit(), out);
+            out.print("  </pmtTransitTime>\n");
+        }
 
         if ( rec.isHvCalValid() ) {
             
@@ -76,7 +78,7 @@ public class DOMCalXML {
 
 
         for (int i = 0; i < rec.getNumHVHistograms(); i++) {
-            formatBaseline(rec.getHVBaseline(i), out);
+            if (rec.isHvBaselineCalValid()) formatBaseline(rec.getHVBaseline(i), out);
             formatHisto(rec.getHVHistogram(i), out);
         }
 

@@ -42,6 +42,10 @@ public interface DOMCalRecord {
 
     public short getVersion();
     
+    public boolean isHvBaselineCalValid();
+
+    public boolean isTransitCalValid();
+
     public boolean isHvCalValid();
 
     public LinearFit getTransitTimeFit();
