@@ -346,8 +346,8 @@ int hv_gain_cal(calib_data *dom_calib) {
             printf("Valley located at %.6g, %.6g: PV = %.2g\r\n", valley_x, valley_y, pv_ratio);
 #endif
             
-            /* If PV is too high, we don't have true peak and valley */
-            if ((pv_ratio > 0.0) && (pv_ratio < GAIN_CAL_MAX_SANE_PV)) {
+            /* If PV < 0, we don't have true peak and valley */
+            if (pv_ratio > 0.0) {
 
                 log_hv[spe_cnt] = log10(hv);
                 log_gain[spe_cnt] = log10(fit_params[hv_idx][3] / Q_E) - 12.0;
