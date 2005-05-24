@@ -327,11 +327,6 @@ public class CalibratorDBTest
         stmt = new MockStatement("SaveStmt");
         calDB.addActualStatement(stmt);
 
-        if (!ProductType.isInitialized()) {
-            MockSQLUtil.addProductTypeSQL(stmt, MockSQLUtil.DOM_TYPE_ID,
-                                          MockSQLUtil.MAINBD_TYPE_ID);
-        }
-
         MockSQLUtil.addProductSQL(stmt, MockSQLUtil.MAINBD_TYPE_ID,
                                   mbHardSerial, MockSQLUtil.MAINBD_ID,
                                   mainbdTagSerial, MockSQLUtil.DOM_TYPE_ID,
