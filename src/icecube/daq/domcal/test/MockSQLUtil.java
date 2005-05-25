@@ -503,28 +503,15 @@ abstract class MockSQLUtil
                                            String mbTagSerial, int domTypeId,
                                            int domId, String domTagSerial)
     {
-        final String mbQry =
-            "select prod_id,lab_id,tag_serial from Product" +
-            " where prodtype_id=" + mainbdTypeId +
-            " and hardware_serial='" + mbHardSerial + "'";
-
-        stmt.addExpectedQuery(mbQry, "MainBd",
-                              new Object[] {
-                                  new Integer(mainbdId),
-                                  new Integer(Integer.MAX_VALUE),
-                                  mbTagSerial,
-                              });
-
-        final String dQry = "select p.prod_id,p.lab_id,p.tag_serial" +
-            " from Assembly a,AssemblyProduct ap,Product p" +
-            " where ap.prod_id=" + mainbdId +
-            " and ap.assem_id=a.assem_id and p.prod_id=a.prod_id" +
-            " and p.prodtype_id=" + domTypeId;
-
-        stmt.addExpectedQuery(dQry, "DOM",
-                              new Object[] { new Integer(domId),
-                                             new Integer(Integer.MAX_VALUE),
-                                             domTagSerial });
+        icecube.daq.db.domprodtest.test.MockSQLUtil.addDOMQueries(stmt,
+                                                                  mainbdTypeId,
+                                                                  mbHardSerial,
+                                                                  mainbdId,
+                                                                  Integer.MAX_VALUE,
+                                                                  mbTagSerial,
+                                                                  domTypeId,
+                                                                  domId,
+                                                                  domTagSerial);
     }
 
     public static final void addPulserInsertSQL(MockStatement stmt,

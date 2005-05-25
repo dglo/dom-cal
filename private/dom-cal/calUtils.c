@@ -4,6 +4,7 @@
  */
 
 #include <math.h>
+#include <string.h>
 
 #include "hal/DOM_MB_hal.h"
 #include "hal/DOM_MB_fpga.h"

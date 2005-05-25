@@ -99,7 +99,7 @@ int hv_amp_cal(calib_data *dom_calib) {
 
         while (rate < MIN_PULSE_RATE) {
 
-            /* OK -- not enough signal, we're probably deep in ice */
+            /* OK -- not enough signal */
             /* Turn on MB LED if off -- otherwise inc amplitude until */
             /* we can see it */
             if (led_amplitude == LED_OFF) {
@@ -135,6 +135,9 @@ int hv_amp_cal(calib_data *dom_calib) {
             /* Measure rate */ 
             rate = measure_rate(atwd, ch-1);
 
+            /* FIX ME DEBUG */
+            printf("Rate: %f LED amplitude: %d\n", rate, led_amplitude); 
+
         }
 
         /* OK -- we have illumination.  Let's re-check the baseline because */
@@ -144,7 +147,13 @@ int hv_amp_cal(calib_data *dom_calib) {
         float baseline[2][3];
         getBaseline(dom_calib, BASELINE_CAL_MAX_VAR, baseline);
 
+        /* FIX ME DEBUG */
+        int iter = 0;
+        long long clk = hal_FPGA_TEST_get_local_clock(); 
+
         for (trig=0; trig<(int)AMP_CAL_TRIG_CNT; trig++) {
+
+            iter++;
 
             /* Warm up the ATWD */
             prescanATWD(trigger_mask);
@@ -180,6 +189,14 @@ int hv_amp_cal(calib_data *dom_calib) {
             }
 
             /* OK -- we have a reasonable muon pulse */
+
+            /* FIX ME DEBUG */
+            if (trig%10 == 0) {
+                long long dt = hal_FPGA_TEST_get_local_clock() - clk;
+                int time = dt / 40000;
+                printf("Got trigger %d loop iteration %d time %dms\n", trig, iter, time);
+            }
+
             float current_v[2];
             float peak_v[2];
             int peak_bin[2];

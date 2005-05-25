@@ -33,10 +33,6 @@
 #define INT_WIN_MIN               8
 #define INT_WIN_MAX               4
 
-/* Largest P/V we might consider a real measurement */
-/* Larger ones are not used in fit */
-#define GAIN_CAL_MAX_SANE_PV    16.0
-
 /* Charge of e, Coulombs */
 #define Q_E               1.602E-19
 
