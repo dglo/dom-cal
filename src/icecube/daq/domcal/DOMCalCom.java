@@ -64,6 +64,15 @@ public class DOMCalCom {
         return out;
     }
 
+    public String receiveAvailable() throws IOException {
+
+        int avail = in.available();
+        if (avail == 0) return "";
+        byte[] b = new byte[in.available()];
+        in.read(b);
+        return new String(b);
+    }
+
     public String receive( String terminator, long timeout ) throws IOException {
         long startTime = System.currentTimeMillis();
         String out = "";

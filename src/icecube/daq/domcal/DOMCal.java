@@ -91,8 +91,26 @@ public class DOMCal implements Runnable {
 
         if ( calibrate ) {
 
+            String id = null;
             logger.debug( "Beginning DOM calibration routine" );
             try {
+                //fetch hwid
+                com.send("crlf domid type type\r");
+                String idraw = com.receive( "\r\n> " );
+                StringTokenizer r = new StringTokenizer(idraw, " \r\n\t");
+                //Move past input string
+                for (int i = 0; i < 4; i++) {
+                    if (!r.hasMoreTokens()) {
+                        logger.error("Corrupt domId " + idraw + " returned from DOM -- exiting");
+                        return;
+                    }
+                    r.nextToken();
+                }
+                if (!r.hasMoreTokens()) {
+                    logger.error("Corrupt domId " + idraw + " returned from DOM -- exiting");
+                    return;
+                }
+                id = r.nextToken();
                 com.send( "s\" domcal\" find if ls endif\r" );
                 String ret = com.receive( "\r\n> " );
                 if ( ret.equals(  "s\" domcal\" find if ls endif\r\n> " ) ) {
@@ -130,7 +148,20 @@ public class DOMCal implements Runnable {
             logger.debug( "Waiting for calibration to finish" );
 
             try {
-                com.receive( "\r\n> " );
+                //Create raw output file
+                PrintWriter out = new PrintWriter(new FileWriter(outDir + "domcal_" + id + ".out", false), false);
+                String termDat = "";
+                for (String dat = com.receiveAvailable(); !termDat.endsWith("\r\n> "); dat = com.receiveAvailable()) {
+                    out.print(dat);
+                    if (dat.length() > 5) termDat = dat;
+                    else termDat += dat;
+                    if (termDat.length() > 10) termDat = termDat.substring(termDat.length() - 8);
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                    }
+                    out.flush();
+                }
             } catch ( IOException e ) {
                 logger.error( "IO Error occurred during calibration routine" );
                 die( e );
