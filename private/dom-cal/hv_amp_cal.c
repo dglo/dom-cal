@@ -121,9 +121,11 @@ int hv_amp_cal(calib_data *dom_calib) {
                 halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, origDiscDAC);
                 halWriteDAC((atwd == 0) ? DOM_HAL_DAC_ATWD0_TRIGGER_BIAS :
                                 DOM_HAL_DAC_ATWD1_TRIGGER_BIAS, origSampDAC);
-                halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, old_led_value);
-                halDisableLEDPS();
-                hal_FPGA_TEST_disable_LED();
+                if (led_amplitude != LED_OFF) {
+                    halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, old_led_value);
+                    halDisableLEDPS();
+                    hal_FPGA_TEST_disable_LED();
+                }
                 
                 return ERR_LOW_RATE;
             }
@@ -149,7 +151,10 @@ int hv_amp_cal(calib_data *dom_calib) {
 
         /* FIX ME DEBUG */
         int iter = 0;
-        long long clk = hal_FPGA_TEST_get_local_clock(); 
+
+ 
+        long long clk = hal_FPGA_TEST_get_local_clock();
+        short cidx = 1;
 
         for (trig=0; trig<(int)AMP_CAL_TRIG_CNT; trig++) {
 
@@ -162,7 +167,34 @@ int hv_amp_cal(calib_data *dom_calib) {
             hal_FPGA_TEST_trigger_disc(trigger_mask);
             
             /* Wait for done */
-            while (!hal_FPGA_TEST_readout_done(trigger_mask));
+            while (!hal_FPGA_TEST_readout_done(trigger_mask)) {
+
+                /* Check for timeout every 2^16 wait cycles */
+                if (cidx++ == 0) {
+                    
+                    long long dt = hal_FPGA_TEST_get_local_clock()-clk;
+                    int ms = (int)(dt / 40000);
+                    if (ms > MAX_AMP_CAL_ITER_MS) {
+
+                        /* We've timed out */
+                        /* FIX ME -- flag failure using ch2 gain error */
+                        dom_calib->amplifier_calib[2].error = -1.0;
+
+                        /* Put the DACs back to original state */
+                        halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, origBiasDAC);
+                        halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, origDiscDAC);
+                        halWriteDAC((atwd == 0) ? 
+                                DOM_HAL_DAC_ATWD0_TRIGGER_BIAS :
+                                DOM_HAL_DAC_ATWD1_TRIGGER_BIAS, origSampDAC);
+                        halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, old_led_value);
+                        halDisableLEDPS();
+                        hal_FPGA_TEST_disable_LED();
+
+                        return ERR_TIMEOUT;
+                    }
+                }
+            }
+                
 
             /* Read out one waveform for all channels except 3 */        
             if (atwd == 0) {
