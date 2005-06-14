@@ -350,7 +350,8 @@ int spe_fit(float *xdata, float *ydata, int pts,
                 err = SPE_FIT_ERR_BAD_FIT;
         }
 
-        if (fit_params[3] > xdata[pts-1]) err = SPE_FIT_ERR_BAD_FIT;
+        /* Make sure gaussian max isn't out of the fitted range */
+        if (fit_params[3] > xdata[start_bin + ndata-1]) err = SPE_FIT_ERR_BAD_FIT;
     }
     else {
 #ifdef DEBUG
