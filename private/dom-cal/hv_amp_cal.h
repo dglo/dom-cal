@@ -13,22 +13,28 @@
 #define HV_AMP_CAL_MAX_PULSE 800
 
 /* Time constant for rate measurement */
-#define TEST_TRIG_TIME 7 //seconds
+#define TEST_TRIG_TIME 5 //seconds
 
 /* LED amplitude decrement */
-#define LED_AMPLITUDE_DEC 10
+#define LED_AMPLITUDE_DEC 5
 
 /* LED amplitude setting to denote LED is off */
 #define LED_OFF 0x6fff 
 
 /* Minimum acceptable rate of pulses capable of amp calibration */
-#define MIN_PULSE_RATE 5.0
+#define MIN_PULSE_RATE 8.0
 
 /* Maximum amplitude of LED */
 #define LED_MAX_AMPLITUDE 1023
 
 /* Error code returned due to low rate */
 #define ERR_LOW_RATE 2
+
+/* Error code returned due to timeout */
+#define ERR_TIMEOUT 3
+
+/* Timeout interval for an iteration */
+#define MAX_AMP_CAL_ITER_MS 360000 //6 minutes should be enough...
 
 /* Charge integration limits */
 #define CHARGE_REV_BINS 6
