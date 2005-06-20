@@ -27,6 +27,9 @@
 /* Maximum amplitude of LED */
 #define LED_MAX_AMPLITUDE 1023
 
+/* Using LED -- pulse could be anywhere! */
+#define HV_AMP_CAL_START_BIN 0
+
 /* Error code returned due to low rate */
 #define ERR_LOW_RATE 2
 

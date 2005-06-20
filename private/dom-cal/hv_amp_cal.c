@@ -213,7 +213,7 @@ int hv_amp_cal(calib_data *dom_calib) {
              */
 
             short max = 0;
-            for (bin = 0; bin < cnt; bin++) max = channels[ch-1][bin] > max ? 
+            for (bin = HV_AMP_CAL_START_BIN; bin < cnt; bin++) max = channels[ch-1][bin] > max ? 
                                                              channels[ch-1][bin] : max;
             if (max < HV_AMP_CAL_MIN_PULSE || max > HV_AMP_CAL_MAX_PULSE) {
                 trig--;
@@ -234,7 +234,7 @@ int hv_amp_cal(calib_data *dom_calib) {
             int peak_bin[2];
 
             /* Find and record charge.  Make sure it is in range */ 
-            for (bin=AMP_CAL_START_BIN; bin<cnt; bin++) {
+            for (bin=HV_AMP_CAL_START_BIN; bin<cnt; bin++) {
 
 
                 /* Using ATWD calibration data, convert to actual V */
@@ -395,7 +395,7 @@ float measure_rate(int atwd, int ch) {
         /* Find max from raw ATWD data */
         short max = 0;
         int bin;
-        for (bin = AMP_CAL_START_BIN; bin < cnt; bin++) {
+        for (bin = HV_AMP_CAL_START_BIN; bin < cnt; bin++) {
             if (channels[ch][bin] > max) max = channels[ch][bin];
         }
 
