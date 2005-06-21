@@ -76,47 +76,16 @@ void get_fit_initialization( float *x, float *y, int num, float *params ) {
     meanVarFloat( xvals, ( int )sum , &mean, &variance );
 
     /* Exponential decay rate */
-    params[1] = 6.0 / mean;
+    params[1] = mean / 4.0;
 
     /* Exponential amplitude */
-    params[0] = y[0] * exp(params[1]*x[0]);
+    params[0] = y[0];
     /* Zero amplitude will crash fit! */
     if (params[0] == 0.0) params[0] = 0.01;
 
-    /* OK -- now eliminate exponential (hopefully) and find */
-    /* mean, variance of remaining gaussian */
-    
-    /* Move forward until exp is suppressed by e^2 */
-    float xg = x[0] + 2/params[1];
-    
-    /* find corresponding bin */
-    int new_start_bin;
-    for (new_start_bin = 0; new_start_bin < num/15; new_start_bin++) {
-        if (x[new_start_bin] > xg) break;
-    }
-
-    /* Re-bin histogram x-values to find mean & variance */
-    /* Find mean and variance */
-    sum = 0;
-    for ( i = 0; i < num; i++ ) {
-        sum += y[i];
-    }
-
-    float new_xvals[(int)sum];
-
-    indx = 0;
-    for ( i = 0; i < num; i++ ) {
-        for ( j = 0; j < y[i]; j++ ) {
-            new_xvals[indx] = x[i];
-            indx++;
-        }
-    }
-
-    meanVarFloat(new_xvals, ( int )sum , &mean, &variance);
-
     /* Gaussian center */
     params[3] = mean;
-                                                           
+
     /* Gaussian width */
     params[4] = 1.0 / ( 2 * variance );
 
