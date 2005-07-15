@@ -46,6 +46,8 @@ public class HVHistogramGrapher implements Runnable {
 
     public static void main( String[] args) {
         try {
+            //Disable X support while app is running
+            System.setProperty("java.awt.headless", "true");
             String inDir = args[0];
             String outDir = args[1];
             String htmlRoot = args[2];
