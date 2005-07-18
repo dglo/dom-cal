@@ -4,7 +4,6 @@
  */
 
 #include <math.h>
-#include <string.h>
 
 #include "hal/DOM_MB_hal.h"
 #include "hal/DOM_MB_fpga.h"
@@ -114,21 +113,6 @@ void prescanATWD(unsigned int trigger_mask) {
       while (!hal_FPGA_TEST_readout_done(trigger_mask)) ;
       halUSleep(1000);
    }
-}
-
-
-/*---------------------------------------------------------------------------*/
-/*
- * checkHVBase
- *
- * Check to make sure there *is* a HV base by looking at ID
- * Avoids running on, say, the sync board
- *
- * Assume base has already been enabled 
- */
-int checkHVBase() {
-    const char *hv_id = halHVSerial();
-    return strcmp(hv_id, "000000000000") == 0 ? 0 : 1;
 }
 
 /*---------------------------------------------------------------------------*/

@@ -80,8 +80,8 @@ int hv_gain_cal(calib_data *dom_calib) {
     /* Make sure pulser is off */
     hal_FPGA_TEST_disable_pulser();
 
-    /* Disable the analog mux -- it affects the baseline! */
-    halDisableAnalogMux();
+    /* Select something static into channel 3 */
+    halSelectAnalogMuxInput(DOM_HAL_MUX_FLASHER_LED_CURRENT);
 
     /* Trigger one ATWD only */
     trigger_mask = (atwd == 0) ? HAL_FPGA_TEST_TRIGGER_ATWD0 : HAL_FPGA_TEST_TRIGGER_ATWD1;
@@ -96,6 +96,12 @@ int hv_gain_cal(calib_data *dom_calib) {
 
     freq = getCalibFreq(atwd, *dom_calib, samp_dac);
 
+    /* Give user a final warning */
+#ifdef DEBUG
+    printf(" *** WARNING: enabling HV in 5 seconds! ***\r\n");
+#endif
+    halUSleep(5000000);
+
     /* Turn on high voltage base */
 #if defined DOMCAL_REV2 || defined DOMCAL_REV3
     halEnablePMT_HV();
@@ -106,7 +112,11 @@ int hv_gain_cal(calib_data *dom_calib) {
 
     /* Check to make sure there *is* a HV base by looking at ID */
     /* Avoids running on, say, the sync board */
-    if (!checkHVBase()) {
+    const char *hv_id = halHVSerial();
+#ifdef DEBUG
+    printf("HV ID is %s\r\n", hv_id);
+#endif
+    if (strcmp(hv_id, "000000000000") == 0) {
 #ifdef DEBUG
         printf("All-zero HV ID!  No HV base attached; aborting gain calibration.\r\n");
 #endif
@@ -172,13 +182,72 @@ int hv_gain_cal(calib_data *dom_calib) {
             continue;
         }
 
-        /* retrieve baseline vals vor atwd/hv_idx, correct for amp gain */
-        
-        float baseline[3];
-        int i;
-        for (i = 0; i < 3; i++) baseline[i] = (atwd == 0) ? 
-                   dom_calib->baseline_data[hv_idx].atwd0_hv_baseline[i] / dom_calib->amplifier_calib[i].value :
-                   dom_calib->baseline_data[hv_idx].atwd1_hv_baseline[i] / dom_calib->amplifier_calib[i].value;
+        /* baseline should be independent of ATWD bin -- can store in one variable */
+        float baseline = 0;
+
+        /* number of 'baseline' readouts flagged as containing wf */
+        int wf_bad = 0;
+
+        /* max allowed variance */
+        float max_var = MAXIMUM_BASELINE_VARIANCE;
+
+        /* Calculate baseline */
+        for (trig=0; trig<BASELINE_TRIG_CNT; trig++) {
+
+            /* Warm up the ATWD */
+            prescanATWD(trigger_mask);
+
+            /* read it! */
+            hal_FPGA_TEST_trigger_forced(trigger_mask);
+            while (!hal_FPGA_TEST_readout_done(trigger_mask));
+            if (atwd == 0) {
+                hal_FPGA_TEST_readout(channels[0], NULL, NULL, NULL,
+                                      NULL, NULL, NULL, NULL,
+                                      cnt, NULL, 0, trigger_mask);
+            }
+            else {
+                hal_FPGA_TEST_readout(NULL, NULL, NULL, NULL,
+                                      channels[0], NULL, NULL, NULL,
+                                      cnt, NULL, 0, trigger_mask);
+            }
+
+            int i;
+
+            /* calibrated waveform */
+            float wf[128];
+
+            /* calibrate waveform */
+            for (i = 0; i < 128; i++) wf[i] = getCalibV(channels[0][i], *dom_calib, atwd, 0, i, bias_v);
+
+            /* look at the variance for evidence of signal */
+            float mean, var;
+            meanVarFloat(wf, 128, &mean, &var);
+
+            /* if variance is too large, redo this iteration */
+            if (var > max_var) {
+                trig--;
+                wf_bad++;
+                
+                /* if we have too many bad 'baseline' readouts, maybe we're too stringent */
+                if (wf_bad == BASELINE_TRIG_CNT) {
+                    wf_bad = 0;
+                    max_var *= 1.2;
+                }
+
+                continue;
+            }
+
+            /* sum up the ATWD readout */
+            for (i = 0; i < 128; i++) baseline += wf[i];
+ 
+        }
+
+        /* get final baseline value */
+        baseline /= (128 * BASELINE_TRIG_CNT);
+
+#ifdef DEBUG
+        printf("PMT baseline is %f\r\n", baseline);
+#endif
 
         /* Number of points with negative charge */
         int bad_trig = 0;
@@ -256,12 +325,12 @@ int hv_gain_cal(calib_data *dom_calib) {
             vsum = 0;
 
             for (bin = int_min; bin <= int_max; bin++)
-                vsum += (getCalibV(channels[ch][bin], *dom_calib, atwd, ch, bin, bias_v) - baseline[ch]);
+                vsum += (getCalibV(channels[ch][bin], *dom_calib, atwd, ch, bin, bias_v) - baseline);
 
             /* True charge, in pC = 1/R_ohm * sum(V) * 1e12 / (freq_mhz * 1e6) */
             /* FE sees a 50 Ohm load */
             charges[trig] = 0.02 * 1e6 * vsum / freq;
-
+ 
             if (charges[trig] < 0) {
                 trig--;
                 if (++bad_trig > GAIN_CAL_TRIG_CNT) break;
@@ -283,7 +352,7 @@ int hv_gain_cal(calib_data *dom_calib) {
         /* Create histogram of charge values */
         /* Heuristic maximum for histogram */
 	   
-        int hist_max = ceil(0.85*pow(10.0, 6.37*log10(hv*2)-21.0));
+        int hist_max = ceil(0.75*pow(10.0, 6.37*log10(hv*2)-21.0));
         int hbin;
 
         /* Initialize histogram */
@@ -330,24 +399,18 @@ int hv_gain_cal(calib_data *dom_calib) {
     /* If no error in fit, record gain and P/V */
     if (!fiterr) {
 
-        float valley_x, valley_y, peak_y, pv_ratio;
+        float valley_x, valley_y, pv_ratio;
         /* Find valley */
         int val = spe_find_valley(fit_params[hv_idx], &valley_x, &valley_y);
         if (val == 0) {
 
-            /* Peak value is Gaussian + exponential at x-value defined */
-            /* by Gaussian peak */
-            peak_y = fit_params[hv_idx][2] + 
-                (fit_params[hv_idx][0] * exp(-1.0 * fit_params[hv_idx][1] * fit_params[hv_idx][3]));
-
-            pv_ratio = peak_y / valley_y;
+            pv_ratio = fit_params[hv_idx][2] / valley_y;
 #ifdef DEBUG
-            printf("Full peak (exp + gaussian) = %.6g\r\n", peak_y);
             printf("Valley located at %.6g, %.6g: PV = %.2g\r\n", valley_x, valley_y, pv_ratio);
 #endif
             
-            /* If PV < 1.5, fit is likely messed up */
-            if (pv_ratio > 1.5) {
+            /* If PV is too high, we don't have true peak and valley */
+            if ((pv_ratio > 0.0) && (pv_ratio < GAIN_CAL_MAX_SANE_PV)) {
 
                 log_hv[spe_cnt] = log10(hv);
                 log_gain[spe_cnt] = log10(fit_params[hv_idx][3] / Q_E) - 12.0;

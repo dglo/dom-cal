@@ -104,20 +104,18 @@ int amp_cal(calib_data *dom_calib) {
                 /* Using ATWD calibration data, convert to actual V */
                 if (atwd == 0) {
                     peak_v = (float)(channels[ch][bin]) * dom_calib->atwd0_gain_calib[ch][bin].slope
-                        + dom_calib->atwd0_gain_calib[ch][bin].y_intercept
-                        - dom_calib->atwd0_baseline[ch];
+                        + dom_calib->atwd0_gain_calib[ch][bin].y_intercept;
                 }
                 else {
                     peak_v = (float)(channels[ch][bin]) * dom_calib->atwd1_gain_calib[ch][bin].slope
-                        + dom_calib->atwd1_gain_calib[ch][bin].y_intercept
-                        - dom_calib->atwd1_baseline[ch];
+                        + dom_calib->atwd1_gain_calib[ch][bin].y_intercept;
                 }
 
                 /* Also subtract out bias voltage */
                 peak_v -= bias_v;
 
                 /* Note "peak" is actually a minimum */
-                if (bin == AMP_CAL_START_BIN) {
+                if (bin == 0) {
                     peaks[ch][trig] = peak_v;
                 }
                 else {

@@ -19,14 +19,6 @@ import java.nio.ByteBuffer;
 
 public class HVHistogram {
 
-    private static final String[] paramNames = new String[] {
-        "exponential amplitude",
-        "exponential width",
-        "gaussian amplitude",
-        "gaussian mean",
-        "gaussian width",
-    };
-
     private short voltage;
     private float[] fitParams;
     private float[] xVals;
@@ -38,7 +30,7 @@ public class HVHistogram {
 
     public static HVHistogram parseHVHistogram(ByteBuffer bb) {
         short voltage = bb.getShort();
-        float noiseRate = bb.getFloat();
+        float noiseRate = (bb.getFloat());
         boolean isFilled = (bb.getShort() != 0);
         boolean convergent = (bb.getShort() != 0);
         float[] fitParams = new float[5];
@@ -68,10 +60,16 @@ public class HVHistogram {
             Element currentParam = (Element)fitP.item(i);
             float val = Float.parseFloat(currentParam.getFirstChild().getNodeValue());
             String name = currentParam.getAttribute("name");
-            for (int j = 0; j < paramNames.length; j++) {
-                if (name.equals(paramNames[j])) {
-                    fitParams[j] = val;
-                }
+            if (name.equals("exponential amplitude")) {
+                fitParams[0] = val;
+            } else if (name.equals("exponential width")) {
+                fitParams[1] = val;
+            } else if (name.equals("gaussian amplitude")) {
+                fitParams[2] = val;
+            } else if (name.equals("gaussian mean")) {
+                fitParams[3] = val;
+            } else if (name.equals("gaussian width")) {
+                fitParams[4] = val;
             }
         }
         Element histogram = (Element)histo.getElementsByTagName("histogram").item(0);
@@ -131,14 +129,5 @@ public class HVHistogram {
 
     public boolean isFilled() {
         return isFilled;
-    }
-
-    public static final String getParameterName(int i)
-    {
-        if (i < 0 || i >= paramNames.length) {
-            return null;
-        }
-
-        return paramNames[i];
     }
 }
