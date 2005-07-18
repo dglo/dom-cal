@@ -50,8 +50,8 @@
 /* MAINBOARD LED DEFINES */
 
 /* LED brightness starting/stopping values */
-#define TRANSIT_CAL_LED_AMP_START   700
-#define TRANSIT_CAL_LED_AMP_STOP    550
+#define TRANSIT_CAL_LED_AMP_START   950
+#define TRANSIT_CAL_LED_AMP_STOP    450
 #define TRANSIT_CAL_LED_AMP_STEP      3
 
 /* Which channel to use */
