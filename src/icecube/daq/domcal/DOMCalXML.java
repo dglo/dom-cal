@@ -54,9 +54,18 @@ public class DOMCalXML {
             out.print("  </amplifier>\n");
         }
         for ( int i = 0; i < 2; i++ ) {
-            out.print("  <atwdfreq chip=\"" + i + "\">\n");
+            out.print("  <atwdfreq atwd=\"" + i + "\">\n");
             format( rec.getATWDFrequencyCalibration( i ), out );
             out.print("  </atwdfreq>\n");
+        }
+
+        formatBaseline(rec.getBaseline(), out);
+
+
+        if (rec.isTransitCalValid()) {
+            out.print("  <pmtTransitTime>\n");
+            format(rec.getTransitTimeFit(), out);
+            out.print("  </pmtTransitTime>\n");
         }
 
         if ( rec.isHvCalValid() ) {
@@ -69,6 +78,7 @@ public class DOMCalXML {
 
 
         for (int i = 0; i < rec.getNumHVHistograms(); i++) {
+            if (rec.isHvBaselineCalValid()) formatBaseline(rec.getHVBaseline(i), out);
             formatHisto(rec.getHVHistogram(i), out);
         }
 
@@ -101,5 +111,16 @@ public class DOMCalXML {
         }
         out.print("    </histogram>\n");
         out.print("  </histo>\n");
+    }
+
+    private static void formatBaseline(Baseline base, PrintWriter out) {
+        out.print("  <baseline voltage=\"" + base.getVoltage() + "\">\n");
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 3; j++) {
+                out.print("    <base atwd=\"" + i + "\" channel=\"" + j +
+                                                                     "\" value=\"" + base.getBaseline(i,j) + "\"/>\n");
+            }
+        }
+        out.print("  </baseline>\n");
     }
 }

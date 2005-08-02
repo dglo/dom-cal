@@ -9,3 +9,4 @@ float biasDAC2V(int val);
 void prescanATWD(unsigned int trigger_mask);
 void meanVarFloat(float *x, int pts, float *mean, float *var);
 void linearFitFloat(float *x, float *y, int pts, linear_fit *fit);
+int checkHVBase();

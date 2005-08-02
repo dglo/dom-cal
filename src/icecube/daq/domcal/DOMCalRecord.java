@@ -42,18 +42,24 @@ public interface DOMCalRecord {
 
     public short getVersion();
     
+    public boolean isHvBaselineCalValid();
+
+    public boolean isTransitCalValid();
+
     public boolean isHvCalValid();
-    
+
+    public LinearFit getTransitTimeFit();
+
     public LinearFit getHvGainCal();
-
-    public short getNumPVPts();
-
-    public float getPVValue( int iter );
-
-    public float getPVVoltageData( int iter );
 
     public short getNumHVHistograms();
 
     public HVHistogram getHVHistogram(int iter);
+
+    public short getNumHVBaselines();
+
+    public Baseline getHVBaseline(int iter);
+
+    public Baseline getBaseline();
 
 }

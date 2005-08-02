@@ -4,7 +4,7 @@
  * IceCube DOM front-end calibration application.
  * 
  * John Kelley and Jim Braun
- * UW-Madison, 2004
+ * UW-Madison, 2004-2005
  *
  */
 
@@ -28,6 +28,9 @@
 #include "pulser_cal.h"
 #include "atwd_freq_cal.h"
 #include "hv_gain_cal.h"
+#include "baseline_cal.h"
+#include "hv_amp_cal.h"
+#include "transit_cal.h"
 
 /*---------------------------------------------------------------------------*/
 /* 
@@ -66,8 +69,8 @@ void get_date(calib_data *dom_calib) {
 
     /* Get year */
     year = month = 0;
-    while ((year < 2004) || (year > 2050)) {
-        printf("Enter year (2004-...): ");
+    while ((year < 2005) || (year > 2050)) {
+        printf("Enter year (2005-...): ");
         fflush(stdout);    
         getstr(buf);
         year = atoi(buf);
@@ -142,6 +145,9 @@ void init_dom(void) {
 
     /* Make sure pulser is off */
     hal_FPGA_TEST_disable_pulser();
+
+    /* Set disc value for gain cal */
+    halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, GAIN_CAL_DISC_DAC);
 
 }
 
@@ -223,6 +229,20 @@ int write_fit( linear_fit *fit, char *bin_data, int offset ) {
 int write_value_error( value_error *val_er, char *bin_data, int offset ) {
     int bytes_written = get_bytes_from_float( val_er->value, bin_data, offset );
     bytes_written += get_bytes_from_float( val_er->error, bin_data, offset + 4 );
+    return bytes_written;
+}
+
+int write_baseline(float *baseline, char *bin_data, int offset) {
+    int bytes_written = get_bytes_from_float(baseline[0], bin_data, offset);
+    bytes_written += get_bytes_from_float(baseline[1], bin_data, offset + bytes_written);
+    bytes_written += get_bytes_from_float(baseline[2], bin_data, offset + bytes_written);
+    return bytes_written;
+}
+
+int write_hv_baseline(hv_baselines *hv_baseline, char *bin_data, int offset ) {
+    int bytes_written = get_bytes_from_short(hv_baseline->voltage, bin_data, offset);
+    bytes_written += write_baseline(hv_baseline->atwd0_hv_baseline, bin_data, offset + bytes_written);
+    bytes_written += write_baseline(hv_baseline->atwd1_hv_baseline, bin_data, offset + bytes_written);
     return bytes_written;
 }
 
@@ -330,13 +350,35 @@ int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
     offset += write_fit( &cal->atwd0_freq_calib, bin_data, offset );
     offset += write_fit( &cal->atwd1_freq_calib, bin_data, offset );
 
-    /* Write HV gain cal isValid */
-    offset += get_bytes_from_short( cal->hv_gain_valid, bin_data, offset );
+    /* Write baseline data */
+    offset += write_baseline(cal->atwd0_baseline, bin_data, offset);
+    offset += write_baseline(cal->atwd1_baseline, bin_data, offset);
+
+    /* Write transit cal isValid */
+    offset += get_bytes_from_short( cal->transit_calib_valid, bin_data, offset );
+
+    /* Write transit time data if necessary */
+    if (cal->transit_calib_valid) {
+        offset += write_fit(&cal->transit_calib, bin_data, offset);
+    }
 
     /* Write number of histos */
     offset += get_bytes_from_short(cal->num_histos, bin_data, offset );
 
-    /* Write each histo */
+    /* Write hv baselines valid */
+    offset += get_bytes_from_short( cal->hv_baselines_valid, bin_data, offset );
+
+    /* Write baselines if necessary */
+    if (cal->hv_baselines_valid) {
+        for (i = 0; i < cal->num_histos; i++) {
+            offset += write_hv_baseline(&cal->baseline_data[i], bin_data, offset);
+        }
+    }
+
+    /* Write HV gain cal isValid */
+    offset += get_bytes_from_short( cal->hv_gain_valid, bin_data, offset );
+
+    /* Write each histo and baseline */
     for (i = 0; i < cal->num_histos; i++) {
         offset += write_histogram(&cal->histogram_data[i], bin_data, offset);
     }
@@ -435,6 +477,21 @@ int save_results(calib_data dom_calib) {
     r_size += dom_calib.num_histos * 4; //Noise rate
     r_size += dom_calib.num_histos * 2; //is_filled flag
 
+    
+    r_size += 2; //hv_baselines_valid
+    if (dom_calib.hv_baselines_valid) {
+        r_size += dom_calib.num_histos * 2 * 3 * 4; //hv_baselines
+        r_size += dom_calib.num_histos * 2; //baseline voltages
+    }
+
+    r_size += 2; //transit_calib_valid
+    if (dom_calib.transit_calib_valid) {
+        /* Transit cal */
+        r_size += 12;
+    }
+
+    r_size += 2 * 3 * 4; //baselines
+
     char binary_data[r_size];
 
     /* Convert DOM calibration data to binary format */
@@ -473,7 +530,7 @@ int main(void) {
     get_date(&dom_calib);
     
     /* Ask user if they want an HV calibration */
-    printf("Do you want to perform an HV gain calibration (y/n)? ");
+    printf("Do you want to perform the HV portion of the calibration (y/n)? ");
     fflush(stdout);
     getstr(buf);
     printf("\r\n");
@@ -488,6 +545,8 @@ int main(void) {
 #endif
     }
     dom_calib.hv_gain_valid = 0;
+    dom_calib.hv_baselines_valid = 0;
+    dom_calib.transit_calib_valid = 0;
 
     /* Init # histos returned */
     dom_calib.num_histos = doHVCal ? GAIN_CAL_HV_CNT : 0;
@@ -501,17 +560,24 @@ int main(void) {
     /* Calibration modules:
      *  - pulser calibration
      *  - atwd calibration
+     *  - baseline calibration
      *  - amplifier calibration
      *  - sampling speed calibration
+     *  - HV baseline calibration
      *  - HV gain calibration
      */
     /* FIX ME: return real error codes */
     pulser_cal(&dom_calib);
     atwd_cal(&dom_calib);
+    baseline_cal(&dom_calib);
     amp_cal(&dom_calib);
     atwd_freq_cal(&dom_calib);
-    if (doHVCal)
+    if (doHVCal) {
+        transit_cal(&dom_calib);
+        hv_baseline_cal(&dom_calib);
+        hv_amp_cal(&dom_calib);
         hv_gain_cal(&dom_calib);
+    }
 
     /* FIX ME: FADC calibration is a placeholder */
     dom_calib.fadc_values[0] = 0;

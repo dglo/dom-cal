@@ -61,7 +61,7 @@ void get_fit_initialization( float *x, float *y, int num, float *params ) {
     /* Gaussian amplitude */
     params[2] = histmax;
 
-    float *xvals = (float *) malloc((int)sum * sizeof(float));
+    float xvals[(int)sum];
 
     int j;
     int indx = 0;
@@ -81,11 +81,11 @@ void get_fit_initialization( float *x, float *y, int num, float *params ) {
     /* Exponential amplitude */
     params[0] = y[0];
     /* Zero amplitude will crash fit! */
-    if (params[0] == 0.0) params[0] = 0.01;   
+    if (params[0] == 0.0) params[0] = 0.01;
 
     /* Gaussian center */
     params[3] = mean;
-                                                           
+
     /* Gaussian width */
     params[4] = 1.0 / ( 2 * variance );
 
@@ -108,14 +108,19 @@ int spe_find_valley(float *a, float *valley_x, float *valley_y) {
      
     /* Find valley (first minimum) with Newton-Raphson search for zero
        of first derivative */
-    x = a[3] / 2;
+
+    /* First guess -- set exponential and gaussian equal */
+    float root = sqrt(a[1]*a[1] + 4*a[3]*a[4]*a[1] - 4*a[4]*log(a[0]/a[2]));
+    x = (a[1] + 2*a[3]*a[4] - root) / (2 * a[4]);
+
+
     int iter = 0;
     int done = 0;
     int converged = 0;
     int err = 0;
 
     while (!done) {
-    
+
         xoff = x - a[3];
         e1 = exp(-a[1] * x);
         e2 = exp(-xoff * xoff * a[4]);
@@ -255,6 +260,14 @@ int spe_fit(float *xdata, float *ydata, int pts,
         /* Loop is done when the max number of iterations is reached */
         /* or when chi-squared has decreased, but only by a small amount */
         /* Decrease can be small absolutely or as a percentage */
+
+        /* FIX ME DEBUG */
+        /* print current parameters */
+        printf("Parameter values, iteration %d:\r\n", iter);
+        printf("Chisq: %.6g\r\n", chisq);
+        for (i = 0; i < SPE_FIT_PARAMS; i++)
+            printf(" a[%d] = %g\n", i, fit_params[i]);
+
         iter++;
         del_chisq = old_chisq - chisq;
         converged = (del_chisq > 0) && ((del_chisq < SPE_FIT_CHISQ_ABS_DONE) ||
@@ -306,7 +319,8 @@ int spe_fit(float *xdata, float *ydata, int pts,
                 err = SPE_FIT_ERR_BAD_FIT;
         }
 
-        if (fit_params[3] > xdata[pts-1]) err = SPE_FIT_ERR_BAD_FIT;
+        /* Make sure gaussian max isn't out of the fitted range */
+        if (fit_params[3] > xdata[start_bin + ndata-1]) err = SPE_FIT_ERR_BAD_FIT;
     }
     else {
 #ifdef DEBUG
