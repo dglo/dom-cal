@@ -63,6 +63,9 @@ int hv_amp_cal(calib_data *dom_calib) {
 
     bias_v = biasDAC2V(AMP_CAL_PEDESTAL_DAC);
 
+    /* Set the ATWD launch delay */
+    hal_FPGA_TEST_set_atwd_LED_delay(HV_AMP_CAL_ATWD_LAUNCH_DELAY);
+
     /* Turn on high voltage base */
 #if defined DOMCAL_REV2 || defined DOMCAL_REV3
     halEnablePMT_HV();
@@ -86,61 +89,92 @@ int hv_amp_cal(calib_data *dom_calib) {
     /* Trigger one ATWD only */
     trigger_mask = (atwd == 0) ? HAL_FPGA_TEST_TRIGGER_ATWD0 : HAL_FPGA_TEST_TRIGGER_ATWD1;
 
+    /* Build a rough histogram to find PMT saturation point */
+    float av[LED_MAX_AMPLITUDE];
+    int sat = -1;
+
+    for (i = 0; i < LED_MAX_AMPLITUDE; i++) av[i] = 0.0;
+
+    /* Turn on LED */
+    hal_FPGA_TEST_enable_LED();
+    halEnableLEDPS();
+
+    /* Fill histogram */
+    int led_amplitude;
+    for (led_amplitude = LED_MAX_AMPLITUDE - 1; led_amplitude >= 0;
+                                             led_amplitude -= HV_AMP_CAL_HISTOGRAM_DEC) {
+
+        /* Set new amplitude */
+        halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, led_amplitude);
+        halUSleep(DAC_SET_WAIT);
+
+        /* Calculate our average atwd response to LED signal */
+        av[led_amplitude] = get_average_amplitude(atwd, 1, HV_AMP_CAL_HISTOGRAM_TRIG_TIME);
+        printf("LED response: DAC: %d Amp: %f\n", led_amplitude, av[led_amplitude]);
+
+        /* Check whether we need to continue */
+        if (av[led_amplitude] > 800.0) {
+            sat = led_amplitude;
+            break;
+        }
+    }
+
+    if (sat == -1) {
+        /* OK -- we didn't find a saturation point -- maybe we have a weak LED */
+        /* Find maximum */
+        float max = 0.0;
+        for (i = LED_MAX_AMPLITUDE - 1; i >= 0; i -= HV_AMP_CAL_HISTOGRAM_DEC) {
+            if (av[i] > max) {
+                max = av[i];
+                sat = i;
+            }
+        }
+    }
+
+    /* Reset LED DAC, let pmt recover */
+    halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, LED_MAX_AMPLITUDE);
+    halUSleep(DAC_SET_WAIT);        
+
     /* Loop over channels and pulser settings for each channel */
     for (ch = 1; ch < 3; ch++) {
 
-        /* Check rate -- do we need to turn on LED? */
-        float rate = 0;
+        /* Do binary search to place average LED pulse at prime level */
+        int l_max = LED_MAX_AMPLITUDE;
+        int l_min = sat;
 
-        /* LED amplitude */
-        short led_amplitude = LED_OFF;
+        /* We stop when max and min agree */
+        while (l_max - l_min > 0) {
 
-        rate = measure_rate(atwd, ch-1);
-
-        while (rate < MIN_PULSE_RATE) {
-
-            /* OK -- not enough signal */
-            /* Turn on MB LED if off -- otherwise inc amplitude until */
-            /* we can see it */
-            if (led_amplitude == LED_OFF) {
-                 
-                hal_FPGA_TEST_enable_LED();
-                halEnableLEDPS();
-                led_amplitude = LED_MAX_AMPLITUDE;
-            } else {
-                led_amplitude -= LED_AMPLITUDE_DEC;
-            }
-
-            /* Can't do calibration if rate is too low */
-            if (led_amplitude < 0) {
-                /* FIX ME -- flag failure using ch2 gain error */
-                dom_calib->amplifier_calib[2].error = -1.0;
-
-                /* Put the DACs back to original state */
-                halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, origBiasDAC);
-                halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, origDiscDAC);
-                halWriteDAC((atwd == 0) ? DOM_HAL_DAC_ATWD0_TRIGGER_BIAS :
-                                DOM_HAL_DAC_ATWD1_TRIGGER_BIAS, origSampDAC);
-                if (led_amplitude != LED_OFF) {
-                    halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, old_led_value);
-                    halDisableLEDPS();
-                    hal_FPGA_TEST_disable_LED();
-                }
-                
-                return ERR_LOW_RATE;
-            }
-
-            /* Apply new setting and wait */
+            /* Calculate and set new amplitude */
+            led_amplitude = (l_max + l_min) / 2;
             halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, led_amplitude);
             halUSleep(DAC_SET_WAIT);
 
-            /* Measure rate */ 
-            rate = measure_rate(atwd, ch-1);
+            /* Calculate our average atwd response to LED signal */
+            float lev = get_average_amplitude(atwd, ch-1, TEST_TRIG_TIME);
 
-            /* FIX ME DEBUG */
-            printf("Rate: %f LED amplitude: %d\n", rate, led_amplitude); 
+            /* FIX ME debug */
+            printf("Search: DAC: %d Level: %f\n", led_amplitude, lev);
 
+            /* Are we above prime or below? */
+            if (lev < HV_AMP_CAL_BEST_PULSE) {
+                if (l_max - l_min > 1) {
+                    l_max = led_amplitude;
+                } else {
+                    l_max--;
+                }
+            } else {
+                if (l_max - l_min > 1) {
+                    l_min = led_amplitude;
+                } else {
+                    l_min++;
+                }
+            }
         }
+
+        /* Set LED to calculated best setting */
+        halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, l_max);
+        halUSleep(DAC_SET_WAIT);
 
         /* OK -- we have illumination.  Let's re-check the baseline because */
         /* just about everything affects it -- possibly even including the  */
@@ -152,7 +186,7 @@ int hv_amp_cal(calib_data *dom_calib) {
         /* FIX ME DEBUG */
         int iter = 0;
 
- 
+        /* Record start time */
         long long clk = hal_FPGA_TEST_get_local_clock();
         short cidx = 1;
 
@@ -163,8 +197,8 @@ int hv_amp_cal(calib_data *dom_calib) {
             /* Warm up the ATWD */
             prescanATWD(trigger_mask);
             
-            /* Discriminator trigger the ATWD */
-            hal_FPGA_TEST_trigger_disc(trigger_mask);
+            /* LED trigger the ATWD */
+            hal_FPGA_TEST_trigger_LED(trigger_mask);
             
             /* Wait for done */
             while (!hal_FPGA_TEST_readout_done(trigger_mask)) {
@@ -259,7 +293,7 @@ int hv_amp_cal(calib_data *dom_calib) {
                 for (i = 0; i < 2; i++) current_v[i] -= bias_v;
 
                 /* Note "peak" is actually a minimum */
-                if (bin == AMP_CAL_START_BIN) {
+                if (bin == HV_AMP_CAL_START_BIN) {
                     for (i = 0; i < 2; i++) {
                         peak_v[i] = current_v[i];
                         peak_bin[i] = bin;
@@ -282,7 +316,8 @@ int hv_amp_cal(calib_data *dom_calib) {
             int mins[2];
             int maxes[2];
             for (i = 0; i < 2; i++) {
-                mins[i] = peak_bin[i] - CHARGE_FOW_BINS < AMP_CAL_START_BIN ? AMP_CAL_START_BIN : peak_bin[i] - CHARGE_FOW_BINS;
+                mins[i] = peak_bin[i] - CHARGE_FOW_BINS < HV_AMP_CAL_START_BIN ? 
+                                                    HV_AMP_CAL_START_BIN : peak_bin[i] - CHARGE_FOW_BINS;
                 maxes[i] = peak_bin[i] + CHARGE_REV_BINS > cnt-1 ? cnt-1 : peak_bin[i] + CHARGE_REV_BINS;
             }   
 
@@ -299,9 +334,8 @@ int hv_amp_cal(calib_data *dom_calib) {
 
         }
 
-        /* Turn off LED and LED PS between channel calibration */
-        halDisableLEDPS();
-        hal_FPGA_TEST_disable_LED();
+        /* Turn down LED between channel calibration */
+        halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, LED_MAX_AMPLITUDE);
         halUSleep(DAC_SET_WAIT);
     }
 
@@ -335,6 +369,8 @@ int hv_amp_cal(calib_data *dom_calib) {
     }
 
     /* Put the DACs back to original state */
+    halDisableLEDPS();
+    hal_FPGA_TEST_disable_LED();
     halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, origBiasDAC);   
     halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, origDiscDAC);
     halWriteDAC((atwd == 0) ? DOM_HAL_DAC_ATWD0_TRIGGER_BIAS : 
@@ -348,7 +384,11 @@ int hv_amp_cal(calib_data *dom_calib) {
 
 }
 
-float measure_rate(int atwd, int ch) {
+float get_average_amplitude(int atwd, int ch, int trig_time_sec) {
+
+    /* NOTES:
+     * construct peak histograms instead?  Possibly better performance.
+     */
 
     /* LED rate is >1KHz, so no prescan needed in this loop */
 
@@ -362,18 +402,21 @@ float measure_rate(int atwd, int ch) {
     int cnt = 128;
 
     /* Number of pulses above threshold */
-    int p_cnt = 0;
+    int ct = 0;
+
+    /* Sum of maximum amplitudes */
+    int psum = 0;
 
     /* store start clk for rate measurement */
     long long clk_st = hal_FPGA_TEST_get_local_clock();
 
     long long clk;
     for (clk = hal_FPGA_TEST_get_local_clock();
-            clk - clk_st < TEST_TRIG_TIME * FPGA_HAL_TICKS_PER_SEC;
+            clk - clk_st < trig_time_sec * FPGA_HAL_TICKS_PER_SEC;
             clk = hal_FPGA_TEST_get_local_clock()) {
 
         /* LED trigger the ATWD */
-        hal_FPGA_TEST_trigger_disc(trigger_mask);
+        hal_FPGA_TEST_trigger_LED(trigger_mask);
 
 
         /* Wait for done */
@@ -399,9 +442,10 @@ float measure_rate(int atwd, int ch) {
             if (channels[ch][bin] > max) max = channels[ch][bin];
         }
 
-        /* Is pulse of acceptable amplitude */
-        if (max > HV_AMP_CAL_MIN_PULSE && max < HV_AMP_CAL_MAX_PULSE) p_cnt++;
+        psum += max;
+        ct++;
     }
 
-    return (float)p_cnt / TEST_TRIG_TIME;
+    /* Return average peak amplitude */
+    return (float)psum / ct;
 }

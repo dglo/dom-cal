@@ -283,7 +283,7 @@ int hv_gain_cal(calib_data *dom_calib) {
         /* Create histogram of charge values */
         /* Heuristic maximum for histogram */
 	   
-        int hist_max = ceil(0.85*pow(10.0, 6.37*log10(hv*2)-21.0));
+        int hist_max = ceil(0.9*pow(10.0, 6.37*log10(hv*2)-21.0));
         int hbin;
 
         /* Initialize histogram */
@@ -346,8 +346,8 @@ int hv_gain_cal(calib_data *dom_calib) {
             printf("Valley located at %.6g, %.6g: PV = %.2g\r\n", valley_x, valley_y, pv_ratio);
 #endif
             
-            /* If PV < 1.5, fit is likely messed up */
-            if (pv_ratio > 1.5) {
+            /* If PV < 1.1, we have fit problems */
+            if (pv_ratio > 1.1) {
 
                 log_hv[spe_cnt] = log10(hv);
                 log_gain[spe_cnt] = log10(fit_params[hv_idx][3] / Q_E) - 12.0;
