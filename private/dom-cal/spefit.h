@@ -1,6 +1,9 @@
 /* Fraction of hits in first real bin */
 #define SPE_FIT_NOISE_FRACT     0.0075
 
+/* Fraction of data to chop off high end of SPE peak -- eliminate non-gaussian component */
+#define SPE_BAD_TAIL_FRACTION   0.04
+
 /* Fit information */
 #define SPE_FIT_PARAMS              5
 #define SPE_FIT_MAX_ITER           75

@@ -207,6 +207,12 @@ int spe_fit(float *xdata, float *ydata, int pts,
         start_bin = ydata[nonzero_bin + 2] > ydata[nonzero_bin] ? nonzero_bin + 2 : nonzero_bin;
 
     ndata = pts;
+    /*  OK -- let's chop off the last few % -- these are probably non-gaussian */
+    int tot = 0;
+    for (; ndata > start_bin; ndata--) {
+        tot += ydata[ndata-1];
+        if (tot > SPE_BAD_TAIL_FRACTION * num_samples) break;
+    }
 
     /* Determine the number of data points */
     ndata -= start_bin;
