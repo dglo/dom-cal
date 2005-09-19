@@ -63,7 +63,7 @@ public class DOMCalXML {
 
 
         if (rec.isTransitCalValid()) {
-            out.print("  <pmtTransitTime num_pts=\"" + rec.getNumTransitCalPts() + "\">\n");
+            out.print("  <pmtTransitTime>\n");
             format(rec.getTransitTimeFit(), out);
             out.print("  </pmtTransitTime>\n");
         }

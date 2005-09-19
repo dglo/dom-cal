@@ -62,6 +62,4 @@ public interface DOMCalRecord {
 
     public Baseline getBaseline();
 
-    public short getNumTransitCalPts();
-
 }
