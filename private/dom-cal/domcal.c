@@ -463,7 +463,7 @@ int save_results(calib_data dom_calib) {
 #endif
 
     /* Calculate record length */
-    short r_size = DEFAULT_RECORD_LENGTH;
+    int r_size = DEFAULT_RECORD_LENGTH;
     if ( dom_calib.hv_gain_valid ) {
         r_size += 12; //log-log fit
     }
