@@ -107,7 +107,9 @@ public class DOMCalRecordFactory {
         boolean transitCalValid = transitCalValidShort == 0 ? false : true;
 
         LinearFit transitTimeFit = null;
+        short numTransitPts = 0;
         if (transitCalValid) {
+            numTransitPts = bb.getShort();
             transitTimeFit = LinearFitFactory.parseLinearFit(bb);
         }
 
@@ -141,7 +143,7 @@ public class DOMCalRecordFactory {
         return new DefaultDOMCalRecord( pulserCalibration, atwdCalibration, atwdFrequencyCalibration,
                 amplifierCalibration, amplifierCalibrationError, temperature, year, month, day, domId, dacValues,
                adcValues, fadcValues, version, hvCalValid, transitCalValid, hvBaselinesValid, hvGainFit,
-                                                    numHVHistograms, histos, baseline, hvBaselines, transitTimeFit);
+                                      numHVHistograms, histos, baseline, hvBaselines, transitTimeFit, numTransitPts);
     }
     
     private static class DefaultDOMCalRecord implements DOMCalRecord {
@@ -169,6 +171,7 @@ public class DOMCalRecordFactory {
 
         private boolean hvCalValid;
         private boolean transitCalValid;
+        private short numTransitPts;
         private boolean hvBaselineCalValid;
 
         private LinearFit hvGainCal;
@@ -185,8 +188,9 @@ public class DOMCalRecordFactory {
                  temperature, short year, short month, short day, String domId, short[] dacValues, short[] adcValues,
                  short[] fadcValues, short version, boolean hvCalValid, boolean transitCalValid,
                  boolean hvBaselineCalValid, LinearFit hvGainCal, short numHVHistograms, HVHistogram[] hvHistos,
-                                                 Baseline baseline, Baseline[] hvBaselines, LinearFit transitTimeFit) {
+                             Baseline baseline, Baseline[] hvBaselines, LinearFit transitTimeFit, short numTransitPts) {
 
+            this.numTransitPts = numTransitPts;
             this.baseline = baseline;
             this.hvBaselines = hvBaselines;
             this.pulserCalibration = pulserCalibration;
@@ -303,6 +307,10 @@ public class DOMCalRecordFactory {
 
         public boolean isTransitCalValid() {
             return transitCalValid;
+        }
+
+        public short getNumTransitCalPts() {
+            return numTransitPts;
         }
 
         public LinearFit getTransitTimeFit() {
