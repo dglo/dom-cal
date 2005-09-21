@@ -359,6 +359,7 @@ int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
 
     /* Write transit time data if necessary */
     if (cal->transit_calib_valid) {
+        offset += get_bytes_from_short( cal->transit_calib_points, bin_data, offset );
         offset += write_fit(&cal->transit_calib, bin_data, offset);
     }
 
@@ -486,7 +487,8 @@ int save_results(calib_data dom_calib) {
 
     r_size += 2; //transit_calib_valid
     if (dom_calib.transit_calib_valid) {
-        /* Transit cal */
+        /* Number of points and linear fit */
+        r_size +=  2;
         r_size += 12;
     }
 
