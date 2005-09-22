@@ -36,7 +36,10 @@
 #define CHARGE_FOW_BINS 12
 
 /* ATWD launch delay */
-#define HV_AMP_CAL_ATWD_LAUNCH_DELAY 8
+#define HV_AMP_CAL_ATWD_LAUNCH_DELAY 6
+
+/* Sampling speed */
+#define HV_AMP_CAL_SAMPLING_DAC 850
 
 /* Histogram Settings */
 #define HV_AMP_CAL_HISTOGRAM_DEC 5
