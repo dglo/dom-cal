@@ -68,13 +68,12 @@ public class HVHistogramGrapher implements Runnable {
             (new HVHistogramGrapher(inDir, outDir, htmlRoot)).run();
         } catch (Exception e) {
             usage();
-            e.printStackTrace();
             System.exit(-1);
         }
     }
 
     public static void usage() {
-        System.out.println("Usage: java icecube.daq.domcal.HVHistogramGrapher {inDir} {outDir}");
+        System.out.println("Usage: java icecube.daq.domcal.HVHistogramGrapher {inDir} {outDir} {htmlRoot}");
     }
 
     public HVHistogramGrapher(String inDir, String outDir, String htmlRoot) {
@@ -105,7 +104,7 @@ public class HVHistogramGrapher implements Runnable {
         File[] domcalFiles = inFile.listFiles(new FilenameFilter() {
 
                                   public boolean accept(File dir, String name) {
-                                      return name.startsWith("domcal_");
+                                      return (name.startsWith("domcal_") && name.endsWith(".xml"));
                                   }
                               });
 
@@ -509,47 +508,22 @@ public class HVHistogramGrapher implements Runnable {
 
     }
 
-    private class LinearFit {
+    private class FitException extends Exception {
 
-            private float slope;
-            private float yIntercept;
-            private float rSquared;
+        public static final int EVERTICAL_LINE = -1;
+        public static final int EDATA_LENGTH = -2;
+        public static final int EX_LENGTH_NOT_Y_LENGTH = -3;
 
-            public LinearFit( float slope, float yIntercept, float rSquared ) {
-                this.slope = slope;
-                this.yIntercept = yIntercept;
-                this.rSquared = rSquared;
-            }
+        private int condition;
 
-            public float getSlope() {
-                return slope;
-            }
-
-            public float getYIntercept() {
-                return yIntercept;
-            }
-
-            public float getRSquared() {
-                return rSquared;
-            }
+        public FitException( int condition ) {
+            this.condition = condition;
         }
 
-        private class FitException extends Exception {
-
-            public static final int EVERTICAL_LINE = -1;
-            public static final int EDATA_LENGTH = -2;
-            public static final int EX_LENGTH_NOT_Y_LENGTH = -3;
-
-            private int condition;
-
-            public FitException( int condition ) {
-                this.condition = condition;
-            }
-
-            public int getCondition() {
-                return condition;
-            }
+        public int getCondition() {
+            return condition;
         }
+    }
 
 
     private static class HTMLDoc {
