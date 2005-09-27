@@ -310,7 +310,8 @@ public class DOMCal implements Runnable {
     private static void usage() {
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir}" );
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir} calibrate dom" );
-        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir} calibrate dom calibrate hv" );
+        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir} " +
+                                                                                    "calibrate dom calibrate hv" );
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {num ports} {output dir}" );
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {num ports}" +
                                                                       "{output dir} calibrate dom" );
@@ -321,7 +322,8 @@ public class DOMCal implements Runnable {
         logger.info( "num ports -- number of sequential ports to connect above 'port' on 'host'" );
         logger.info( "output dir -- local directory to store results" );
         logger.info( "'calibrate dom' -- flag to initiate DOM calibration" );
-        logger.info( "'calibrate hv' -- flag to initiate DOM calibration -- can only be used when calibrate dom is specified" );
+        logger.info( "'calibrate hv' -- flag to initiate DOM calibration -- " +
+                                                  "can only be used when calibrate dom is specified" );
     }
 
     private static void die( Object o ) {

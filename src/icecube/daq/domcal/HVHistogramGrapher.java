@@ -156,7 +156,7 @@ public class HVHistogramGrapher implements Runnable {
             Hashtable hTable = (Hashtable)histTable.get(domId);
             StringTokenizer st = new StringTokenizer(domId, ".xml");
             String id = st.nextToken();
-            if (calProps != null) {
+            if (jdbc != null) {
                 try {
                     Statement stmt = jdbc.createStatement();
                     String sql = "select * from doms where mbid='" + id + "';";
