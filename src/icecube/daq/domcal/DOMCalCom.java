@@ -57,8 +57,9 @@ public class DOMCalCom extends SocketSerialCom {
 
     public String receive() throws IOException {
 
-        byte[] out = new byte[getInputStream().available()];
-        getInputStream().read(out, 0 , getInputStream().available());
+        int br = getInputStream().available();
+        byte[] out = new byte[br];
+        getInputStream().read(out, 0 , br);
         return new String(out);
     }
 
