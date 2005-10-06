@@ -2,6 +2,8 @@
  * domcal.h
  */
 
+#ifndef _DOMCAL_H_
+#define _DOMCAL_H_
 /* Print debugging information */
 #define DEBUG 1
 
@@ -9,7 +11,7 @@
  * be incremented when changing structure of binary output
  */
 #define MAJOR_VERSION 5
-#define MINOR_VERSION 9
+#define MINOR_VERSION 13
 
 /* Default number of bytes in binary output */
 #define DEFAULT_RECORD_LENGTH 9388
@@ -127,7 +129,11 @@ typedef struct {
     /* Valid bit for PMT transit calibration */
     short transit_calib_valid;
 
+    /* Number of valid transit time points */
+    short transit_calib_points;
+
     /* Histograms */
     hv_histogram* histogram_data;
 
 } calib_data;
+#endif
