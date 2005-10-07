@@ -18,6 +18,50 @@
 #include "atwd_freq_cal.h"
 #include "calUtils.h"
 
+int cal_loop( float *atwd_cal, short *speed_settings,
+                             int trigger_mask, short ATWD_DAC_channel ) {
+
+    /* Store ATWD_FREQ_CAL_TRIG_CNT frequency ratio calculations */
+    float bin_count[ATWD_FREQ_CAL_TRIG_CNT];
+
+    int i,j;
+
+    for ( i = 0; i < NUMBER_OF_SPEED_SETTINGS; i++ ) {
+
+        /* Set speed DAC */
+        halWriteDAC( ATWD_DAC_channel, speed_settings[i] );
+
+        /* Wait */
+        halUSleep( DAC_SET_WAIT );
+
+        /* Count of bad clk waveforms */
+        int bad_cnt = 0;
+
+        /* Take  ATWD_FREQ_CAL_TRIG_CNT waveforms */
+        for ( j = 0; j <  ATWD_FREQ_CAL_TRIG_CNT; j++ ) {
+
+            int ret = atwd_get_frq(trigger_mask, &bin_count[j]);
+            if (ret) {
+                if (bad_cnt > MAX_BAD_CNT) return UNUSABLE_CLOCK_WAVEFORM;
+                j--;
+                bad_cnt++;
+            }
+
+        }
+
+        /* Calculate average */
+        float sum = 0.0;
+        for ( j = 0; j < ATWD_FREQ_CAL_TRIG_CNT; j++ ) {
+            sum += bin_count[j];
+        }
+
+        /* Store final average value */
+        atwd_cal[i] = sum / ATWD_FREQ_CAL_TRIG_CNT;
+    }
+    return 0;
+}
+
+
 /*---------------------------------------------------------------------------*/
 int atwd_freq_cal(calib_data *dom_calib) {
 
@@ -55,6 +99,9 @@ int atwd_freq_cal(calib_data *dom_calib) {
     int i;
     for ( i = 0; i < NUMBER_OF_SPEED_SETTINGS; i++ ) {
         speed_settingsf[i] = speed_settings[i];
+
+        /* FIX ME DEBUG */
+        printf("speed: %d clk ratio: %f\n", speed_settings[i], atwd0_cal[i]);
     }
 
     /* Fit and store ATWD0 calibration */
@@ -77,104 +124,79 @@ int atwd_freq_cal(calib_data *dom_calib) {
     }
 }
 
-int cal_loop( float *atwd_cal, short *speed_settings,
-                             int trigger_mask, short ATWD_DAC_channel ) {
-    
+int atwd_get_frq(int trigger_mask, float *ratio) {
+
+    int k;
+
     /* Raw ATWD ch3 waveform from oscillator */
     short clock_waveform[128];
-    
+
     /* Normalized oscillator waveform */
     float normalized_waveform[128];
 
-    /* Store ATWD_FREQ_CAL_TRIG_CNT frequency ratio calculations */
-    float bin_count[ATWD_FREQ_CAL_TRIG_CNT];
-
     /* Get rid of first several garbage ATWD shots */
-    prescanATWD( trigger_mask );
-    
-    int i;
-    int j;
-    int k;
- 
-    for ( i = 0; i < NUMBER_OF_SPEED_SETTINGS; i++ ) {
-        
-        /* Set speed DAC */
-        halWriteDAC( ATWD_DAC_channel, speed_settings[i] );
+    prescanATWD(trigger_mask);
 
-        /* Wait */
-        halUSleep( DAC_SET_WAIT );
-        
-        /* Take  ATWD_FREQ_CAL_TRIG_CNT waveforms */
-        for ( j = 0; j <  ATWD_FREQ_CAL_TRIG_CNT; j++ ) {
+    /* Force ATWD readout */
+    hal_FPGA_TEST_trigger_forced( trigger_mask );
 
-            /* Force ATWD readout */
-            hal_FPGA_TEST_trigger_forced( trigger_mask );
+    /* Wait for done */
+    while ( !hal_FPGA_TEST_readout_done( trigger_mask ) );
 
-            /* Wait for done */
-            while ( !hal_FPGA_TEST_readout_done( trigger_mask ) );
-
-            /* Read ATWD ch3 waveform */
-            if ( trigger_mask == HAL_FPGA_TEST_TRIGGER_ATWD0 ) {
-                hal_FPGA_TEST_readout( NULL, NULL, NULL, clock_waveform,
-                                               NULL, NULL, NULL, NULL,
-                                               128, NULL, 0, trigger_mask );
-            } else {
-                hal_FPGA_TEST_readout( NULL, NULL, NULL, NULL,
-                                             NULL, NULL, NULL, clock_waveform,
-                                             128, NULL, 0, trigger_mask );
-            }
-            
-            /* Remove DC */
-            int sum = 0;
-            for ( k = 0; k < 128; k++ ) {
-                sum += clock_waveform[k];
-            }
-            float average = ( float )sum / 128;
-            for ( k = 0; k < 128; k++ ) {
-                normalized_waveform[k] = ( float )clock_waveform[k] - average;
-            }
-
-            /* Calculate #bins between first and final
-             * zero crossing with positive slope
-             */
-            int first_crossing = 0;
-            int final_crossing = 0;
-            int number_of_cycles = 0;
-         
-            for ( k = 0; k < 127; k++ ) {
-                
-                /* Look for zero crossings with positive slope */
-                if ( normalized_waveform[k] < 0
-                           && !( normalized_waveform[k + 1] < 0 ) ) {
-                    if ( first_crossing == 0 ) {
-                        first_crossing = k + 1;
-                    } else {
-                        final_crossing = k + 1;
-                        number_of_cycles++;
-                    }
-                }
-            }
-
-            /* Need at least one cycle to analyze */
-            if ( number_of_cycles < 1 ) {
-                return UNUSABLE_CLOCK_WAVEFORM;
-            }
-
-            /* Calculate average number of bins per clock cycle --
-             * this is the clock ratio
-             */
-            int bins = final_crossing - first_crossing;
-            bin_count[j] = ( float )bins / number_of_cycles;
-        }
-        
-        /* Calculate average */
-        float sum = 0.0;
-        for ( j = 0; j < ATWD_FREQ_CAL_TRIG_CNT; j++ ) {
-            sum += bin_count[j];
-        }
-        
-        /* Store final average value */
-        atwd_cal[i] = sum / ATWD_FREQ_CAL_TRIG_CNT;
+    /* Read ATWD ch3 waveform */
+    if ( trigger_mask == HAL_FPGA_TEST_TRIGGER_ATWD0 ) {
+        hal_FPGA_TEST_readout( NULL, NULL, NULL, clock_waveform,
+                                       NULL, NULL, NULL, NULL,
+                                       128, NULL, 0, trigger_mask );
+    } else {
+        hal_FPGA_TEST_readout( NULL, NULL, NULL, NULL,
+                                     NULL, NULL, NULL, clock_waveform,
+                                     128, NULL, 0, trigger_mask );
     }
+
+    /* Remove DC */
+    int sum = 0;
+    for ( k = 0; k < 128; k++ ) {
+        sum += clock_waveform[k];
+    }
+    float average = ( float )sum / 128;
+    for ( k = 0; k < 128; k++ ) {
+        normalized_waveform[k] = ( float )clock_waveform[k] - average;
+    }
+
+    /* Calculate #bins between first and final
+     * zero crossing with positive slope
+     */
+    int first_crossing = 0;
+    int final_crossing = 0;
+    int number_of_cycles = 0;
+
+    for ( k = 0; k < 127; k++ ) {
+
+        /* Look for zero crossings with positive slope */
+        if ( normalized_waveform[k] < 0
+                   && !( normalized_waveform[k + 1] < 0 ) ) {
+            if ( first_crossing == 0 ) {
+                first_crossing = k + 1;
+            } else {
+                final_crossing = k + 1;
+                number_of_cycles++;
+            }
+        }
+    }
+
+    /* Need at least one cycle to analyze */
+    if ( number_of_cycles < 1 ) {
+        return UNUSABLE_CLOCK_WAVEFORM;
+    }
+
+    /* Calculate average number of bins per clock cycle --
+     * this is the clock ratio
+     */
+    int bins = final_crossing - first_crossing;
+    *ratio = ( float )bins / number_of_cycles;
+
     return 0;
+
 }
+
