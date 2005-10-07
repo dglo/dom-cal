@@ -99,9 +99,6 @@ int atwd_freq_cal(calib_data *dom_calib) {
     int i;
     for ( i = 0; i < NUMBER_OF_SPEED_SETTINGS; i++ ) {
         speed_settingsf[i] = speed_settings[i];
-
-        /* FIX ME DEBUG */
-        printf("speed: %d clk ratio: %f\n", speed_settings[i], atwd0_cal[i]);
     }
 
     /* Fit and store ATWD0 calibration */
