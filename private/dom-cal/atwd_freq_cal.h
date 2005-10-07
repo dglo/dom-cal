@@ -11,8 +11,9 @@
 /* Error code indicating a bad clock waveform was encountered */
 #define UNUSABLE_CLOCK_WAVEFORM   2
 
+/* Maximum permissible number of bad clk waveforms */
+#define MAX_BAD_CNT   10
+
 /* Prototypes */
 int atwd_freq_cal(calib_data *dom_calib);
-
-int cal_loop( float *atwd_cal, short *speed_settings,
-                             int trigger_mask, short ATWD_DAC_channel );
+int atwd_get_frq(int trigger_mask, float *ratio);

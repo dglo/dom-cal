@@ -17,13 +17,13 @@
 #endif
 
 /* How many SPE waveforms to histogram */
-#define GAIN_CAL_TRIG_CNT      5000
+#define GAIN_CAL_TRIG_CNT     25000
 
 /* HV settings for gain calibration (in V) */
 /* Starting value, amount to increment, and number of settings */
-#define GAIN_CAL_HV_LOW        1200
-#define GAIN_CAL_HV_INC         100
-#define GAIN_CAL_HV_CNT           8
+#define GAIN_CAL_HV_LOW        1020
+#define GAIN_CAL_HV_INC          80
+#define GAIN_CAL_HV_CNT          12
 
 /* Histogram info */
 #define GAIN_CAL_BINS           250
@@ -32,10 +32,6 @@
 /* 8 bins *after* peak in time, 4 bins before peak */
 #define INT_WIN_MIN               8
 #define INT_WIN_MAX               4
-
-/* Largest P/V we might consider a real measurement */
-/* Larger ones are not used in fit */
-#define GAIN_CAL_MAX_SANE_PV    8.0
 
 /* Charge of e, Coulombs */
 #define Q_E               1.602E-19
@@ -49,8 +45,8 @@
 /* Number of PMT baseline ATWD readouts to take */
 #define BASELINE_TRIG_CNT      10
 
-/* Maximum allowed variance of PMT baseline ATWD readout */
-#define MAXIMUM_BASELINE_VARIANCE   0.01E-6
+/* bin to start looking for disc pulse */
+#define GAIN_CAL_START_BIN     96
 
 /* Prototypes */
 int hv_gain_cal(calib_data *dom_calib);

@@ -15,13 +15,9 @@ package icecube.daq.domcal;
 import org.apache.log4j.Logger;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
-
-import java.net.Socket;
-import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.io.*;
 import java.util.*;
-import java.sql.*;
 
 public class DOMCal implements Runnable {
     
@@ -42,8 +38,6 @@ public class DOMCal implements Runnable {
     private boolean calibrate;
     private boolean calibrateHv;
     private DOMCalRecord rec;
-    private Connection jdbc;
-    private Properties calProps;
     private String version;
 
     public DOMCal( String host, int port, String outDir ) {
@@ -64,60 +58,50 @@ public class DOMCal implements Runnable {
         }
         this.calibrate = calibrate;
         this.calibrateHv = calibrateHv;
-        calProps = new Properties();
-        File propFile = new File(System.getProperty("user.home") +
-                "/.domcal.properties"
-        );
-        if (!propFile.exists()) {
-            propFile = new File("/usr/local/etc/domcal.properties");
-        }
-
-        try {
-            calProps.load(new FileInputStream(propFile));
-        } catch (IOException e) {
-            logger.warn("Cannot access the domcal.properties file " +
-                    "- using compiled defaults.",
-                    e
-            );
-        }
     }
 
     public void run() {
 
-        Socket s = null;
-        DOMCalCom com = null;
-
+        DOMCalCom com = new DOMCalCom(host, port);
         try {
-            s = new Socket( host, port );
-        } catch ( UnknownHostException e ) {
-            logger.error( "Cannot connect to " + host );
-            die( e );
-            return;
+            com.connect();
         } catch ( IOException e ) {
-            logger.error( "IO Error connecting to " + host );
-            die( e );
-            return;
-        }
-
-        logger.debug( "Connected to " + host + " at port " + port );
-
-        try {
-            com = new DOMCalCom( s );
-        } catch ( IOException e ) {
-            logger.error( "IO Error establishing communications" );
+            logger.error("IO Error establishing communications", e);
             return;
         }
 
         if ( calibrate ) {
 
+            String id = null;
             logger.debug( "Beginning DOM calibration routine" );
             try {
+                //fetch hwid
+                com.send("crlf domid type type\r");
+                String idraw = com.receive( "\r\n> " );
+                StringTokenizer r = new StringTokenizer(idraw, " \r\n\t");
+                //Move past input string
+                for (int i = 0; i < 4; i++) {
+                    if (!r.hasMoreTokens()) {
+                        logger.error("Corrupt domId " + idraw + " returned from DOM -- exiting");
+                        return;
+                    }
+                    r.nextToken();
+                }
+                if (!r.hasMoreTokens()) {
+                    logger.error("Corrupt domId " + idraw + " returned from DOM -- exiting");
+                    return;
+                }
+                id = r.nextToken();
+
+                /* Determine if domcal is present */
                 com.send( "s\" domcal\" find if ls endif\r" );
                 String ret = com.receive( "\r\n> " );
                 if ( ret.equals(  "s\" domcal\" find if ls endif\r\n> " ) ) {
                     logger.error( "Failed domcal load....is domcal present?" );
                     return;
                 }
+
+                /* Start domcal */
                 com.send( "exec\r" );
                 Calendar cal = new GregorianCalendar();
                 int day = cal.get( Calendar.DAY_OF_MONTH );
@@ -149,7 +133,20 @@ public class DOMCal implements Runnable {
             logger.debug( "Waiting for calibration to finish" );
 
             try {
-                com.receive( "\r\n> " );
+                //Create raw output file
+                PrintWriter out = new PrintWriter(new FileWriter(outDir + "domcal_" + id + ".out", false), false);
+                String termDat = "";
+                for (String dat = com.receive(); !termDat.endsWith("\r\n> "); dat = com.receive()) {
+                    out.print(dat);
+                    if (dat.length() > 5) termDat = dat;
+                    else termDat += dat;
+                    if (termDat.length() > 10) termDat = termDat.substring(termDat.length() - 8);
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                    }
+                    out.flush();
+                }
             } catch ( IOException e ) {
                 logger.error( "IO Error occurred during calibration routine" );
                 die( e );
@@ -167,9 +164,8 @@ public class DOMCal implements Runnable {
                 return;
             }
             com.send( "zd\r" );
-            com.receivePartial( "\r\n" );
+            com.receive( "\r\n" );
             binaryData = com.zRead();
-            //s.close();  -- stop breaking dom hub app!!!!!
         } catch ( IOException e ) {
             logger.error( "IO Error downloading calibration from DOM" );
             die( e );
@@ -177,7 +173,7 @@ public class DOMCal implements Runnable {
         }
 
         try {
-            rec = DOMCalRecordFactory.parseDomCalRecord( ByteBuffer.wrap( binaryData ) );
+            rec = DOMCalRecord.parseDomCalRecord( ByteBuffer.wrap( binaryData ) );
         } catch ( Exception e ) {
             logger.error( "Error parsing test output" );
             e.printStackTrace();
@@ -188,9 +184,10 @@ public class DOMCal implements Runnable {
         String domId = rec.getDomId();
 
         logger.debug( "Saving output to " + outDir );
+        String fn = outDir + "domcal_" + domId + ".xml";
 
         try {
-            PrintWriter out = new PrintWriter( new FileWriter( outDir + "domcal_" + domId + ".xml", false ), false );
+            PrintWriter out = new PrintWriter(new FileWriter(fn, false ), false );
             DOMCalXML.format( version, rec, out );
             out.flush();
             out.close();
@@ -201,58 +198,15 @@ public class DOMCal implements Runnable {
         }
 
         logger.debug( "Document saved" );
-
-        // If there is gain calibration data put into database
-        if (rec.isHvCalValid()) {
-
-            String driver = calProps.getProperty(
-                    "icecube.daq.domcal.db.driver",
-                    "com.mysql.jdbc.Driver");
-            try {
-                Class.forName(driver);
-            } catch (ClassNotFoundException x) {
-                logger.error( "No MySQL driver class found - PMT HV not stored in DB." );
-            }
-
-            /*
-             * Compute the 10^7 point from fit information
-             */
-            LinearFit fit = rec.getHvGainCal();
-            double slope = fit.getSlope();
-            double inter = fit.getYIntercept();
-            int hv = new Double(Math.pow(10.0, (7.0 - inter) / slope)).intValue();
-
-            if (hv > 2000 || hv < 0) {
-                logger.error("Bad HV calibration for DOM " + domId + " HV=" + hv);
-                return;
-            }
-
-            try {
-                String url = calProps.getProperty("icecube.daq.domcal.db.url",
-                        "jdbc:mysql://localhost/fat");
-                String user = calProps.getProperty(
-                        "icecube.daq.domcal.db.user",
-                        "dfl"
-                );
-                String passwd = calProps.getProperty(
-                        "icecube.daq.domcal.db.passwd",
-                        "(D0Mus)"
-                );
-                jdbc = DriverManager.getConnection(
-                        url,
-                        user,
-                        passwd
-                );
-                Statement stmt = jdbc.createStatement();
-                String updateSQL = "UPDATE domtune SET hv=" + hv +
-                    " WHERE mbid='" + domId + "';";
-                System.out.println( "Executing stmt: " + updateSQL );
-                stmt.executeUpdate(updateSQL);
-            } catch (SQLException e) {
-                logger.error("Unable to insert into database: ", e);
-            }
-
+ 
+        logger.debug("Saving calibration data to database");
+        try {
+            CalibratorDB.save(fn, logger);
+        } catch (Exception ex) {
+            logger.debug("Failed!", ex);
+            return;
         }
+        logger.debug("SUCCESS");
 
     }
 
@@ -330,7 +284,7 @@ public class DOMCal implements Runnable {
                 try {
                     Thread.sleep( 1000 );
                 } catch ( InterruptedException e ) {
-                    logger.warn( "Wait interrupted -- compensating" );
+                    logger.warn( "Wait interrupted" );
                     i--;
                 }
                 boolean done = true;
@@ -344,7 +298,7 @@ public class DOMCal implements Runnable {
                     System.exit( 0 );
                 }
             }
-            logger.warn( "Timeout reached....probably not significant" );
+            logger.warn( "Timeout reached." );
             System.exit( 0 );
         } catch ( Exception e ) {
             usage();
@@ -356,7 +310,8 @@ public class DOMCal implements Runnable {
     private static void usage() {
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir}" );
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir} calibrate dom" );
-        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir} calibrate dom calibrate hv" );
+        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir} " +
+                                                                                    "calibrate dom calibrate hv" );
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {num ports} {output dir}" );
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {num ports}" +
                                                                       "{output dir} calibrate dom" );
@@ -367,7 +322,8 @@ public class DOMCal implements Runnable {
         logger.info( "num ports -- number of sequential ports to connect above 'port' on 'host'" );
         logger.info( "output dir -- local directory to store results" );
         logger.info( "'calibrate dom' -- flag to initiate DOM calibration" );
-        logger.info( "'calibrate hv' -- flag to initiate DOM calibration -- can only be used when calibrate dom is specified" );
+        logger.info( "'calibrate hv' -- flag to initiate DOM calibration -- " +
+                                                  "can only be used when calibrate dom is specified" );
     }
 
     private static void die( Object o ) {

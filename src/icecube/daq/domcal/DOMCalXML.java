@@ -19,7 +19,7 @@ public class DOMCalXML {
     public static void format( String version, DOMCalRecord rec, PrintWriter out ) {
         
         out.print( "<domcal version=\"" + version + "\">\n" );
-	out.print("  <date>" + rec.getMonth() + "-" + rec.getDay() + "-" + rec.getYear() + "</date>\n" );
+	    out.print("  <date>" + rec.getMonth() + "-" + rec.getDay() + "-" + rec.getYear() + "</date>\n" );
         out.print("  <domid>" + rec.getDomId() + "</domid>\n" );
         out.print("  <temperature format=\"Kelvin\">" + rec.getTemperature() + "</temperature>\n");
         for ( int i = 0; i < 16; i++ ) {
@@ -54,9 +54,18 @@ public class DOMCalXML {
             out.print("  </amplifier>\n");
         }
         for ( int i = 0; i < 2; i++ ) {
-            out.print("  <atwdfreq chip=\"" + i + "\">\n");
+            out.print("  <atwdfreq atwd=\"" + i + "\">\n");
             format( rec.getATWDFrequencyCalibration( i ), out );
             out.print("  </atwdfreq>\n");
+        }
+
+        formatBaseline(rec.getBaseline(), out);
+
+
+        if (rec.isTransitCalValid()) {
+            out.print("  <pmtTransitTime num_pts=\"" + rec.getNumTransitCalPts() + "\">\n");
+            format(rec.getTransitTimeFit(), out);
+            out.print("  </pmtTransitTime>\n");
         }
 
         if ( rec.isHvCalValid() ) {
@@ -69,6 +78,7 @@ public class DOMCalXML {
 
 
         for (int i = 0; i < rec.getNumHVHistograms(); i++) {
+            if (rec.isHvBaselineCalValid()) formatBaseline(rec.getHVBaseline(i), out);
             formatHisto(rec.getHVHistogram(i), out);
         }
 
@@ -79,6 +89,15 @@ public class DOMCalXML {
         out.print("    <fit model=\"linear\">\n");
         out.print("      <param name=\"slope\">" + fit.getSlope() + "</param>\n");
         out.print("      <param name=\"intercept\">" + fit.getYIntercept() + "</param>\n");
+        out.print("      <regression-coeff>" + fit.getRSquared() + "</regression-coeff>\n");
+        out.print("    </fit>\n");
+    }
+
+    public static void format( QuadraticFit fit, PrintWriter out ) {
+        out.print("    <fit model=\"quadratic\">\n");
+        for (int i = 0; i < 3; i++) {
+            out.print("      <param name=\"c" + i + "\">" + fit.getParameter(i) + "</param>\n");
+        }
         out.print("      <regression-coeff>" + fit.getRSquared() + "</regression-coeff>\n");
         out.print("    </fit>\n");
     }
@@ -101,5 +120,16 @@ public class DOMCalXML {
         }
         out.print("    </histogram>\n");
         out.print("  </histo>\n");
+    }
+
+    private static void formatBaseline(Baseline base, PrintWriter out) {
+        out.print("  <baseline voltage=\"" + base.getVoltage() + "\">\n");
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 3; j++) {
+                out.print("    <base atwd=\"" + i + "\" channel=\"" + j +
+                                                                     "\" value=\"" + base.getBaseline(i,j) + "\"/>\n");
+            }
+        }
+        out.print("  </baseline>\n");
     }
 }

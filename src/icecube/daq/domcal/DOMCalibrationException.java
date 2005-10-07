@@ -10,6 +10,8 @@ public class DOMCalibrationException extends Exception {
 
     /**
      * Constructor
+     *
+     * @param msg error text
      */
     public DOMCalibrationException(String msg) {
 
