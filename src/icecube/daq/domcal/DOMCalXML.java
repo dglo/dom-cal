@@ -19,7 +19,7 @@ public class DOMCalXML {
     public static void format( String version, DOMCalRecord rec, PrintWriter out ) {
         
         out.print( "<domcal version=\"" + version + "\">\n" );
-	out.print("  <date>" + rec.getMonth() + "-" + rec.getDay() + "-" + rec.getYear() + "</date>\n" );
+	    out.print("  <date>" + rec.getMonth() + "-" + rec.getDay() + "-" + rec.getYear() + "</date>\n" );
         out.print("  <domid>" + rec.getDomId() + "</domid>\n" );
         out.print("  <temperature format=\"Kelvin\">" + rec.getTemperature() + "</temperature>\n");
         for ( int i = 0; i < 16; i++ ) {
@@ -89,6 +89,15 @@ public class DOMCalXML {
         out.print("    <fit model=\"linear\">\n");
         out.print("      <param name=\"slope\">" + fit.getSlope() + "</param>\n");
         out.print("      <param name=\"intercept\">" + fit.getYIntercept() + "</param>\n");
+        out.print("      <regression-coeff>" + fit.getRSquared() + "</regression-coeff>\n");
+        out.print("    </fit>\n");
+    }
+
+    public static void format( QuadraticFit fit, PrintWriter out ) {
+        out.print("    <fit model=\"quadratic\">\n");
+        for (int i = 0; i < 3; i++) {
+            out.print("      <param name=\"c" + i + "\">" + fit.getParameter(i) + "</param>\n");
+        }
         out.print("      <regression-coeff>" + fit.getRSquared() + "</regression-coeff>\n");
         out.print("    </fit>\n");
     }

@@ -381,9 +381,10 @@ public class Calibrator
      */
     public double calcAtwdFreq(int dac, int chip) {
         HashMap h = freqFits[chip];
-        double m = ((Double)h.get("slope")).doubleValue();
-        double b = ((Double)h.get("intercept")).doubleValue();
-        return m*dac + b;
+        double c0 = ((Double)h.get("c0")).doubleValue();
+        double c1 = ((Double)h.get("c1")).doubleValue();
+        double c2 = ((Double)h.get("c2")).doubleValue();
+        return c2*dac*dac + c1*dac + c0;
     }
 
     /**
