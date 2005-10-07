@@ -154,12 +154,14 @@ int atwd_get_frq(int trigger_mask, float *ratio) {
                                      128, NULL, 0, trigger_mask );
     }
 
-    /* Remove DC */
-    int sum = 0;
+    /* Find max & min */
+    int max = -1;
+    int min = 1024;
     for ( k = 0; k < 128; k++ ) {
-        sum += clock_waveform[k];
+        if (clock_waveform[k] < min) min = clock_waveform[k];
+        if (clock_waveform[k] > max) max = clock_waveform[k];
     }
-    float average = ( float )sum / 128;
+    float average = ( float )(max + min) / 2.0;
     for ( k = 0; k < 128; k++ ) {
         normalized_waveform[k] = ( float )clock_waveform[k] - average;
     }
