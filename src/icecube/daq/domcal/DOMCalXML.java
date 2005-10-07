@@ -93,6 +93,15 @@ public class DOMCalXML {
         out.print("    </fit>\n");
     }
 
+    public static void format( QuadraticFit fit, PrintWriter out ) {
+        out.print("    <fit model=\"quadratic\">\n");
+        for (int i = 0; i < 3; i++) {
+            out.print("      <param name=\"c" + i + "\">" + fit.getParameter(i) + "</param>\n");
+        }
+        out.print("      <regression-coeff>" + fit.getRSquared() + "</regression-coeff>\n");
+        out.print("    </fit>\n");
+    }
+
     private static void formatHisto(HVHistogram histo, PrintWriter out) {
         out.print("  <histo voltage=\"" + histo.getVoltage() + "\" convergent=\"" +
                                    histo.isConvergent() + "\" pv=\"" + histo.getPV() + "\" noiseRate=\"" +

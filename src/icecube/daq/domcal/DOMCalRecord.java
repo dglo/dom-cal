@@ -27,7 +27,7 @@ public class DOMCalRecord {
 
     private LinearFit pulserCalibration;
     private LinearFit[][][] atwdCalibration;
-    private LinearFit[] atwdFrequencyCalibration;
+    private QuadraticFit[] atwdFrequencyCalibration;
 
     private float[] amplifierCalibration;
     private float[] amplifierCalibrationError;
@@ -126,7 +126,7 @@ public class DOMCalRecord {
         return pulserCalibration;
     }
 
-    public LinearFit getATWDFrequencyCalibration( int atwd ) {
+    public QuadraticFit getATWDFrequencyCalibration( int atwd ) {
         if ( atwd < 0 || atwd >= MAX_ATWD ) {
             throw new IndexOutOfBoundsException( "" + atwd );
         }
@@ -270,9 +270,9 @@ public class DOMCalRecord {
             rec.amplifierCalibrationError[i] = bb.getFloat();
         }
 
-        rec.atwdFrequencyCalibration = new LinearFit[MAX_ATWD];
-        rec.atwdFrequencyCalibration[0] = LinearFit.parseLinearFit( bb );
-        rec.atwdFrequencyCalibration[1] = LinearFit.parseLinearFit( bb );
+        rec.atwdFrequencyCalibration = new QuadraticFit[MAX_ATWD];
+        rec.atwdFrequencyCalibration[0] = QuadraticFit.parseQuadraticFit( bb );
+        rec.atwdFrequencyCalibration[1] = QuadraticFit.parseQuadraticFit( bb );
 
         rec.baseline = Baseline.parseBaseline(bb);
 
