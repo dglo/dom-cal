@@ -54,17 +54,19 @@ float getCalibV(short val, calib_data dom_calib, int atwd, int ch, int bin, floa
  */
 float getCalibFreq(int atwd, calib_data dom_calib, short sampling_dac) {
 
-    float ratio;
+    float freq;
 
-    /* Get ratio of sampling frequency to clock speed */
+    /* Sampling frequency to clock speed */
     if (atwd == 0)
-        ratio = (dom_calib.atwd0_freq_calib.slope * sampling_dac) + 
-            dom_calib.atwd0_freq_calib.y_intercept;
+        freq = dom_calib.atwd0_freq_calib.c0 +
+            (dom_calib.atwd0_freq_calib.c1 * sampling_dac) + 
+            (dom_calib.atwd0_freq_calib.c2 * sampling_dac * sampling_dac);
     else
-        ratio = (dom_calib.atwd1_freq_calib.slope * sampling_dac) + 
-            dom_calib.atwd1_freq_calib.y_intercept;
+        freq = dom_calib.atwd1_freq_calib.c0 +
+            (dom_calib.atwd1_freq_calib.c1 * sampling_dac) + 
+            (dom_calib.atwd1_freq_calib.c2 * sampling_dac * sampling_dac);
     
-    return (ratio * DOM_CLOCK_FREQ);
+    return freq;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -194,4 +196,58 @@ void linearFitFloat(float *x, float *y, int pts, linear_fit *fit) {
     fit->r_squared = (float)(pts*sum_xy - sum_x*sum_y) * (fit->slope) / 
         (pts*sum_yy - sum_y*sum_y);
 
+}
+
+/*---------------------------------------------------------------------------*/
+/*
+ * quadraticFitFloat
+ *
+ * Quadratic least-squares regression of arrays of floats.
+ *
+ * Takes an array of (x,y) points and returns the 
+ * constant, linear, and quadratic coefficients for the least-squares
+ * fit.
+ *
+ */
+void quadraticFitFloat(float *x, float *y, int pts, quadratic_fit *fit) {
+
+    int i;
+
+    double x1, x2, x3, x4;
+    double y1, y2, y3;
+
+    x1 = x2 = x3 = x4 = 0.0;
+    y1 = y2 = y3 = 0.0;
+
+    for (i = 0; i < pts; i++) {
+        x1 += x[i];
+        x2 += x[i]*x[i];
+        x3 += x[i]*x[i]*x[i];
+        x4 += x[i]*x[i]*x[i]*x[i];
+
+        y1 += y[i];
+        y2 += y[i]*x[i];
+        y3 += y[i]*x[i]*x[i];
+    }
+
+    double denom = x2*x2*x2 + pts*x3*x3 + x1*x1*x4 - x2*(2*x1*x3 + pts*x4);
+
+    /* Here are the fit coefficients */
+    fit->c0 = (x3*x3*y1 - x2*x4*y1 + x1*x4*y2 + x2*x2*y3 - x3*(x2*y2 + x1*y3)) / denom;
+    fit->c1 = (x1*x4*y1 + x2*x2*y2 - pts*x4*y2 + pts*x3*y3 - x2*(x3*y1 + x1*y3)) / denom;
+    fit->c2 = (x2*x2*y1 - x1*x3*y1 + pts*x3*y2 + x1*x1*y3 - x2*(x1*y2 + pts*y3)) / denom;
+
+    /* Calculate the correlation coefficient */
+    float res, sq_res;
+    float y_sq_res = 0.0;
+    sq_res = 0.0;
+
+    float y_mean = y1 / pts;    
+    for (i = 0; i < pts; i++) {
+        res = y_mean - (fit->c0 + fit->c1*x[i] + fit->c2*x[i]*x[i]);
+        sq_res += res*res;
+        y_sq_res += (y[i] - y_mean)*(y[i] - y_mean);
+    }
+
+    fit->r_squared = sq_res / y_sq_res;
 }

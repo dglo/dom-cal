@@ -214,13 +214,21 @@ int get_bytes_from_short( short s, char *c, int offset ) {
 }
 
 /* Writes a linear fit to binary format given byte array and pos */
-
 int write_fit( linear_fit *fit, char *bin_data, int offset ) {
     int bytes_written = get_bytes_from_float( fit->slope, bin_data, offset );
     bytes_written += 
               get_bytes_from_float( fit->y_intercept, bin_data, offset + 4 );
     bytes_written += 
                 get_bytes_from_float( fit->r_squared, bin_data, offset + 8 );
+    return bytes_written;
+}
+
+/* Writes a quadratic fit to binary format given byte array and pos */
+int write_quadratic_fit( quadratic_fit *fit, char *bin_data, int offset ) {
+    int bytes_written = get_bytes_from_float( fit->c0, bin_data, offset );
+    bytes_written += get_bytes_from_float( fit->c1, bin_data, offset + 4 );
+    bytes_written += get_bytes_from_float( fit->c2, bin_data, offset + 8 );
+    bytes_written += get_bytes_from_float( fit->r_squared, bin_data, offset + 12 );
     return bytes_written;
 }
 
@@ -347,8 +355,8 @@ int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
     }
 
     /* Write ATWD sampling speed calibration */
-    offset += write_fit( &cal->atwd0_freq_calib, bin_data, offset );
-    offset += write_fit( &cal->atwd1_freq_calib, bin_data, offset );
+    offset += write_quadratic_fit( &cal->atwd0_freq_calib, bin_data, offset );
+    offset += write_quadratic_fit( &cal->atwd1_freq_calib, bin_data, offset );
 
     /* Write baseline data */
     offset += write_baseline(cal->atwd0_baseline, bin_data, offset);
@@ -444,14 +452,16 @@ int save_results(calib_data dom_calib) {
                dom_calib.amplifier_calib[ch].value,
                dom_calib.amplifier_calib[ch].error);
 
-    printf("ATWD0 Frequency: m=%.6g b=%.6g r^2=%.6g\r\n",
-                   dom_calib.atwd0_freq_calib.slope,
-                   dom_calib.atwd0_freq_calib.y_intercept,
+    printf("ATWD0 Frequency: c0=%.6g c1=%.6g c2=%.6g r^2=%.6g\r\n",
+                   dom_calib.atwd0_freq_calib.c0,
+                   dom_calib.atwd0_freq_calib.c1,
+                   dom_calib.atwd0_freq_calib.c2,
                    dom_calib.atwd0_freq_calib.r_squared);
 
-    printf("ATWD1 Frequency: m=%.6g b=%.6g r^2=%.6g\r\n",
-                   dom_calib.atwd1_freq_calib.slope,
-                   dom_calib.atwd1_freq_calib.y_intercept,
+    printf("ATWD1 Frequency: c0=%.6g c1=%.6g c2=%.6g r^2=%.6g\r\n",
+                   dom_calib.atwd1_freq_calib.c0,
+                   dom_calib.atwd1_freq_calib.c1,
+                   dom_calib.atwd1_freq_calib.c2,
                    dom_calib.atwd1_freq_calib.r_squared);
 
     if (dom_calib.hv_gain_valid) {

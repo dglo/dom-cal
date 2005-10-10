@@ -55,8 +55,8 @@ int cal_loop( float *atwd_cal, short *speed_settings,
             sum += bin_count[j];
         }
 
-        /* Store final average value */
-        atwd_cal[i] = sum / ATWD_FREQ_CAL_TRIG_CNT;
+        /* Store final average value of frequency, in MHz */
+        atwd_cal[i] = DOM_CLOCK_FREQ * sum / ATWD_FREQ_CAL_TRIG_CNT;
     }
     return 0;
 }
@@ -79,7 +79,7 @@ int atwd_freq_cal(calib_data *dom_calib) {
 
     /* ATWD sampling speeds to be tested */
     short speed_settings[NUMBER_OF_SPEED_SETTINGS] = 
-               { 750, 800, 850, 900, 950, 1000, 1050, 1100 };
+        { 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000 };
     
     /* Select oscillator analog mux input */
     halSelectAnalogMuxInput( DOM_HAL_MUX_OSC_OUTPUT );
@@ -87,12 +87,12 @@ int atwd_freq_cal(calib_data *dom_calib) {
     /* Calibrate ATWD0 */
     trigger_mask = HAL_FPGA_TEST_TRIGGER_ATWD0;
     int ret0 = cal_loop( atwd0_cal, speed_settings,
-                      trigger_mask, DOM_HAL_DAC_ATWD0_TRIGGER_BIAS );
+                         trigger_mask, DOM_HAL_DAC_ATWD0_TRIGGER_BIAS );
     
     /* Calibrate ATWD1 */
     trigger_mask = HAL_FPGA_TEST_TRIGGER_ATWD1;
     int ret1 = cal_loop( atwd1_cal, speed_settings,
-                      trigger_mask, DOM_HAL_DAC_ATWD1_TRIGGER_BIAS );
+                         trigger_mask, DOM_HAL_DAC_ATWD1_TRIGGER_BIAS );
 
     /* Store speed as float array needed by linearFitFloat */
     float speed_settingsf[NUMBER_OF_SPEED_SETTINGS];
@@ -102,12 +102,12 @@ int atwd_freq_cal(calib_data *dom_calib) {
     }
 
     /* Fit and store ATWD0 calibration */
-    linearFitFloat( speed_settingsf, atwd0_cal, NUMBER_OF_SPEED_SETTINGS,
-                                             &dom_calib->atwd0_freq_calib );
+    quadraticFitFloat( speed_settingsf, atwd0_cal, NUMBER_OF_SPEED_SETTINGS,
+                       &dom_calib->atwd0_freq_calib );
     
     /* Fit and store ATWD1 calibration */
-    linearFitFloat( speed_settingsf, atwd1_cal, NUMBER_OF_SPEED_SETTINGS,
-                                             &dom_calib->atwd1_freq_calib );
+    quadraticFitFloat( speed_settingsf, atwd1_cal, NUMBER_OF_SPEED_SETTINGS,
+                       &dom_calib->atwd1_freq_calib );
 
     /* Restore DOM state */
     halWriteDAC( DOM_HAL_DAC_ATWD0_TRIGGER_BIAS, old_ATWD0_bias );
@@ -164,8 +164,8 @@ int atwd_get_frq(int trigger_mask, float *ratio) {
     /* Calculate #bins between first and final
      * zero crossing with positive slope
      */
-    int first_crossing = 0;
-    int final_crossing = 0;
+    float first_crossing = 0;
+    float final_crossing = 0;
     int number_of_cycles = 0;
 
     for ( k = 0; k < 127; k++ ) {
@@ -174,9 +174,11 @@ int atwd_get_frq(int trigger_mask, float *ratio) {
         if ( normalized_waveform[k] < 0
                    && !( normalized_waveform[k + 1] < 0 ) ) {
             if ( first_crossing == 0 ) {
-                first_crossing = k + 1;
+                first_crossing = k - 
+                    (normalized_waveform[k] / (normalized_waveform[k+1]-normalized_waveform[k]));
             } else {
-                final_crossing = k + 1;
+                final_crossing = k - 
+                    (normalized_waveform[k] / (normalized_waveform[k+1]-normalized_waveform[k]));
                 number_of_cycles++;
             }
         }
@@ -190,8 +192,7 @@ int atwd_get_frq(int trigger_mask, float *ratio) {
     /* Calculate average number of bins per clock cycle --
      * this is the clock ratio
      */
-    int bins = final_crossing - first_crossing;
-    *ratio = ( float )bins / number_of_cycles;
+    *ratio = (final_crossing - first_crossing) / number_of_cycles;
 
     return 0;
 
