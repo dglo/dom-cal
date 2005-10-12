@@ -34,7 +34,6 @@ public class HV2DB {
     public static final double LGAIN = 5e5;
     public static final double MGAIN = 5e6;
     public static final double HGAIN = 1e7;
-    public static final double UHGAIN = 5e7;
 
     public static void main(String[] args) {
         if (args.length < 1) {
@@ -154,9 +153,6 @@ public class HV2DB {
                 updateSQL = "UPDATE domtune SET hv3=" + vals.lgain + " WHERE mbid='" + domId + "';";
                 System.out.println( "Executing stmt: " + updateSQL );
                 stmt.executeUpdate(updateSQL);
-                updateSQL = "UPDATE domtune SET hv0=" + vals.uhgain + " WHERE mbid='" + domId + "';";
-                System.out.println( "Executing stmt: " + updateSQL );
-                stmt.executeUpdate(updateSQL);
             } catch (SQLException e) {
                 System.out.println("Unable to insert into database");
             }
@@ -179,8 +175,7 @@ public class HV2DB {
         int lgain = (int)Math.pow(10.0, (Math.log(LGAIN)/Math.log(10) - intercept) / slope);
         int mgain = (int)Math.pow(10.0, (Math.log(MGAIN)/Math.log(10) - intercept) / slope);
         int hgain = (int)Math.pow(10.0, (Math.log(HGAIN)/Math.log(10) - intercept) / slope);
-        int uhgain = (int)Math.pow(10.0, (Math.log(UHGAIN)/Math.log(10) - intercept) / slope);
-        return new HVValues(uhgain, hgain, mgain, lgain);
+        return new HVValues(hgain, mgain, lgain);
     }
 
     static boolean checkName(File f) {
@@ -191,13 +186,11 @@ public class HV2DB {
     }
 
     static class HVValues {
-        int uhgain;
         int hgain;
         int mgain;
         int lgain;
 
-        HVValues(int uhgain, int hgain, int mgain, int lgain) {
-            this.uhgain = uhgain;
+        HVValues(int hgain, int mgain, int lgain) {
             this.hgain = hgain;
             this.mgain = mgain;
             this.lgain = lgain;

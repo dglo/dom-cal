@@ -13,10 +13,8 @@ import icecube.daq.domcal.CalibratorDB;
 import icecube.daq.domcal.DOMCalibrationException;
 import icecube.daq.domcal.HVHistogram;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ByteArrayInputStream;
+import java.io.StringBufferInputStream;
 
 import java.sql.Date;
 import java.sql.SQLException;
@@ -25,8 +23,6 @@ import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
 import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
 
 /**
  *  Calibrator database tests.
@@ -57,11 +53,9 @@ public class CalibratorDBTest
     {
         super.setUp();
 
-        // Set up the logging infrastructure
-        BasicConfigurator.configure(new MockAppender(Level.INFO));
+        /* Setup the logging infrastructure */
+        BasicConfigurator.configure();
 
-	ProductType.clearStatic();
-        MockCalDB.clearStatic();
         MockCalDB.initStatic();
     }
 
@@ -73,9 +67,9 @@ public class CalibratorDBTest
     protected void tearDown()
         throws Exception
     {
-        MockCalDB.verifyStatic();
-
         super.tearDown();
+
+        MockCalDB.verifyStatic();
     }
 
     public void testSave()
@@ -134,8 +128,7 @@ public class CalibratorDBTest
 
         final double hvGainSlope = 12.34;
         final double hvGainIntercept = 56.78;
-        final double hvGainRegression = 90.12;
-        xml.setHvGain(hvGainSlope, hvGainIntercept, hvGainRegression);
+        xml.setHvGain(hvGainSlope, hvGainIntercept);
 
         HVHistogram[] histo = new HVHistogram[2];
         for (int i = 0; i < histo.length; i++) {
@@ -164,8 +157,8 @@ public class CalibratorDBTest
 
         final String xmlStr = xml.toString();
 
-        ByteArrayInputStream strIn =
-            new ByteArrayInputStream(xmlStr.getBytes());
+        StringBufferInputStream strIn =
+            new StringBufferInputStream(xmlStr);
 
         Calibrator cal = new Calibrator(strIn);
 
@@ -194,7 +187,6 @@ public class CalibratorDBTest
         MockSQLUtil.addChanValInsertSQL(stmt, "DAC", domcalId, dacs);
 
         MockSQLUtil.addModelTypeSQL(stmt);
-        MockSQLUtil.addParamTypeSQL(stmt);
 
         MockSQLUtil.addPulserInsertSQL(stmt, domcalId, pulserSlope,
                                        pulserIntercept, pulserRegression);
@@ -203,8 +195,7 @@ public class CalibratorDBTest
         MockSQLUtil.addAmpGainInsertSQL(stmt, domcalId, ampGain, ampError);
         MockSQLUtil.addATWDFreqInsertSQL(stmt, domcalId, freqData);
         MockSQLUtil.addHvGainInsertSQL(stmt, domcalId,
-                                       hvGainSlope, hvGainIntercept,
-                                       hvGainRegression);
+                                       hvGainSlope, hvGainIntercept);
         MockSQLUtil.addHvHistoInsertSQL(stmt, domcalId, histo);
 
         MockCalDB calDB = new MockCalDB();
@@ -212,159 +203,6 @@ public class CalibratorDBTest
 
         calDB.setLaboratory(lab);
         calDB.save(cal);
-    }
-
-    public void testSaveFile()
-        throws DOMCalibrationException, DOMProdTestException, IOException,
-               SQLException
-    {
-        final Date date = Date.valueOf("2004-03-02");
-        final String mbHardSerial = "0123456789ab";
-        final double temp = -40.5;
-
-        FakeCalXML xml = new FakeCalXML(date, mbHardSerial, temp);
-
-        final short[] dacs = new short[] {
-             0,  1,  2,  3,  4,  5,  6,  7, 8,  9, 10, 11, 12, 13, 14, 15,
-        };
-        final short[] adcs = new short[] {
-             0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11,
-            12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-        };
-
-        xml.setDACs(dacs);
-        xml.setADCs(adcs);
-
-        final double pulserSlope = 1.23;
-        final double pulserIntercept = 4.56;
-        final double pulserRegression = 7.89;
-        xml.setPulser(pulserSlope, pulserIntercept, pulserRegression);
-
-        final double[][][] atwdData = new double[8][128][3];
-        for (int c = 0; c < atwdData.length; c++) {
-            for (int b = 0; b < atwdData[c].length; b++) {
-                fillATWDData(atwdData, c, b);
-                xml.setATWD(c, b, atwdData[c][b][MockSQLUtil.SLOPE_INDEX],
-                            atwdData[c][b][MockSQLUtil.INTERCEPT_INDEX],
-                            atwdData[c][b][MockSQLUtil.REGRESSION_INDEX]);
-            }
-        }
-
-        final double[] ampGain = new double[3];
-        final double[] ampError = new double[3];
-        for (int i = 0; i < 3; i++) {
-            ampGain[i] = (double) i * 100.0;
-            ampError[i] = 100.0 - (double) i;
-
-            xml.setAmplifier(i, ampGain[i], ampError[i]);
-        }
-
-        final double[][] freqData = {
-            { 1.0, 2.0, 3.0 },
-            { 3.0, 5.0, 7.0 }
-        };
-        for (int i = 0; i < freqData.length; i++) {
-            xml.setATWDFrequency(i, freqData[i][0], freqData[i][1],
-                                 freqData[i][2]);
-        }
-
-        final double hvGainSlope = 12.34;
-        final double hvGainIntercept = 56.78;
-        final double hvGainRegression = 90.12;
-        xml.setHvGain(hvGainSlope, hvGainIntercept, hvGainRegression);
-
-        HVHistogram[] histo = new HVHistogram[2];
-        for (int i = 0; i < histo.length; i++) {
-            float[] paramVals = new float[] {
-                (float) i + 12.3456f,
-                (float) i + 6.78901f,
-                (float) i + 6.54321f,
-                (float) i + 1.23456f,
-                (float) i + 65.4321f,
-            };
-
-            float[] charge = new float[250];
-            float[] count = new float[250];
-            for (int j = 0; j < 250; j++) {
-                charge[i] = (float) j * 0.016f;
-                count[i] = (float) (j % 16) + (i == 0 ? 13.0f : 17.0f);
-            }
-
-            histo[i] = new HVHistogram((short) (1400 + (i * 100)), paramVals,
-                                       charge, count, (i == 0),
-                                       (float) i + 1.23456f,
-                                       1234.0f + ((float) i * 2.3456f),
-                                       (i == 1));
-        };
-        xml.setHvHistograms(histo);
-
-        final String mainbdTagSerial = "V01 23";
-        final String domTagSerial = "XX401P0123";
-
-        MockCalDB calDB = new MockCalDB();
-
-        MockStatement stmt;
-
-        stmt = new MockStatement("LoadStmt");
-        calDB.addActualStatement(stmt);
-
-        Laboratory lab = FakeUtil.fakeLab(stmt, 10, 1, 100000);
-        calDB.setLaboratory(lab);
-
-        if (!ProductType.isInitialized()) {
-            MockSQLUtil.addProductTypeSQL(stmt, MockSQLUtil.DOM_TYPE_ID,
-                                          MockSQLUtil.MAINBD_TYPE_ID);
-        }
-
-        MockSQLUtil.addProductSQL(stmt, MockSQLUtil.MAINBD_TYPE_ID,
-                                  mbHardSerial, MockSQLUtil.MAINBD_ID,
-                                  mainbdTagSerial, MockSQLUtil.DOM_TYPE_ID,
-                                  MockSQLUtil.DOM_ID, domTagSerial);
-
-        MockSQLUtil.addMainSQL(stmt, MockSQLUtil.DOM_ID, date, temp,
-                               Integer.MIN_VALUE);
-
-        stmt = new MockStatement("SaveStmt");
-        calDB.addActualStatement(stmt);
-
-        MockSQLUtil.addProductSQL(stmt, MockSQLUtil.MAINBD_TYPE_ID,
-                                  mbHardSerial, MockSQLUtil.MAINBD_ID,
-                                  mainbdTagSerial, MockSQLUtil.DOM_TYPE_ID,
-                                  MockSQLUtil.DOM_ID, domTagSerial);
-
-        final int domcalId = lab.getMinimumId() + 10;
-
-        MockSQLUtil.addMainInsertSQL(stmt, lab, MockSQLUtil.DOM_ID, domcalId,
-                                     date, temp);
-        MockSQLUtil.addChanValInsertSQL(stmt, "ADC", domcalId, adcs);
-        MockSQLUtil.addChanValInsertSQL(stmt, "DAC", domcalId, dacs);
-
-        MockSQLUtil.addModelTypeSQL(stmt);
-        MockSQLUtil.addParamTypeSQL(stmt);
-
-        MockSQLUtil.addPulserInsertSQL(stmt, domcalId, pulserSlope,
-                                       pulserIntercept, pulserRegression);
-
-        MockSQLUtil.addATWDInsertSQL(stmt, domcalId, atwdData);
-        MockSQLUtil.addAmpGainInsertSQL(stmt, domcalId, ampGain, ampError);
-        MockSQLUtil.addATWDFreqInsertSQL(stmt, domcalId, freqData);
-        MockSQLUtil.addHvGainInsertSQL(stmt, domcalId,
-                                       hvGainSlope, hvGainIntercept,
-                                       hvGainRegression);
-        MockSQLUtil.addHvHistoInsertSQL(stmt, domcalId, histo);
-
-        final String xmlStr = xml.toString();
-
-        File tmpFile = File.createTempFile("tst", ".xml");
-        tmpFile.deleteOnExit();
-
-        FileOutputStream out = new FileOutputStream(tmpFile);
-        out.write(xml.toString().getBytes());
-        out.close();
-
-        Logger logger = Logger.getLogger(getClass());
-
-        CalibratorDB.save(tmpFile.getAbsolutePath(), logger, calDB, true); 
     }
 
     public void testLoad()
@@ -441,10 +279,8 @@ public class CalibratorDBTest
 
         final double hvGainSlope = 12.34;
         final double hvGainIntercept = 56.78;
-        final double hvGainRegression = 90.12;
 
-        MockSQLUtil.addHvGainSQL(stmt, domcalId, hvGainSlope, hvGainIntercept,
-                                 hvGainRegression);
+        MockSQLUtil.addHvGainSQL(stmt, domcalId, hvGainSlope, hvGainIntercept);
 
         HVHistogram[] histo = new HVHistogram[2];
         for (int i = 0; i < histo.length; i++) {
@@ -536,8 +372,7 @@ public class CalibratorDBTest
 
         final double hvGainSlope = 12.34;
         final double hvGainIntercept = 56.78;
-        final double hvGainRegression = 90.12;
-        xml.setHvGain(hvGainSlope, hvGainIntercept, hvGainRegression);
+        xml.setHvGain(hvGainSlope, hvGainIntercept);
 
         HVHistogram[] histo = new HVHistogram[2];
         for (int i = 0; i < histo.length; i++) {
@@ -566,8 +401,8 @@ public class CalibratorDBTest
 
         final String xmlStr = xml.toString();
 
-        ByteArrayInputStream strIn =
-            new ByteArrayInputStream(xmlStr.getBytes());
+        StringBufferInputStream strIn =
+            new StringBufferInputStream(xmlStr);
 
         Calibrator fiCal = new Calibrator(strIn);
 
@@ -599,8 +434,7 @@ public class CalibratorDBTest
         MockSQLUtil.addATWDSQL(stmt, domcalId, atwdData);
         MockSQLUtil.addAmpGainSQL(stmt, domcalId, ampGain, ampError);
         MockSQLUtil.addATWDFreqSQL(stmt, domcalId, freqData);
-        MockSQLUtil.addHvGainSQL(stmt, domcalId, hvGainSlope, hvGainIntercept,
-                                 hvGainRegression);
+        MockSQLUtil.addHvGainSQL(stmt, domcalId, hvGainSlope, hvGainIntercept);
         MockSQLUtil.addHvHistoSQL(stmt, domcalId, histo);
 
         MockCalDB calDB = new MockCalDB();

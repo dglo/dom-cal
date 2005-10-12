@@ -4,7 +4,6 @@ import icecube.daq.db.domprodtest.DOMProdTestException;
 
 import icecube.daq.domcal.Calibrator;
 import icecube.daq.domcal.CalibratorComparator;
-import icecube.daq.domcal.CalibratorDB;
 import icecube.daq.domcal.DOMCalibrationException;
 
 import java.io.File;
@@ -13,17 +12,53 @@ import java.io.IOException;
 
 import java.sql.SQLException;
 
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.Logger;
+import java.text.FieldPosition;
+import java.text.SimpleDateFormat;
 
 /**
  * Save a calibration XML file to the database.
  */
 public class SaveToDB
 {
-    /** logger instance. */
-    private static Logger logger = Logger.getLogger(SaveToDB.class);
-    
+    /** object used to format calibration dates. */
+    private static final SimpleDateFormat dateFmt =
+        new SimpleDateFormat("MMM-dd-yyyy");
+    /** buffer used to format dates. */
+    private static final StringBuffer dateBuf = new StringBuffer();
+    /** position of date in string buffer. */
+    private static final FieldPosition fldPos = new FieldPosition(0);
+
+    /**
+     * Return a formatted creation date string.
+     *
+     * @param cal calibration data
+     *
+     * @return formatted creation date
+     */
+    private static final String formatDate(Calibrator cal)
+    {
+        dateBuf.setLength(0);
+        dateFmt.format(cal.getCalendar().getTime(), dateBuf, fldPos);
+        return dateBuf.toString();
+    }
+
+    /**
+     * Return a formatted temperature string.
+     *
+     * @param cal calibration data
+     *
+     * @return formatted temperature
+     */
+    private static final String formatTemperature(Calibrator cal)
+    {
+        final String dblStr = Double.toString(cal.getTemperature());
+        final int dotIdx = dblStr.indexOf('.');
+        if (dblStr.length() <= dotIdx + 3) {
+            return dblStr;
+        }
+        return dblStr.substring(0, dotIdx + 3);
+    }
+
     /**
      * Save a calibration XML file to the database.
      *
@@ -35,7 +70,7 @@ public class SaveToDB
      * @throws IOException if there is a problem with the XML file
      * @throws SQLException if there is a problem with the database
      */
-    public SaveToDB(String fileName, boolean verbose)
+    SaveToDB(String fileName, boolean verbose)
         throws DOMCalibrationException, DOMProdTestException, IOException,
                SQLException
     {
@@ -44,10 +79,42 @@ public class SaveToDB
             throw new IOException("File \"" + f + "\" does not exist");
         }
 
-        // configure log4j
-        BasicConfigurator.configure();
+        FileInputStream fis = new FileInputStream(f);
 
-        CalibratorDB.save(fileName, logger);
+        Calibrator cal = new Calibrator(fis);
+
+        try {
+            fis.close();
+        } catch (IOException ioe) {
+            // ignore errors on close
+        }
+
+        Calibrator dbCal;
+        try {
+            dbCal = new Calibrator(cal.getDOMId(), cal.getCalendar().getTime(),
+                                   cal.getTemperature());
+        } catch (DOMCalibrationException dce) {
+            dbCal = null;
+        }
+
+        if (dbCal != null &&
+            CalibratorComparator.compare(cal, dbCal, verbose) == 0)
+        {
+            System.out.println("Calibration data for DOM " + cal.getDOMId() +
+                               "/" + formatDate(cal) + "/" +
+                               formatTemperature(cal) +
+                               " degrees already in DB");
+        } else {
+            cal.save();
+            cal.close();
+            System.out.println("Saved calibration data for DOM " +
+                               cal.getDOMId() + "/" + formatDate(cal) +
+                               "/" + formatTemperature(cal) + " degrees");
+        }
+
+        if (dbCal != null) {
+            dbCal.close();
+        }
     }
 
     /**

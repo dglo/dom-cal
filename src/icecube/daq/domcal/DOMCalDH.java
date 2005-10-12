@@ -1,14 +1,12 @@
 package icecube.daq.domcal;
 
 import org.apache.log4j.Logger;
-import org.apache.log4j.Level;
-import org.apache.log4j.BasicConfigurator;
+
 import java.util.Properties;
 import java.util.LinkedList;
 import java.util.Iterator;
 import java.util.Hashtable;
 import java.io.IOException;
-import java.io.InputStream;
 import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.rmi.NotBoundException;
@@ -51,7 +49,7 @@ public class DOMCalDH {
 
     private DOMCalDH(Properties props) {
         this.props = props;
-        String cexec = props.getProperty("icecube.domcal.calibrate", "none");
+        String cexec = props.getProperty("calibrate", "none");
         if (cexec.equalsIgnoreCase("analogfe")) {
             afecal = true;
         } else if (cexec.equalsIgnoreCase("pmtgain")) {
@@ -65,13 +63,9 @@ public class DOMCalDH {
         String propResource = "domcal.properties";
         Properties props = new Properties();
 
-	    BasicConfigurator.configure();
-	    Logger.getRootLogger().setLevel(Level.DEBUG);
-
         // Gather the properties
         try {
-	        InputStream is = DOMCalDH.class.getResourceAsStream(propResource);
-	        if (is != null) props.load(is);
+            props.load(DOMCalDH.class.getResourceAsStream(propResource));
         } catch (IOException iox) {
             logger.error("Cannot load class properties: " + iox.getMessage());
             System.exit(1);
@@ -84,14 +78,12 @@ public class DOMCalDH {
 
         while (iarg < args.length) {
             String arg = args[iarg++];
-            if (arg.equals("-cal")) {
-                props.setProperty("icecube.domcal.calibrate", "analogfe");
-		logger.info("Enabled analog FE calibration.");
-	    } else if (arg.equals("-gaincal")) {
-                props.setProperty("icecube.domcal.calibrate", "pmtgain");
-		logger.info("Enabled PMT HV calibration!");
-            } else if (arg.equals("-outDir")) {
-                props.setProperty("icecube.domcal.outputDirectory", args[iarg++]);
+            if (arg.equals("-cal"))
+                props.setProperty("calibrate", "analogfe");
+            else if (arg.equals("-gaincal"))
+                props.setProperty("calibrate", "pmtgain");
+            else if (arg.equals("-outDir")) {
+                props.setProperty("outputDirectory", args[iarg++]);
             } else {
                 // interpret as a domhub name
                 hubs.add(arg);
@@ -99,7 +91,9 @@ public class DOMCalDH {
         }
 
         DOMCalDH domcal = new DOMCalDH(props);
+
         domcal.execute(hubs);
+
         domcal.waitOnThreads();
 
     }
@@ -109,19 +103,11 @@ public class DOMCalDH {
         for (Iterator it = fabric.iterator(); it.hasNext(); ) {
             Thread t = (Thread) it.next();
             try {
-                //t.join();
+                t.join();
                 _hubsock hs = (_hubsock) fabricMap.get(t);
-                logger.info("Exec'ing close on DOM " +
-                        hs.channel.getDOMID() + " on DOMHub " +
-                        hs.channel.getHost() + ":" +
-                        hs.channel.getPort()
-                );
                 hs.hub.closeServerChannel(hs.channel.getDOMID(),
                         DOMReservations.SERIAL_COM_CLIENT,
                         hs.channel.getSocketChannelType());
-                /* Kill thread after dh close to avoid inadvertent
-                   close on socket */
-                t.join();
             } catch (InterruptedException iex) {
                 logger.warn("Ouch - interrupted: " + iex.getMessage());
             } catch (Exception ex) {
@@ -162,11 +148,7 @@ public class DOMCalDH {
     private void calibrateHub(DOMHubCom dh) {
 
         try {
-            DOMStatusList doms = dh.getDOMStatusList();
-            if (doms.getDOMCount() == 0 ) {
-                dh.powerUpAllChannels();
-                doms = dh.getDOMStatusList();
-            }
+            DOMStatusList doms = dh.discoverAllDOMs();
             logger.info("Found " + doms.getDOMCount() + " on DOMHub.");
 
             for (int i = 0; i < doms.getDOMCount(); i++) {
@@ -182,12 +164,10 @@ public class DOMCalDH {
                 Thread t = new Thread( new DOMCal(
                         dsc.getHost(),
                         dsc.getPort(),
-                        props.getProperty("icecube.domcal.outputDirectory", "."),
+                        props.getProperty("outputDirectory", "."),
                         afecal,
                         pmtcal
                 ) );
-                // Getting odd behavior from DOMHub - try delay 1.0 sec.
-                Thread.sleep(1000L);
                 t.start();
                 fabric.add(t);
                 // put this into a safe place so I know what channel to release

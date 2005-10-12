@@ -250,9 +250,9 @@ class FakeCalXML
         dac = vals;
     }
 
-    void setHvGain(double slope, double intercept, double regression)
+    void setHvGain(double slope, double intercept)
     {
-        hvGain = new FitData(DEFAULT_MODEL, slope, intercept, regression);
+        hvGain = new FitData(DEFAULT_MODEL, slope, intercept, 0.0);
     }
 
     void setHvHistograms(HVHistogram[] list)

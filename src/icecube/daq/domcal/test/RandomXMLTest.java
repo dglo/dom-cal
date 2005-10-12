@@ -14,7 +14,7 @@ import icecube.daq.domcal.DOMCalibrationException;
 import icecube.daq.domcal.HVHistogram;
 
 import java.io.IOException;
-import java.io.ByteArrayInputStream;
+import java.io.StringBufferInputStream;
 
 import java.sql.Date;
 import java.sql.SQLException;
@@ -134,7 +134,6 @@ public class RandomXMLTest
 
         final double hvGainSlope = random.nextDouble();
         final double hvGainIntercept = random.nextDouble();
-        final double hvGainRegression = random.nextDouble();
 
         HVHistogram[] histo = new HVHistogram[2];
         for (int i = 0; i < histo.length; i++) {
@@ -184,13 +183,13 @@ public class RandomXMLTest
                                  freqData[i][2]);
         }
 
-        xml.setHvGain(hvGainSlope, hvGainIntercept, hvGainRegression);
+        xml.setHvGain(hvGainSlope, hvGainIntercept);
         xml.setHvHistograms(histo);
 
         final String xmlStr = xml.toString();
 
-        ByteArrayInputStream strIn =
-            new ByteArrayInputStream(xmlStr.getBytes());
+        StringBufferInputStream strIn =
+            new StringBufferInputStream(xmlStr);
 
         Calibrator fiCal = new Calibrator(strIn);
 
@@ -228,8 +227,7 @@ public class RandomXMLTest
         MockSQLUtil.addATWDSQL(stmt, domcalId, atwdData);
         MockSQLUtil.addAmpGainSQL(stmt, domcalId, ampGain, ampError);
         MockSQLUtil.addATWDFreqSQL(stmt, domcalId, freqData);
-        MockSQLUtil.addHvGainSQL(stmt, domcalId, hvGainSlope, hvGainIntercept,
-                                 hvGainRegression);
+        MockSQLUtil.addHvGainSQL(stmt, domcalId, hvGainSlope, hvGainIntercept);
         MockSQLUtil.addHvHistoSQL(stmt, domcalId, histo);
 
         MockCalDB calDB = new MockCalDB();

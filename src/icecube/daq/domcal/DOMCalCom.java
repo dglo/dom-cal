@@ -12,90 +12,60 @@
 
 package icecube.daq.domcal;
 
-import icecube.daq.domhub.common.messaging.SocketSerialCom;
-
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.zip.InflaterInputStream;
+import java.net.Socket;
+import java.util.zip.GZIPInputStream;
 
-public class DOMCalCom extends SocketSerialCom {
+public class DOMCalCom {
 
-    public DOMCalCom(String host, int port) {
+    private InputStream in;
+    private OutputStream out;
+    private Socket s;
 
-        super(host, port);
+    public DOMCalCom( Socket s ) throws IOException {
+
+        this.in = s.getInputStream();
+        this.out = s.getOutputStream();
+        this.s = s;
+
+        int avail = in.available();
+        if ( avail != 0 ) {
+            in.read( new byte[avail] );
+        }
     }
 
-    /**
-     * Read zipped data from dom
-     * @return The inflated data
-     * @throws IOException
-     */
+    public void send( String s ) throws IOException {
+        byte[] bytes = s.getBytes();
+        out.write( bytes );
+        out.flush();
+    }
 
-    public byte[] zRead() throws IOException {
-        
-        InputStream in = getInputStream();
-
-        byte [] len = new byte[4];
-        for (int i = 0; i < 4; i++) {
-            len[i] = (byte)in.read();
-        }
-        
-        ByteBuffer buf = ByteBuffer.wrap(len);
-        buf.order(ByteOrder.LITTLE_ENDIAN);
-        int length = buf.getInt();
-
-        InflaterInputStream z = new InflaterInputStream(in);
-        
-        byte[] out = new byte[length];
-        for (int offset = 0; offset != length;) {
-            offset += z.read(out, offset, length-offset);
+    public String receive( String terminator ) throws IOException {
+        String out = "";
+        while ( !out.endsWith( terminator ) ) {
+            out += ( char )in.read();
         }
         return out;
     }
 
-    public String receive() throws IOException {
-
-        int br = getInputStream().available();
-        byte[] out = new byte[br];
-        getInputStream().read(out, 0 , br);
-        return new String(out);
+    public byte[] receive( int length ) throws IOException {
+        GZIPInputStream zStream = new GZIPInputStream( in );
+        byte[] out = new byte[length];
+        for ( int offset = 0; offset != length; offset++ ) {
+            out[offset] = ( byte )zStream.read();
+        }
+        return out;
     }
 
-    public void connect() throws IOException {
+    public void close() throws IOException {
+        in.close();
+        out.close();
+        s.close();
+    }
 
-        super.connect("socket");
-
-        /* Determine runstate -- send enough newline characters to deal with configboot power-on info */
-        send("\r\n\r\n\r\n\r\n");
-        String promptStr = receive("\r\n");
-        promptStr = receive("\r\n");
-        promptStr = receive("\r\n");
-        promptStr = receive("\r\n");
-
-        if (promptStr.length() == 0) throw new IllegalStateException("Unable to determine DOM run state");
-        char promptChar = promptStr.charAt(0);
-
-        /* If in iceboot, we're good */
-        if (promptChar == '>') {
-
-            /* Read remaining chars */
-            receive("> ");
-            return;
-        }
-
-        /* If in configboot, move to iceboot */
-        else if (promptChar == '#') {
-
-            send("r\r\n");
-            receive("\r\n> ");
-
-            /* Now in iceboot */
-            return;
-        }
-
-        /* We can't determine DOM run state */
-        throw new IllegalStateException("Unable to determine DOM run state");
+    protected void finalize() throws Throwable {
+        close();
     }
 }

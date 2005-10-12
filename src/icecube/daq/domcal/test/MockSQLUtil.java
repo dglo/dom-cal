@@ -269,27 +269,23 @@ abstract class MockSQLUtil
     public static final void addHvGainInsertSQL(MockStatement stmt,
                                                 int domcalId,
                                                 double slope,
-                                                double intercept,
-                                                double regression)
+                                                double intercept)
     {
         final String iStr =
-            "insert into DOMCal_HvGain(domcal_id,slope,intercept,regression)" +
-            "values(" + domcalId + "," + slope + "," + intercept + "," +
-            regression + ")";
+            "insert into DOMCal_HvGain(domcal_id,slope,intercept)values(" +
+            domcalId + "," + slope + "," + intercept + ")";
         stmt.addExpectedUpdate(iStr, 1);
     }
 
     public static final void addHvGainSQL(MockStatement stmt, int domcalId,
-                                          double slope, double intercept,
-                                          double regression)
+                                          double slope, double intercept)
     {
-        final String qStr = "select slope,intercept,regression" +
-            " from DOMCal_HvGain where domcal_id=" + domcalId;
+        final String qStr = "select slope,intercept from DOMCal_HvGain" +
+            " where domcal_id=" + domcalId;
 
         stmt.addExpectedQuery(qStr, "HvGainQry", new Object[] {
                                   new Double(slope),
                                   new Double(intercept),
-                                  new Double(regression),
                               });
     }
 
@@ -448,16 +444,12 @@ abstract class MockSQLUtil
              " and temperature<=" + (temp + 5.0)) +
             " order by date desc";
 
-        if (domcalId < 0) {
-            stmt.addExpectedQuery(qStr, "mainQry", null);
-        } else {
-            final Object[] qryObjs = new Object[] {
-                new Integer(domcalId),
-                date,
-                new Double(temp)
-            };
-            stmt.addExpectedQuery(qStr, "mainQry", qryObjs);
-        }
+        final Object[] qryObjs = new Object[] {
+            new Integer(domcalId),
+            date,
+            new Double(temp)
+        };
+        stmt.addExpectedQuery(qStr, "mainQry", qryObjs);
     }
 
     public static final void addModelTypeSQL(MockStatement stmt)
@@ -494,7 +486,15 @@ abstract class MockSQLUtil
     public static final void addProductTypeSQL(MockStatement stmt,
                                                int domTypeId, int mainbdTypeId)
     {
-        icecube.daq.db.domprodtest.test.MockSQLUtil.addProductTypeQueries(stmt, domTypeId, mainbdTypeId);
+        final String domQuery = "select prodtype_id from ProductType" +
+            " where name='DOM' or keyname='DOM'";
+        stmt.addExpectedQuery(domQuery, "DOM prodType",
+                              new Object[] { new Integer(domTypeId) });
+
+        final String mbQuery = "select prodtype_id from ProductType" +
+            " where name='Main Board' or keyname='Main Board'";
+        stmt.addExpectedQuery(mbQuery, "MainBd prodType",
+                              new Object[] { new Integer(mainbdTypeId) });
     }
 
     public static final void addProductSQL(MockStatement stmt,
@@ -503,15 +503,24 @@ abstract class MockSQLUtil
                                            String mbTagSerial, int domTypeId,
                                            int domId, String domTagSerial)
     {
-        icecube.daq.db.domprodtest.test.MockSQLUtil.addDOMQueries(stmt,
-                                                                  mainbdTypeId,
-                                                                  mbHardSerial,
-                                                                  mainbdId,
-                                                                  Integer.MAX_VALUE,
-                                                                  mbTagSerial,
-                                                                  domTypeId,
-                                                                  domId,
-                                                                  domTagSerial);
+        final String mbQry =
+            "select prod_id,tag_serial from Product where prodtype_id=" +
+            mainbdTypeId + " and hardware_serial='" + mbHardSerial + "'";
+
+        stmt.addExpectedQuery(mbQry, "MainBd",
+                              new Object[] {
+                                  new Integer(mainbdId),
+                                  mbTagSerial,
+                              });
+
+        final String dQry = "select p.prod_id,p.tag_serial from Assembly a" +
+            ",AssemblyProduct ap,Product p where ap.prod_id=" + mainbdId +
+            " and ap.assem_id=a.assem_id and p.prod_id=a.prod_id" +
+            " and p.prodtype_id=" + domTypeId;
+
+        stmt.addExpectedQuery(dQry, "DOM",
+                              new Object[] { new Integer(domId),
+                                             domTagSerial });
     }
 
     public static final void addPulserInsertSQL(MockStatement stmt,
@@ -525,6 +534,8 @@ abstract class MockSQLUtil
             "values(" + domcalId + "," + MODEL_LINEAR_ID + "," + regression +
             ")";
         stmt.addExpectedUpdate(rStr, 1);
+
+        addParamTypeSQL(stmt);
 
         final String sStr =
             "insert into DOMCal_PulserParam(domcal_id,dc_param_id,value)" +
@@ -553,7 +564,7 @@ abstract class MockSQLUtil
                               });
 
         final String pStr = "select dp.name,dpp.value" +
-            " from DOMCal_PulserParam dpp,DOMCal_Param dp" +
+            " from DOMCal_PulserParam dpp,DOMCAL_Param dp" +
             " where dpp.domcal_id=" + domcalId +
             " and dpp.dc_param_id=dp.dc_param_id";
 
