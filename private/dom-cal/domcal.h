@@ -11,10 +11,10 @@
  * be incremented when changing structure of binary output
  */
 #define MAJOR_VERSION 5
-#define MINOR_VERSION 13
+#define MINOR_VERSION 14
 
 /* Default number of bytes in binary output */
-#define DEFAULT_RECORD_LENGTH 9388
+#define DEFAULT_RECORD_LENGTH 9396
 
 /* Default ATWD DAC settings */
 #ifdef DOMCAL_REV5
@@ -45,6 +45,11 @@
 typedef struct {
     float slope, y_intercept, r_squared;
 } linear_fit;
+
+/* Quadratic fit parameters */
+typedef struct {
+    float c0, c1, c2, r_squared;
+} quadratic_fit;
 
 /* Store value and error together */
 typedef struct {
@@ -105,8 +110,8 @@ typedef struct {
     value_error amplifier_calib[3];
     
     /* ATWD sampling speed calibration */
-    linear_fit atwd0_freq_calib;
-    linear_fit atwd1_freq_calib;
+    quadratic_fit atwd0_freq_calib;
+    quadratic_fit atwd1_freq_calib;
 
     /* Valid bit for HV calibration */
     short hv_gain_valid;
