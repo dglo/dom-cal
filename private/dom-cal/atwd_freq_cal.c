@@ -26,7 +26,7 @@ int cal_loop( float *atwd_cal, short *speed_settings,
 
     int i,j;
 
-    for ( i = 0; i < NUMBER_OF_SPEED_SETTINGS; i++ ) {
+    for ( i = 0; i < ATWD_FREQ_CAL_SPEED_CNT; i++ ) {
 
         /* Set speed DAC */
         halWriteDAC( ATWD_DAC_channel, speed_settings[i] );
@@ -57,6 +57,7 @@ int cal_loop( float *atwd_cal, short *speed_settings,
 
         /* Store final average value of frequency, in MHz */
         atwd_cal[i] = DOM_CLOCK_FREQ * sum / ATWD_FREQ_CAL_TRIG_CNT;
+
     }
     return 0;
 }
@@ -66,8 +67,8 @@ int cal_loop( float *atwd_cal, short *speed_settings,
 int atwd_freq_cal(calib_data *dom_calib) {
 
     int trigger_mask;
-    float atwd0_cal[NUMBER_OF_SPEED_SETTINGS];
-    float atwd1_cal[NUMBER_OF_SPEED_SETTINGS];
+    float atwd0_cal[ATWD_FREQ_CAL_SPEED_CNT];
+    float atwd1_cal[ATWD_FREQ_CAL_SPEED_CNT];
 
 #ifdef DEBUG    
     printf( "Performing ATWD frequency calibration...\r\n" );
@@ -78,8 +79,10 @@ int atwd_freq_cal(calib_data *dom_calib) {
     int old_ATWD1_bias = halReadDAC( DOM_HAL_DAC_ATWD1_TRIGGER_BIAS );
 
     /* ATWD sampling speeds to be tested */
-    short speed_settings[NUMBER_OF_SPEED_SETTINGS] = 
-        { 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000 };
+    short speed_settings[ATWD_FREQ_CAL_SPEED_CNT];
+    int i;
+    for ( i = 0; i < ATWD_FREQ_CAL_SPEED_CNT; i++ )
+        speed_settings[i] = ATWD_FREQ_CAL_SPEED_MIN + i*ATWD_FREQ_CAL_SPEED_STEP;
     
     /* Select oscillator analog mux input */
     halSelectAnalogMuxInput( DOM_HAL_MUX_OSC_OUTPUT );
@@ -95,18 +98,17 @@ int atwd_freq_cal(calib_data *dom_calib) {
                          trigger_mask, DOM_HAL_DAC_ATWD1_TRIGGER_BIAS );
 
     /* Store speed as float array needed by linearFitFloat */
-    float speed_settingsf[NUMBER_OF_SPEED_SETTINGS];
-    int i;
-    for ( i = 0; i < NUMBER_OF_SPEED_SETTINGS; i++ ) {
+    float speed_settingsf[ATWD_FREQ_CAL_SPEED_CNT];
+    for ( i = 0; i < ATWD_FREQ_CAL_SPEED_CNT; i++ ) {
         speed_settingsf[i] = speed_settings[i];
     }
 
     /* Fit and store ATWD0 calibration */
-    quadraticFitFloat( speed_settingsf, atwd0_cal, NUMBER_OF_SPEED_SETTINGS,
+    quadraticFitFloat( speed_settingsf, atwd0_cal, ATWD_FREQ_CAL_SPEED_CNT,
                        &dom_calib->atwd0_freq_calib );
     
     /* Fit and store ATWD1 calibration */
-    quadraticFitFloat( speed_settingsf, atwd1_cal, NUMBER_OF_SPEED_SETTINGS,
+    quadraticFitFloat( speed_settingsf, atwd1_cal, ATWD_FREQ_CAL_SPEED_CNT,
                        &dom_calib->atwd1_freq_calib );
 
     /* Restore DOM state */
