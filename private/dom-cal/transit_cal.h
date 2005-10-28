@@ -9,12 +9,13 @@
 #define TRANSIT_CAL_HV_CNT           9
 
 /* Specific DAC values for this test */
+/* Note high sampling speed! */
 #ifdef DOMCAL_REV5
 #define TRANSIT_CAL_PEDESTAL_DAC   2130
-#define TRANSIT_CAL_SAMPLING_DAC    850
+#define TRANSIT_CAL_SAMPLING_DAC   2100
 #else
 #define TRANSIT_CAL_PEDESTAL_DAC   1925
-#define TRANSIT_CAL_SAMPLING_DAC    850
+#define TRANSIT_CAL_SAMPLING_DAC   2100
 #endif
 
 /* Which ATWD to use */
@@ -39,7 +40,7 @@
 #define TRANSIT_CAL_TRIG_CNT        250
 
 /* Trigger delay for ATWDs */
-#define TRANSIT_CAL_LAUNCH_DELAY      2
+#define TRANSIT_CAL_LAUNCH_DELAY      4
 
 /* Crossing point to define transit time */
 /* As fraction of peak value */
@@ -47,6 +48,9 @@
 
 /* Maxiumum number of waveforms with no light */
 #define TRANSIT_CAL_MAX_NO_PEAKS    750
+
+/* Maxiumum number of waveforms with bad leading edge */
+#define TRANSIT_CAL_MAX_BAD_LE      750
 
 /* Minimum number of points to attempt a fit */
 #define TRANSIT_CAL_MIN_VLD_PTS       2
