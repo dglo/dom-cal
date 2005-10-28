@@ -93,6 +93,22 @@ float discDAC2V(int disc_dac, int bias_dac) {
 
 /*---------------------------------------------------------------------------*/
 /*
+ * discV2DAC
+ *
+ * Inverse of discDAC2V -- convert a desired voltage into the 
+ * required discriminator setting.  Clamps to a value between 0
+ * and 1023.
+ *
+ */
+int discV2DAC(float disc_v, int bias_dac) {
+    int disc_dac = (int)(2.5 * (disc_v / (5.0 * 0.0000244) + 0.1 * bias_dac));
+    disc_dac = disc_dac > 1023 ? 1023 : disc_dac;
+    disc_dac = disc_dac < 0 ? 0 : disc_dac;
+    return disc_dac;
+}
+
+/*---------------------------------------------------------------------------*/
+/*
  * biasDAC2V
  *
  * Converts the FE pedestal level (bias) from DAC value to volts
