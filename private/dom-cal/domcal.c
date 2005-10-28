@@ -27,6 +27,7 @@
 #include "amp_cal.h"
 #include "pulser_cal.h"
 #include "atwd_freq_cal.h"
+#include "fadc_cal.h"
 #include "hv_gain_cal.h"
 #include "baseline_cal.h"
 #include "hv_amp_cal.h"
@@ -584,6 +585,7 @@ int main(void) {
     baseline_cal(&dom_calib);
     amp_cal(&dom_calib);
     atwd_freq_cal(&dom_calib);
+    fadc_cal(&dom_calib);
     if (doHVCal) {
         transit_cal(&dom_calib);
         hv_baseline_cal(&dom_calib);

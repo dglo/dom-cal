@@ -10,8 +10,8 @@
 /* Version of calibration program -- Major version must
  * be incremented when changing structure of binary output
  */
-#define MAJOR_VERSION 5
-#define MINOR_VERSION 14
+#define MAJOR_VERSION 6
+#define MINOR_VERSION 0
 
 /* Default number of bytes in binary output */
 #define DEFAULT_RECORD_LENGTH 9396
@@ -33,6 +33,9 @@
 
 /* Oscillator frequency into ATWD channel 3, mux input 0, in MHz */
 #define DOM_CLOCK_FREQ          20.0
+
+/* FADC sampling frequency, in MHz */
+#define FADC_CLOCK_FREQ         40.0
 
 /* Wait time after setting a DAC */
 #define DAC_SET_WAIT         1000000
@@ -93,7 +96,10 @@ typedef struct {
     short adc_values[24];
    
     /* FADC calibration */
+    /* TEMP PLACEHOLDER */
     short fadc_values[2];
+    linear_fit  fadc_baseline;
+    value_error fadc_gain;
 
     /* FE pulser calibration */
     linear_fit pulser_calib;
