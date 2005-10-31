@@ -45,8 +45,12 @@ public class DOMCalXML {
                 out.print("  </atwd>\n");
             }
         }
-        out.print("  <fadc parname=\"pedestal\" value=\"" + rec.getFadcValue( 0 ) + "\"/>\n");
-        out.print("  <fadc parname=\"gain\" value=\"" + rec.getFadcValue( 1 ) + "\"/>\n");
+        out.print("  <fadc_baseline>\n");
+        format(rec.getFadcFit(), out);
+        out.print("  </fadc_baseline>\n");
+        out.print("  <fadc>\n");
+        out.print("    <gain error=\"" + rec.getFadcGainError() + "\">" + rec.getFadcGain() + "</gain>\n");
+        out.print("  </fadc>\n");
         for ( int i = 0; i < 3; i++ ) {
             out.print("  <amplifier channel=\"" + i + "\">\n");
             out.print("    <gain error=\"" + rec.getAmplifierGainError( i ) + "\">" +

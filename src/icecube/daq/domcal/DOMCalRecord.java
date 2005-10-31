@@ -23,7 +23,6 @@ public class DOMCalRecord {
     public static final int MAX_AMPLIFIER = 3;
     public static final int MAX_ADC = 24;
     public static final int MAX_DAC = 16;
-    public static final int MAX_FADC = 2;
 
     private LinearFit pulserCalibration;
     private LinearFit[][][] atwdCalibration;
@@ -42,7 +41,9 @@ public class DOMCalRecord {
 
     private short[] dacValues;
     private short[] adcValues;
-    private short[] fadcValues;
+
+    private LinearFit fadcFit;
+    private float[] fadcGain;
 
     private short version;
 
@@ -87,11 +88,16 @@ public class DOMCalRecord {
         return temperature;
     }
 
-    public short getFadcValue( int val ) {
-        if ( val < 0 || val >= MAX_FADC ) {
-            throw new IndexOutOfBoundsException( "" + val );
-        }
-        return fadcValues[val];
+    public float getFadcGain() {
+        return fadcGain[0];
+    }
+
+    public float getFadcGainError() {
+        return fadcGain[1];
+    }
+
+    public LinearFit getFadcFit() {
+        return fadcFit;
     }
 
     public short getAdcValue( int val ) {
@@ -235,7 +241,6 @@ public class DOMCalRecord {
 
         rec.dacValues = new short[MAX_DAC];
         rec.adcValues = new short[MAX_ADC];
-        rec.fadcValues = new short[MAX_FADC];
 
         for ( int i = 0; i < MAX_DAC; i++ ) {
             rec.dacValues[i] = bb.getShort();
@@ -245,8 +250,10 @@ public class DOMCalRecord {
             rec.adcValues[i] = bb.getShort();
         }
 
-        for ( int i = 0; i < MAX_FADC; i++ ) {
-            rec.fadcValues[i] = bb.getShort();
+        rec.fadcFit = LinearFit.parseLinearFit(bb);
+        rec.fadcGain = new float[2];
+        for ( int i = 0; i < 2; i++ ) {
+            rec.fadcGain[i] = bb.getFloat();
         }
 
         rec.pulserCalibration = LinearFit.parseLinearFit( bb );
