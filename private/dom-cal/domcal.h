@@ -14,7 +14,7 @@
 #define MINOR_VERSION 0
 
 /* Default number of bytes in binary output */
-#define DEFAULT_RECORD_LENGTH 9396
+#define DEFAULT_RECORD_LENGTH 9412
 
 /* Default ATWD DAC settings */
 #ifdef DOMCAL_REV5
@@ -96,8 +96,6 @@ typedef struct {
     short adc_values[24];
    
     /* FADC calibration */
-    /* TEMP PLACEHOLDER */
-    short fadc_values[2];
     linear_fit  fadc_baseline;
     value_error fadc_gain;
 

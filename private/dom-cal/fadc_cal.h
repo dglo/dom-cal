@@ -24,8 +24,10 @@
 #define FADC_CAL_REF_STEP         25
 #define FADC_CAL_REF_CNT          12
 
-/* Pulser amplitude to use */
-#define FADC_CAL_PULSER_AMP      400
+/* Pulser amplitudes to use */
+#define FADC_CAL_PULSER_AMP_MIN  600
+#define FADC_CAL_PULSER_AMP_STEP 100
+#define FADC_CAL_PULSER_AMP_CNT    4
 
 /* Baseline setting (in FADC counts) to use */
 #define FADC_CAL_BASELINE        100

@@ -329,10 +329,8 @@ int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
     }
 
     /* Write FADC calibration data */
-    short *fadc = cal->fadc_values;
-    for ( i = 0; i < 2; i++ ) {
-        offset += get_bytes_from_short( fadc[i], bin_data, offset );
-    }
+    offset += write_fit( &cal->fadc_baseline, bin_data, offset );
+    offset += write_value_error( &cal->fadc_gain, bin_data, offset );
 
     /* Write FE puser calibration data */
     offset += write_fit( &cal->pulser_calib, bin_data, offset );
@@ -465,6 +463,14 @@ int save_results(calib_data dom_calib) {
                    dom_calib.atwd1_freq_calib.c2,
                    dom_calib.atwd1_freq_calib.r_squared);
 
+    printf("FADC calibration: baseline fit m=%.6g b=%.6g r^2=%.6g\r\n",
+           dom_calib.fadc_baseline.slope,
+           dom_calib.fadc_baseline.y_intercept,
+           dom_calib.fadc_baseline.r_squared);
+
+    printf("FADC calibration: gain (V/tick)=%.6g error=%.6g\r\n",
+           dom_calib.fadc_gain.value, dom_calib.fadc_gain.error);
+
     if (dom_calib.hv_gain_valid) {
         printf("HV Gain: m=%.6g b=%.6g r^2=%.6g\r\n",
                dom_calib.hv_gain_calib.slope,
@@ -476,9 +482,8 @@ int save_results(calib_data dom_calib) {
 
     /* Calculate record length */
     int r_size = DEFAULT_RECORD_LENGTH;
-    if ( dom_calib.hv_gain_valid ) {
+    if ( dom_calib.hv_gain_valid )
         r_size += 12; //log-log fit
-    }
 
     r_size += dom_calib.num_histos * GAIN_CAL_BINS * 8; //histos
     r_size += dom_calib.num_histos * 20; //fits;
@@ -488,7 +493,6 @@ int save_results(calib_data dom_calib) {
     r_size += dom_calib.num_histos * 4; //PV data
     r_size += dom_calib.num_histos * 4; //Noise rate
     r_size += dom_calib.num_histos * 2; //is_filled flag
-
     
     r_size += 2; //hv_baselines_valid
     if (dom_calib.hv_baselines_valid) {
@@ -574,9 +578,12 @@ int main(void) {
      *  - pulser calibration
      *  - atwd calibration
      *  - baseline calibration
-     *  - amplifier calibration
+     *  - amplifier calibration (using only pulser)
      *  - sampling speed calibration
+     *  - FADC calibration 
+     *  - transit time calibration
      *  - HV baseline calibration
+     *  - HV amplifier calibration (using LED)
      *  - HV gain calibration
      */
     /* FIX ME: return real error codes */
@@ -593,10 +600,6 @@ int main(void) {
         hv_gain_cal(&dom_calib);
     }
 
-    /* FIX ME: FADC calibration is a placeholder */
-    dom_calib.fadc_values[0] = 0;
-    dom_calib.fadc_values[1] = 1; //set default gain to 1.0
-
     /* Write calibration record to flash */
     int save_ret = save_results( dom_calib );
     if ( !save_ret ) {
@@ -605,7 +608,7 @@ int main(void) {
 #endif
     } else {
 #ifdef DEBUG       
-        printf( "FAILED. %d\r\n", save_ret );
+        printf( "FAILED (error %d)\r\n", save_ret );
 #endif
         err = save_ret;
     }    

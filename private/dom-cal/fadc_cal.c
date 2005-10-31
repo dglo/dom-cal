@@ -7,6 +7,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 
 #include "hal/DOM_MB_hal.h"
@@ -51,12 +52,14 @@ int fadc_cal(calib_data *dom_calib) {
     float peaks[FADC_CAL_TRIG_CNT];
     float fadc_peaks[FADC_CAL_TRIG_CNT];
     
-    /* Charge array for ATWD and FADC */
-    float charges[FADC_CAL_TRIG_CNT];
-    float fadc_charges[FADC_CAL_TRIG_CNT];
+    /* Charges for ATWD and FADC */
+    float atwd_charge;
+    float fadc_charge;
 
     /* Gain array */
-    float gains[FADC_CAL_TRIG_CNT];
+    float *gains;
+    gains = (float *)malloc(sizeof(float) * FADC_CAL_TRIG_CNT * FADC_CAL_PULSER_AMP_CNT);
+    float gain_mean, gain_var;    
 
 #ifdef DEBUG
     printf("Performing FADC calibration...\r\n");
@@ -124,17 +127,21 @@ int fadc_cal(calib_data *dom_calib) {
             fadc_baseline[ref_cnt] += fadc_avg[i];
         fadc_baseline[ref_cnt] /= fadc_cnt;
         
+#ifdef DEBUG
         /* TEMP FIX ME */
         printf("DAC: %d    baseline: %.2f\r\n", (int)fadc_ref[ref_cnt], fadc_baseline[ref_cnt]);
+#endif
     }
     
-    /* Fit relationship */
+    /* Fit relationship and store in calibration structure */
     linearFitFloat(fadc_ref, fadc_baseline, ref_cnt, &(dom_calib->fadc_baseline));
     
+#ifdef DEBUG
     /* TEMP FIX ME */
-    printf("m: %g b: %g r^2: %g\r\n", dom_calib->fadc_baseline.slope,
+    printf("FADC baseline fit  m: %g b: %g r^2: %g\r\n", dom_calib->fadc_baseline.slope,
            dom_calib->fadc_baseline.y_intercept, 
            dom_calib->fadc_baseline.r_squared);
+#endif
 
     /*--------------------------------------------------------------------*/   
     /* Compare to ATWD channel 0 using pulser */
@@ -165,14 +172,12 @@ int fadc_cal(calib_data *dom_calib) {
     /* OR in the ATWD to the trigger mask */
     trigger_mask |= (atwd == 0) ? HAL_FPGA_TEST_TRIGGER_ATWD0 : HAL_FPGA_TEST_TRIGGER_ATWD1;
 
-    /* TEMP FIX ME ??? */
-    /* Figure out good pulser amplitudes */
-    /* Figure out how to average results */
-    /* Store in the freaking struct */
-    int pulser_dac;
-    for (pulser_dac = 50; pulser_dac < 1000; pulser_dac += 100) {
+    /* Loop over various pulser amplitudes and compute FADC gain */
+    int pulser_dac, pulser_cnt;
+    for (pulser_cnt = 0; pulser_cnt < FADC_CAL_PULSER_AMP_CNT; pulser_cnt++) {
 
         /* Set the pulser amplitude */
+        pulser_dac = FADC_CAL_PULSER_AMP_MIN + pulser_cnt*FADC_CAL_PULSER_AMP_STEP;
         halWriteDAC(DOM_HAL_DAC_INTERNAL_PULSER, pulser_dac);
 
         /* Set the discriminator appropriately */
@@ -182,13 +187,15 @@ int fadc_cal(calib_data *dom_calib) {
         int disc_dac = discV2DAC(0.5*pulser_v, FADC_CAL_PEDESTAL_DAC);
         halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, disc_dac);
 
+#ifdef DEBUG
         /* TEMP FIX ME */
         printf("Setting pulser dac to %d\r\n", pulser_dac);
         printf("Setting disc dac to %d\r\n", disc_dac);
-
+#endif
         halUSleep(DAC_SET_WAIT);        
 
         /* TEMP FIX ME */
+        /* Do I need average waveforms? I do for LE measurement now */
         for (i = 0; i < fadc_cnt; i++)
             fadc_avg[i] = 0.0;
         for (i = 0; i < cnt; i++)
@@ -257,7 +264,7 @@ int fadc_cal(calib_data *dom_calib) {
                 peak_idx + FADC_CAL_ATWD_INT_WIN_MAX : cnt-1;
 
             /* Do ATWD integral */
-            charges[trig] = 0.0;       
+            atwd_charge = 0.0;       
             for (bin = int_min; bin <= int_max; bin++) {
                 float v;
                 if (atwd == 0) {
@@ -272,10 +279,10 @@ int fadc_cal(calib_data *dom_calib) {
                 }            
                 /* Also subtract out bias voltage */
                 v -= bias_v;
-                charges[trig] += v;
+                atwd_charge += v;
             }
             /* Divide out gain and frequency */
-            charges[trig] /= dom_calib->amplifier_calib[0].value * freq;
+            atwd_charge /= dom_calib->amplifier_calib[0].value * freq;
 
             /* TEMP FIX ME */
             /* Record average waveform */
@@ -304,68 +311,49 @@ int fadc_cal(calib_data *dom_calib) {
             } /* End fadc peak search */        
 
             /* Do FADC integral */
-            fadc_charges[trig] = 0.0;
+            fadc_charge = 0.0;
             /* Integrate before peak */
             bin = peak_idx;
             do {
                 fadc_val = fadc[bin] - fadc_baseline_set;
-                fadc_charges[trig] += fadc_val;
+                fadc_charge += fadc_val;
                 bin--;
             } while ((bin >= 0) && (fadc_val >= fadc_peaks[trig] * FADC_CAL_INT_FRAC));
 
-            /* TEMP FIX ME */
-            if (trig == 0) {
-                printf("Stopped integration at bin %d\r\n", bin+1);
-            }
             /* Integrate after peak */
             bin = peak_idx + 1;
             do {
                 fadc_val = fadc[bin] - fadc_baseline_set;
-                fadc_charges[trig] += fadc_val;
+                fadc_charge += fadc_val;
                 bin++;
             } while ((bin < FADC_CAL_STOP_SAMPLE) && 
                      (fadc_val >= fadc_peaks[trig] * FADC_CAL_INT_FRAC));
-            /* TEMP FIX ME */
-            if (trig == 0) {
-                printf("Stopped integration at bin %d\r\n", bin-1);
-            }
 
             /* Divide by sampling speed */
-            fadc_charges[trig] /= fadc_freq;
+            fadc_charge /= fadc_freq;
 
             /* Calculate gain for this waveform */
-            gains[trig] = charges[trig] / fadc_charges[trig];
-
-            /* TEMP FIX ME */
-            if (trig == 0) {
-                printf("atwd peak: %g, fadc peak %g\r\n", peaks[0], fadc_peaks[0]);
-            }
+            gains[pulser_cnt*FADC_CAL_TRIG_CNT + trig] = atwd_charge / fadc_charge;
 
         } /* End trigger loop */
 
         /*--------------------------------------------------------------------*/
-        /* Calculate gain of FADC channel */
+        /* Calculate gain of FADC channel for this pulser setting */
 
-        float atwd_mean, atwd_var, fadc_mean, fadc_var, gain_mean, gain_var;    
-
-        /* FIX ME I don't need all this shit */
         /* Find gain and error */
-        meanVarFloat(charges, FADC_CAL_TRIG_CNT, &atwd_mean, &atwd_var);
-        meanVarFloat(fadc_charges, FADC_CAL_TRIG_CNT, &fadc_mean, &fadc_var);
-        meanVarFloat(gains, FADC_CAL_TRIG_CNT, &gain_mean, &gain_var);
+        meanVarFloat(gains+(pulser_cnt*FADC_CAL_TRIG_CNT), FADC_CAL_TRIG_CNT, 
+                     &gain_mean, &gain_var);
 
-        /* FIX ME DO VAR */
-
+#ifdef DEBUG
         /* TEMP FIX ME */
-        printf("Mean ATWD charge: %g  var: %g\r\n", atwd_mean, atwd_var);    
-        printf("Mean FADC charge: %g  var: %g\r\n", fadc_mean, fadc_var);
-        printf("FADC gain: mean %g, new %g\r\n", atwd_mean / fadc_mean, gain_mean);
+        printf("FADC gain: %g\r\n", gain_mean);
+#endif
 
         /* TEMP FIX ME */
         /* Average waveform */
         for (i = 0; i < fadc_cnt; i++) {
             fadc_avg[i] /= (float)FADC_CAL_TRIG_CNT;
-            fadc_avg[i] *= atwd_mean / fadc_mean;
+            fadc_avg[i] *= gain_mean;
         }
         /* Average ATWD waveform */
         for (i = 0; i < cnt; i++) {
@@ -425,9 +413,10 @@ int fadc_cal(calib_data *dom_calib) {
             atwd_le = -le_fit.y_intercept / le_fit.slope;                    
         }
         else {
-            /* FIX ME DEAL WITH SHIT */
+            /* FIX ME DEAL WITH ERROR */
         }
 
+        /* FIX ME */
         /* THIS IS NOT WORKING WELL -- LE IS SHIT */
         /* Get FADC LE time */
         peak_idx = 0;
@@ -455,20 +444,20 @@ int fadc_cal(calib_data *dom_calib) {
             fadc_le = -le_fit.y_intercept / le_fit.slope;                    
         }
         else {
-            /* FIX ME DEAL WITH SHIT */
+            /* FIX ME DEAL WITH ERROR */
         }
         
         /* Now compute offset assuming LE are in same position */
         float delta_t = atwd_le - fadc_le;
 
 #ifdef DEBUG
+        /* TEMP FIX ME */
         printf("Offset between ATWD and FADC leading edges: %.1f ns\r\n", delta_t);
 #endif
 
         /* TEMP FIX ME */
-        /* Print averages */
-
         /* Print average waveforms */
+        /*
         printf("Average ATWD ch0 waveform\r\n");
         printf("ns     mV\r\n");
         for (i=cnt-1; i >= 0; i--) {
@@ -478,10 +467,16 @@ int fadc_cal(calib_data *dom_calib) {
         for (i=0; i < fadc_cnt; i++) {
             printf("%g %g\r\n", i*1000.0/fadc_freq + delta_t, fadc_avg[i]*1000.0);
         }
-        
+        */
 
     } /* End pulser amplitude loop */
 
+    /* Calculate average gain over all pulser settings */
+    meanVarFloat(gains, FADC_CAL_TRIG_CNT*FADC_CAL_PULSER_AMP_CNT, 
+                 &gain_mean, &gain_var);
+    dom_calib->fadc_gain.value = gain_mean;
+    dom_calib->fadc_gain.error =  sqrt(gain_var / (FADC_CAL_TRIG_CNT*FADC_CAL_PULSER_AMP_CNT));
+    
     /*--------------------------------------------------------------------*/
     /* Turn off the pulser */
     hal_FPGA_TEST_disable_pulser();
@@ -492,6 +487,9 @@ int fadc_cal(calib_data *dom_calib) {
     halWriteDAC((atwd == 0) ? DOM_HAL_DAC_ATWD0_TRIGGER_BIAS : 
                 DOM_HAL_DAC_ATWD1_TRIGGER_BIAS, origSampDAC);
     halWriteDAC(DOM_HAL_DAC_FAST_ADC_REF, origFADCRef);
+
+    /* Free mallocs */
+    free(gains);
 
     return 0;
 
