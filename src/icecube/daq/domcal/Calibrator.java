@@ -98,6 +98,12 @@ public class Calibrator
     private HashMap histoMap;
     /** Baselines at various HV settings */
     private HashMap baselines;
+    /** FADC baseline data. */
+    private HashMap fadcBaselineFit;
+    /** FADC gain data. */
+    private double fadcGain;
+    /** FADC gain error data. */
+    private double fadcGainErr;
 
     /** calibration database interface. */
     private CalibratorDB calDB;
@@ -411,11 +417,13 @@ public class Calibrator
 
     /**
      *
+     * Get the transit time of the PMT and the delay board at a given 
+     * high voltage setting.
+     *
      * @param voltage  Voltage applied to PMT
      * @return transit time for given voltage in ns
      * @throws DOMCalibrationException if no transit time data is present
      */
-
     public double getTransitTime(double voltage) throws DOMCalibrationException {
         if (transitFit == null) {
             throw new DOMCalibrationException("No transit time fit");
@@ -427,6 +435,34 @@ public class Calibrator
         double sqrtV = Math.sqrt(voltage);
         return m/sqrtV + b;
 
+    }
+
+    /**
+     *
+     * Calibrate the FADC to voltage given an FADC front-end 
+     * bias DAC setting.
+     * @param fadcin input array of shorts
+     * @param fadcDAC front-end bias DAC for the FADC
+     * @return FADC array in V
+     * @throws DOMCalibrationException if no FADC data is present
+     */
+    public double[] fadcCalibrate(short[] fadcin, int fadcDAC) throws DOMCalibrationException {
+
+        Double dbl = (Double) fadcBaselineFit.get("slope");
+        double m = dbl.doubleValue();
+        
+        dbl = (Double) fadcBaselineFit.get("intercept");
+        double b = dbl.doubleValue();
+
+        double baseline = m*fadcDAC + b;
+
+        double[] out = new double[fadcin.length];        
+        for (int i = 0; i < fadcin.length; i++) {
+            out[i] = fadcin[i] - baseline;
+            /* Note units of FADC gain (V/tick), unlike ATWD gain (dimensionless) */
+            out[i] *= fadcGain;
+        }
+        return out;
     }
 
     /**
@@ -1297,18 +1333,7 @@ public class Calibrator
 
             parseAdcDacTags(dc.getElementsByTagName("dac"), dacs);
             parseAdcDacTags(dc.getElementsByTagName("adc"), adcs);
-            nodes = dc.getElementsByTagName("pulser");
-            switch (nodes.getLength()) {
-            case 0:
-                break;
-            case 1:
-                parsePulserFit((Element) nodes.item(0));
-                break;
-            default:
-                final String msg =
-                    "XML format error - more than one <pulser> record";
-                throw new DOMCalibrationException(msg);
-            }
+            parsePulserFit(dc.getElementsByTagName("pulser"));
             parseATWDFits(dc.getElementsByTagName("atwd"));
             parseAmplifierGain(dc.getElementsByTagName("amplifier"));
             parseFreqFits(dc.getElementsByTagName("atwdfreq"));
@@ -1316,6 +1341,8 @@ public class Calibrator
             parseHistograms(dc.getElementsByTagName("histo"));
             parseBaselines(dc.getElementsByTagName("baseline"));
             parseTransitTimes(dc.getElementsByTagName("pmtTransitTime"));
+            parseFadcBaselineFit(dc.getElementsByTagName("fadc_baseline"));
+            parseFadcGain(dc.getElementsByTagName("fadc"));
         }
 
         /**
@@ -1441,10 +1468,12 @@ public class Calibrator
         }
 
         /**
-         * Parses new domcal transit time data
+         * Parses transit time data
          *
+         * @param nodes transit time node list
+         * @throws DOMCalibrationException if more than one &lt;pmtTransitTime&gt;
+         *                                 element is found
          */
-
         private void parseTransitTimes(NodeList nodes)
             throws DOMCalibrationException
         {
@@ -1464,8 +1493,9 @@ public class Calibrator
         /**
          * Parses new domcal baseline data
          *
+         * @param nodes baseline node list
+         *
          */
-
         private void parseBaselines(NodeList nodes) {
             baselines = new HashMap();
             for (int i = 0; i < nodes.getLength(); i++) {
@@ -1511,11 +1541,69 @@ public class Calibrator
         /**
          * Parse the <code>&lt;pulser&gt;</code> tag
          *
-         * @param pulser pulser node
+         * @param nodes pulser node list
+         * @throws DOMCalibrationException if more than one &lt;pulser&gt;
+         *                                 element is found
          */
-        private void parsePulserFit(Element pulser) {
-            Element elem = (Element) pulser.getElementsByTagName("fit").item(0);
-            pulserFit = parseFit(elem);
+        private void parsePulserFit(NodeList nodes) throws DOMCalibrationException {
+            switch (nodes.getLength()) {
+            case 0:
+                break;
+            case 1:
+                pulserFit = parseFit((Element) nodes.item(0));
+                break;
+            default:
+                final String msg =
+                    "XML format error - more than one <pulser> record";
+                throw new DOMCalibrationException(msg);
+            }
         }
+
+        /**
+         * Parse the <code>&lt;fadc_baseline&gt;</code> tag
+         *
+         * @param nodes fadc_baseline node list
+         * @throws DOMCalibrationException if more than one &lt;fadc_baseline&gt;
+         *                                 element is found
+         */
+        private void parseFadcBaselineFit(NodeList nodes) throws DOMCalibrationException {
+            switch (nodes.getLength()) {
+            case 0:
+                break;
+            case 1:
+                fadcBaselineFit = parseFit((Element) nodes.item(0));
+                break;
+            default:
+                final String errMsg =
+                    "XML format error - more than one <fadc_baseline> record";
+                throw new DOMCalibrationException(errMsg);
+            }
+        }
+
+        /**
+         * Get FADC gain and error from <code>&lt;fadc&gt;</code> tag.
+         *
+         * @param nodes fadc node list
+         * @throws DOMCalibrationException if more than one &lt;fadc&gt;
+         *                                 element is found
+         */
+        private void parseFadcGain(NodeList nodes) throws DOMCalibrationException {
+            switch (nodes.getLength()) {
+            case 0:
+                break;
+            case 1:
+                Element fadc = (Element) nodes.item(0);
+                Element gain = (Element) fadc.getElementsByTagName("gain").item(0);
+                String val = gain.getFirstChild().getNodeValue();
+                fadcGain = Double.parseDouble(val);
+                fadcGainErr = Double.parseDouble(gain.getAttribute("error"));
+                break;
+            default:
+                final String errMsg =
+                    "XML format error - more than one <fadc> record";
+                throw new DOMCalibrationException(errMsg);
+            }
+        }
+
     }
 }
