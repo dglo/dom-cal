@@ -27,16 +27,10 @@ int transit_cal(calib_data *dom_calib) {
     int ch, bin, trig;
     float bias_v, peak_v, bin_v;
     int hv;
-    int hv_tt_valid[TRANSIT_CAL_HV_CNT];
-    float le_x[128], le_y[128];
-    int le_cnt;
-    linear_fit le_fit;
-    int err = 0;
-
+        
     /* Which atwd to use */
     short atwd = TRANSIT_CAL_ATWD;
-    dom_calib->transit_calib_atwd = atwd;
-
+    
     /* Which channel to record light output */
     ch = TRANSIT_CAL_CH;
 
@@ -64,7 +58,7 @@ int transit_cal(calib_data *dom_calib) {
     short origBiasDAC = halReadDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL);
     short origSampDAC = halReadDAC((atwd == 0) ? DOM_HAL_DAC_ATWD0_TRIGGER_BIAS : 
                                    DOM_HAL_DAC_ATWD1_TRIGGER_BIAS);
-    
+
     /* Set discriminator and bias level */
     halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, TRANSIT_CAL_PEDESTAL_DAC);   
     halWriteDAC((atwd == 0) ? DOM_HAL_DAC_ATWD0_TRIGGER_BIAS : 
@@ -79,7 +73,37 @@ int transit_cal(calib_data *dom_calib) {
     /* Get sampling speed frequency in MHz */    
     float freq = getCalibFreq(atwd, *dom_calib, TRANSIT_CAL_SAMPLING_DAC);
 
-    /* Select mainboard LED */
+#ifdef TRANSIT_CAL_USE_FB
+    /* FLASHERBOARD SECTION */
+    
+    /* Enable the analog mux and select the flasherboard LED current */
+    halSelectAnalogMuxInput(DOM_HAL_MUX_FLASHER_LED_CURRENT);
+    halWriteDAC(DOM_HAL_DAC_FL_REF, TRANSIT_CAL_FLASHER_REF);
+
+    /* Turn on flasherboard */
+
+    int config_time, valid_time, reset_time;
+    int err = hal_FB_enable(&config_time, &valid_time, &reset_time, DOM_FPGA_TEST);
+    if (err != 0) {
+        printf("Flasher board enable failure (%d)!  Aborting!\r\n", err);
+        dom_calib->transit_calib_valid = 0;
+        dom_calib->transit_calib.slope = 0.0; 
+        dom_calib->transit_calib.y_intercept = 0.0;
+        dom_calib->transit_calib.r_squared = 0.0;
+        return err;
+    }
+
+    /* Select which LED to use */
+    int led = TRANSIT_CAL_FB_LED;
+    hal_FB_enable_LEDs(1 << (led-1));
+    hal_FB_select_mux_input(DOM_FB_MUX_LED_1 + led - 1);    
+
+    /* Set width and rate */
+    hal_FB_set_pulse_width(TRANSIT_CAL_FB_WIDTH);
+    hal_FPGA_TEST_FB_set_rate(TRANSIT_CAL_FB_RATE);
+#else
+    /* MAINBOARD LED SECTION */
+
     halSelectAnalogMuxInput(DOM_HAL_MUX_PMT_LED_CURRENT);
     
     /* Need to use LED triggers, because the 20MHz clock couples into the signal */
@@ -88,6 +112,7 @@ int transit_cal(calib_data *dom_calib) {
 
     /* Start "flashing" */
     hal_FPGA_TEST_enable_LED();
+#endif
 
     /* Give user a final warning */
 #ifdef DEBUG
@@ -111,7 +136,7 @@ int transit_cal(calib_data *dom_calib) {
         dom_calib->transit_calib.r_squared = 0.0;
         return TRANSIT_CAL_NO_HV_BASE;
     }
-    
+
     /*---------------------------------------------------------------------------*/    
     /* Measure pedestal of channel 3 */
 
@@ -124,8 +149,13 @@ int transit_cal(calib_data *dom_calib) {
         /* Warm up the ATWD */
         prescanATWD(trigger_mask);
 
+#ifdef TRANSIT_CAL_USE_FB            
+        /* CPU-trigger the ATWD */
+        hal_FPGA_TEST_trigger_forced(trigger_mask);
+#else        
         /* LED-trigger the ATWD */
         hal_FPGA_TEST_trigger_LED(trigger_mask);
+#endif
 
         /* Wait for done */
         while (!hal_FPGA_TEST_readout_done(trigger_mask));
@@ -142,7 +172,7 @@ int transit_cal(calib_data *dom_calib) {
                                   cnt, NULL, 0, trigger_mask);
         }
 
-        for(bin = 0; bin<cnt; bin++) 
+        for(bin = 0; bin<cnt; bin++)
             pedestal[bin] += (float)channels[3][bin];
         
     }
@@ -155,6 +185,14 @@ int transit_cal(calib_data *dom_calib) {
     /* HV LOOP */
     /*----------------------------------------------------------------------------*/
 
+#ifdef TRANSIT_CAL_USE_FB
+    /* Start flashing the flasherboard */
+    hal_FPGA_TEST_start_FB_flashing();
+#else
+    /* Turn on the LED power */
+    halEnableLEDPS();
+#endif
+
     /* Loop over HV settings */
     int hv_idx, peak_idx;
     int peak_atwd;
@@ -165,30 +203,13 @@ int transit_cal(calib_data *dom_calib) {
         float peak_avg = 0.0;
         float current_peak_avg = 0.0;
         float peak_atwd_avg = 0.0;       
-        int fail = 0;
-
-        /* Make sure the LED is set to minimum brightness and cycle power */
-        halDisableLEDPS();
-        halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, TRANSIT_CAL_LED_AMP_START);
-        halUSleep(DAC_SET_WAIT);
-        halEnableLEDPS();
-
-        /* Initialize this calibration point as invalid */
-        hv_tt_valid[hv_idx] = 0;
+        int peak_fails = 0;
 
         /* Set high voltage and give it time to stabilize */
-        hv = (short)(dom_calib->min_hv + 1.*hv_idx/(TRANSIT_CAL_HV_CNT-1)*
-                                  (dom_calib->max_hv - dom_calib->min_hv));
-
-        if (hv > dom_calib->max_hv) {
-#ifdef DEBUG
-            printf("HV of %dV higher than requested maximum, skipping...\r\n", hv);
-#endif
-            continue;
-        }
+        hv = (hv_idx * TRANSIT_CAL_HV_INC) + TRANSIT_CAL_HV_LOW;      
 
 #ifdef DEBUG
-        printf("Setting HV to %d V\r\n", hv);
+        printf(" Setting HV to %d V\r\n", hv);
 #endif
         halWriteActiveBaseDAC(hv * 2);
         halUSleep(5000000);
@@ -199,16 +220,21 @@ int transit_cal(calib_data *dom_calib) {
 
         /* Find a good brightness setting for this HV */
         int brightness;
+#ifdef TRANSIT_CAL_USE_FB
+        for (brightness = TRANSIT_CAL_FB_AMP_START; 
+             brightness < TRANSIT_CAL_FB_AMP_STOP; brightness += TRANSIT_CAL_FB_AMP_STEP) {
+#else
         for (brightness = TRANSIT_CAL_LED_AMP_START; 
              brightness > TRANSIT_CAL_LED_AMP_STOP; brightness -= TRANSIT_CAL_LED_AMP_STEP) {
-
-            /* Reset average! */
-            peak_atwd_avg = 0.0;
+#endif
 
             /* Change to new brightness */
-            /* Just too slow to wait a full second here */
+#ifdef TRANSIT_CAL_USE_FB
+            hal_FB_set_brightness(brightness);
+#else
             halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, brightness);
-            halUSleep(10000);
+#endif
+            halUSleep(1000);
 
             /* Take some waveforms */
             for (trig=0; trig<(int)TRANSIT_CAL_AMP_TRIG; trig++) {
@@ -251,17 +277,27 @@ int transit_cal(calib_data *dom_calib) {
             /* Check if average peak is within acceptable range */
             peak_atwd_avg /= TRANSIT_CAL_AMP_TRIG;
 
+            /* printf("Brightness search: %d amplitude %.1f\r\n", brightness, peak_atwd_avg); */
+
             if ((peak_atwd_avg >= TRANSIT_CAL_ATWD_AMP_LOW) &&
                 (peak_atwd_avg <= TRANSIT_CAL_ATWD_AMP_HIGH)) break;
         }
         
         /* Did the brightness search fail? */
-        /* If so, skip to the next HV setting */
+#ifdef TRANSIT_CAL_USE_FB
+        if (brightness >= TRANSIT_CAL_FB_AMP_STOP) {
+#else
         if (brightness < TRANSIT_CAL_LED_AMP_STOP) {
-#ifdef DEBUG
-            printf("Couldn't find an acceptable LED brightness during scan!  Trying next voltage.\r\n");
 #endif
-            continue;
+
+#ifdef DEBUG
+            printf("ERROR: couldn't find an acceptable LED brightness!  Aborting calibration.\r\n");
+#endif
+            dom_calib->transit_calib_valid = 0;
+            dom_calib->transit_calib.slope = 0.0; 
+            dom_calib->transit_calib.y_intercept = 0.0;
+            dom_calib->transit_calib.r_squared = 0.0;
+            return TRANSIT_CAL_AMP_ERR;
         }
         else {
 #ifdef DEBUG
@@ -273,27 +309,22 @@ int transit_cal(calib_data *dom_calib) {
         /* Now do the real measurement */
         /*----------------------------------------------------------------------------*/
 
-        /* reset averages */
-        peak_avg = 0.0;
-        current_peak_avg = 0.0;
-
         int no_peaks = 0;
-        int bad_le = 0;
 
         /* Minimum acceptable light output */
         float transit_cal_min_peak_v;
         if (atwd == 0) {
-            transit_cal_min_peak_v = (float)TRANSIT_CAL_ATWD_AMP_LOW * 
-                dom_calib->atwd0_gain_calib[ch][bin].slope + dom_calib->atwd0_gain_calib[ch][bin].y_intercept;
+            transit_cal_min_peak_v = (float)TRANSIT_CAL_ATWD_AMP_LOW * dom_calib->atwd0_gain_calib[ch][bin].slope
+                + dom_calib->atwd0_gain_calib[ch][bin].y_intercept;
         }
         else {
-            transit_cal_min_peak_v = (float)TRANSIT_CAL_ATWD_AMP_LOW * 
-                dom_calib->atwd1_gain_calib[ch][bin].slope + dom_calib->atwd1_gain_calib[ch][bin].y_intercept;
+            transit_cal_min_peak_v = (float)TRANSIT_CAL_ATWD_AMP_LOW * dom_calib->atwd1_gain_calib[ch][bin].slope
+                + dom_calib->atwd1_gain_calib[ch][bin].y_intercept;
         }
         transit_cal_min_peak_v -= baseline[atwd][ch];
         transit_cal_min_peak_v -= bias_v;
         transit_cal_min_peak_v = 0.7*fabs(transit_cal_min_peak_v);
-        
+
         /* Take a number of waveforms */
         for (trig=0; trig<(int)TRANSIT_CAL_TRIG_CNT; trig++) {
             
@@ -331,9 +362,6 @@ int transit_cal(calib_data *dom_calib) {
             peak_v -= baseline[atwd][ch];
             peak_v -= bias_v;
 
-            /* if (trig == 10)
-               printf("DEBUG sample ch0 waveform\r\n"); */
-
             for (bin=0; bin<cnt; bin++) {
                 
                 /* Use calibration to convert to V */
@@ -351,58 +379,57 @@ int transit_cal(calib_data *dom_calib) {
                     bin_v -= baseline[1][ch];
                     bin_v -= bias_v;
                 }
-
-                /* if (trig == 10)
-                   printf("%d %d %g\r\n", bin, channels[ch][bin], bin_v); */
-
+                
                 if (bin_v < peak_v) {
                     peak_idx = bin;
                     peak_v = bin_v;
                 }
                 
             }
-            
+
+            /* Calculate peak average, for kicks */
+            peak_avg += peak_v;
+
             /* Make sure there is a peak! */
             if (fabs(peak_v) < transit_cal_min_peak_v) {
                 no_peaks++;
-                
-                /* Too many triggers without a decent peak? */
+
                 if (no_peaks > TRANSIT_CAL_MAX_NO_PEAKS) {
-                    /* Increase brightness! */
-                    brightness -= TRANSIT_CAL_LED_AMP_STEP;
-                    fail = (brightness < TRANSIT_CAL_LED_AMP_STOP);
-                    
-                    if (fail) {
+                    if (peak_fails > TRANSIT_CAL_MAX_NO_LIGHT_CNT) {
 #ifdef DEBUG
-                        printf("Couldn't find acceptable brightness during data-taking.\r\n");
-                        printf("Trying next HV setting.\r\n");
-#endif                        
-                        break; /* Out of trigger loop! */
+                        printf("Too many tries at cranking up brightness -- aborting!\r\n");
+#endif
+                        dom_calib->transit_calib_valid = 0;
+                        dom_calib->transit_calib.slope = 0.0; 
+                        dom_calib->transit_calib.y_intercept = 0.0;
+                        dom_calib->transit_calib.r_squared = 0.0;
+                        return TRANSIT_CAL_NO_LIGHT_ERR;
                     }
                     else {
                         /* Start trigger loop over again with higher brightness */
                         no_peaks = 0;
                         trig = 0;
+                        peak_fails++;
+#ifdef TRANSIT_CAL_USE_FB
+                        brightness += TRANSIT_CAL_FB_AMP_STEP;
+                        hal_FB_set_brightness(brightness);
+#else
+                        brightness -= TRANSIT_CAL_LED_AMP_STEP;
                         halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, brightness);
-                        halUSleep(DAC_SET_WAIT);
+#endif
 #ifdef DEBUG
                         printf("Too few light pulses -- increasing brightness to %d\r\n", brightness);
 #endif
                     }
                 }
-                else
+                else                     
                     trig--;
-                continue; /* trigger loop */
+                continue;
             }
-            else {
-                /* Calculate peak average, for kicks */
-                peak_avg += peak_v;                            
-            }
-            
-            /* Fit leading edge of light waveform */
-            /* LE is point where this line intersects the baseline */
-            le_cnt = 0;
-            le_atwd_idx = 0.0;
+
+            /* Now find leading edge in ATWD waveform */
+            float last_bin_v = peak_v;
+            le_atwd_idx = 0.0;    
             for (bin=peak_idx; bin<cnt; bin++) {
                 if (atwd == 0) {
                     bin_v = (float)channels[ch][bin] * dom_calib->atwd0_gain_calib[ch][bin].slope
@@ -417,41 +444,21 @@ int transit_cal(calib_data *dom_calib) {
                     bin_v -= bias_v;
                 }
                 
-                /* Use points from 10% to 90% level for the fit */
-                /* Recall peak is negative! */
-                if ((bin_v <= 0.1*peak_v) && (bin_v >= 0.9*peak_v)) {
-                    le_x[le_cnt] = bin;
-                    le_y[le_cnt] = bin_v; 
-                    le_cnt++;
-                }
-                else if (bin_v > 0.1*peak_v)
+                if (bin_v > TRANSIT_CAL_EDGE_FRACT*peak_v) {                    
+                    /* Interpolate */
+                    le_atwd_idx = (bin-1) + 
+                        (TRANSIT_CAL_EDGE_FRACT*peak_v - last_bin_v)/(bin_v - last_bin_v);
                     break;
-            }
-            if (le_cnt >= 2) {
-                linearFitFloat(le_x, le_y, le_cnt, &le_fit);
-                le_atwd_idx = -le_fit.y_intercept / le_fit.slope;                    
-            }
-            else {
-                bad_le++;
-                if (bad_le > TRANSIT_CAL_MAX_BAD_LE) {
-#ifdef DEBUG
-                    printf("Too many bad leading edges.  Trying next HV setting.\r\n");
-#endif
-                    fail = 1;
-                    break; /* out of trigger loop */
                 }
-                else
-                    trig--;
-                continue;                    
+                last_bin_v = bin_v;
             }
-                        
+           
             /* Find the peak and leading edge in the current waveform */
             /* Note polarity of pedestal subtraction to keep peak a minimum like in ATWD */
-            /* Also -- baseline is off, use last few samples as an average */
-            float ch3_baseline = (float)((pedestal[124] - channels[3][124]) +
-                                         (pedestal[125] - channels[3][125]) +
-                                         (pedestal[126] - channels[3][126]) +
-                                         (pedestal[127] - channels[3][127])) / 4.0;
+            /* Also -- baseline is off, use first few samples as an average */
+            float ch3_baseline = (float)((pedestal[0] - channels[3][0]) +
+                                         (pedestal[1] - channels[3][1]) +
+                                         (pedestal[2] - channels[3][2])) / 3.0;
             peak_v = pedestal[0] - channels[3][0] - ch3_baseline;
             peak_idx = 0;
             for (bin=0; bin<cnt; bin++) {
@@ -461,24 +468,17 @@ int transit_cal(calib_data *dom_calib) {
                     peak_idx = bin;
                     peak_v = bin_v;
                 }
-                
-                /* if (trig == 10)
-                   printf("%d %d %g\r\n", bin, channels[3][bin], bin_v); */
-
             }           
-            
+
             /* Calculate peak average, for kicks */
             current_peak_avg += peak_v;
-            
-            /* Current leading edge is too sharp to fit -- besides, we really want point */
-            /* when LED turns on, which is certainly not at exactly the LE. */
-            /* Also, 50% point is independent of current pulse amplitude to 0.2 ns or so */
-            float last_bin_v = peak_v;
-            le_current_idx = 0.0;
 
+            /* Now find leading edge in current waveform */
+            last_bin_v = peak_v;
+            le_current_idx = 0.0;
             for (bin=peak_idx; bin<cnt; bin++) {
                 bin_v = pedestal[bin] - channels[3][bin] - ch3_baseline;
-                
+
                 if (bin_v > TRANSIT_CAL_EDGE_FRACT*peak_v) {
                     /* Interpolate */
                     le_current_idx = (bin-1) + 
@@ -491,105 +491,61 @@ int transit_cal(calib_data *dom_calib) {
             /* Save transit time in ns = samples * 1000 / freq in MHz */
             transits[trig] = (le_current_idx - le_atwd_idx) * 1.0E3 / freq;
 
-            /* 
-            if (trig == 10)
-            printf("peak idx %d peak_v %g le_atwd_idx %g le_current_idx %g\r\n", 
-            peak_idx, peak_v, le_atwd_idx, le_current_idx);            */
-            
         } /* End trigger loop */
-        
-        if (!fail) {
-            /* Print average peak amplitude */
-            peak_avg /= TRANSIT_CAL_TRIG_CNT;
-            current_peak_avg /= TRANSIT_CAL_TRIG_CNT;
-            
-#ifdef DEBUG
-            printf("V %d Avg signal peak %.2f  Avg current peak %.2f\r\n", hv, peak_avg, current_peak_avg);
-            printf("Triggers with too little light: %d\r\n", no_peaks);
-#endif
-            
-            /* Find mean and error */
-            float var;
-            meanVarFloat(transits, TRANSIT_CAL_TRIG_CNT, 
-                         &(transit_data[hv_idx]), &var);
-            float sigma = sqrt(var);
-                        
-#ifdef DEBUG
-            printf("tt: %.2f sigma: %.3f\r\n", transit_data[hv_idx], sigma);
-#endif
-            
-            /* Check sigma */
-            if (sigma <= TRANSIT_CAL_MAX_SIGMA) 
-                hv_tt_valid[hv_idx] = 1;
-            else {
-#ifdef DEBUG
-                printf("Sigma too high; invalidating this HV point.\r\n");
-#endif
-            }
-
-            /* Check that transit time is positive */
-            if (transit_data[hv_idx] <= 0) {
-#ifdef DEBUG
-                printf("Transit time is negative(!); invalidating this HV point.\r\n");
-#endif
-                hv_tt_valid[hv_idx] = 0;
-            }
-        } /* End if no fail */
        
+        /* Print average peak amplitude */
+        peak_avg /= TRANSIT_CAL_TRIG_CNT;
+        current_peak_avg /= TRANSIT_CAL_TRIG_CNT;
+
+#ifdef DEBUG
+        printf("V %d Avg signal peak %.2f  Avg current peak %.2f\r\n", hv, peak_avg, current_peak_avg);
+        printf("Triggers with too little light: %d\r\n", no_peaks);
+#endif
+
+        /* Find mean and error */
+        float var;
+        meanVarFloat(transits, TRANSIT_CAL_TRIG_CNT, 
+                              &(transit_data[hv_idx]), &var);
+
+#ifdef DEBUG
+        printf("Sqrt(var): %.3f\r\n", sqrt(var));
+#endif
+        
     } /* End HV loop */
 
     /*---------------------------------------------------------------------------*/    
-    /* Attempt 1 / sqrt(V) fit */
+    /* Attempt some sort of fit */
     /*---------------------------------------------------------------------------*/
     
     float x[TRANSIT_CAL_HV_CNT], y[TRANSIT_CAL_HV_CNT];    
-    int vld_cnt = 0;
     for (hv_idx = 0; hv_idx < TRANSIT_CAL_HV_CNT; hv_idx++) {
-        if (hv_tt_valid[hv_idx]) {
-            hv = (short)(dom_calib->min_hv + 1.*hv_idx/(TRANSIT_CAL_HV_CNT-1)*
-                                  (dom_calib->max_hv - dom_calib->min_hv));
-            x[vld_cnt] = 1 / sqrt(hv);
-            y[vld_cnt] = transit_data[hv_idx];
+        x[hv_idx] = 1 / sqrt((hv_idx * TRANSIT_CAL_HV_INC) + TRANSIT_CAL_HV_LOW);
+        y[hv_idx] = transit_data[hv_idx]; 
+    }
+    linearFitFloat(x, y, TRANSIT_CAL_HV_CNT, &dom_calib->transit_calib);
+    dom_calib->transit_calib_valid = 1;
+
 #ifdef DEBUG
-            printf("%d %g %g\r\n", hv, x[vld_cnt], y[vld_cnt]);
-#endif
-            vld_cnt++;
-        }
-    }
-
-    if (vld_cnt >= TRANSIT_CAL_MIN_VLD_PTS) {
-
-        linearFitFloat(x, y, vld_cnt, &(dom_calib->transit_calib));
-        dom_calib->transit_calib_valid = 1;
-
-        /* Remove outliers */
-        refineLinearFit(x, y, &vld_cnt, NULL, &(dom_calib->transit_calib), 
-                        TRANSIT_CAL_MIN_R2, TRANSIT_CAL_MIN_R2_PTS);
-
-        dom_calib->transit_calib_points = vld_cnt;
-    }
-    else {
-#ifdef DEBUG
-        printf("ERROR: too few valid points for transit time fit.  Aborting.\r\n");
-        dom_calib->transit_calib_valid = 0;
-        dom_calib->transit_calib.slope = 0.0; 
-        dom_calib->transit_calib.y_intercept = 0.0;
-        dom_calib->transit_calib.r_squared = 0.0;
-        err = TRANSIT_CAL_PTS_ERR;
-#endif
-    }
-
-#ifdef DEBUG   
-    if (!err) {
-        printf("Fit: m %g b %g r2 %g\r\n", dom_calib->transit_calib.slope,
-               dom_calib->transit_calib.y_intercept, dom_calib->transit_calib.r_squared);
-    }
+    printf("Fit: m %g b %g r2 %g\r\n", dom_calib->transit_calib.slope,
+            dom_calib->transit_calib.y_intercept, dom_calib->transit_calib.r_squared);
+    printf("HV_idx hv 1/sqrt(v) value error\r\n");
+    for (hv_idx = 0; hv_idx < TRANSIT_CAL_HV_CNT; hv_idx++) {        
+        printf("%d %d %g %g\r\n", hv_idx,  ((hv_idx * TRANSIT_CAL_HV_INC) + TRANSIT_CAL_HV_LOW), 
+            x[hv_idx], transit_data[hv_idx]);
+    }    
 #endif
 
     /*---------------------------------------------------------------------------*/
+
+#ifdef TRANSIT_CAL_USE_FB
+    /* Turn off FB */
+    hal_FPGA_TEST_stop_FB_flashing();
+    hal_FB_disable();
+#else
     /* Turn of MB LED */
     halDisableLEDPS();
     hal_FPGA_TEST_disable_LED();
+#endif
     
     /* Put the DACs back to original state */
     halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, origBiasDAC);   
@@ -601,6 +557,6 @@ int transit_cal(calib_data *dom_calib) {
     
     /* Won't turn off the HV for now...*/
     
-    return err;
+    return 0;
     
 }

@@ -84,10 +84,6 @@ public class Calibrator
     private HashMap[][] atwdFits;
     /** pulser fit data. */
     private HashMap pulserFit;
-    /** SPE discriminator fit data. */
-    private HashMap speDiscFit;
-    /** MPE discriminator fit data. */
-    private HashMap mpeDiscFit;
     /** amplifier gain data. */
     private double[] ampGain;
     /** amplifier gain error data. */
@@ -96,27 +92,12 @@ public class Calibrator
     private HashMap[] freqFits;
     /** gain vs. HV fit data. */
     private HashMap gainFit;
-    /** number of transit points. */
-    private short numTransitPts;
     /** transit time fit data. */
     private HashMap transitFit;
     /** HV histogram data. */
     private HashMap histoMap;
     /** Baselines at various HV settings */
     private HashMap baselines;
-    /** FADC baseline data. */
-    private HashMap fadcBaselineFit;
-    /** FADC gain data. */
-    private double fadcGain;
-    /** FADC gain error data. */
-    private double fadcGainErr;
-    /** FADC delta T data. */
-    private double fadcDeltaT;
-    /** FADC delta T error data. */
-    private double fadcDeltaTErr;
-
-    /** mode for baseline subtraction */
-    private int baselineMode = BASELINE_CAL;
 
     /** calibration database interface. */
     private CalibratorDB calDB;
@@ -125,12 +106,6 @@ public class Calibrator
     private int domcalId;
     /** DOM product information. */
     private DOMProduct domProd ;
-    /** major version */
-    private short majorVersion;
-    /** minor version */
-    private short minorVersion;
-    /** patch version */
-    private short patchVersion;
 
     /**
      * Constructor to obtain from URL location.
@@ -193,7 +168,7 @@ public class Calibrator
     public Calibrator(String mbSerial, Date date, double temp)
         throws DOMCalibrationException, IOException, SQLException
     {
-        this(mbSerial, date, temp, (short) -1, (short) -1, (short) -1, null);
+        this(mbSerial, date, temp, null);
     }
 
     /**
@@ -202,15 +177,13 @@ public class Calibrator
      * @param mbSerial mainboard serial number of DOM being loaded
      * @param date date of data being loaded
      * @param temp temperature of data being loaded
-     * @param calDB calibrator database object
      *
      * @throws DOMCalibrationException if an argument is invalid
      * @throws IOException if there is a problem reading the stream
      * @throws SQLException if there is a database problem
      */
     public Calibrator(String mbSerial, Date date, double temp,
-                      short majorVersion, short minorVersion,
-                      short patchVersion, CalibratorDB calDB)
+                      CalibratorDB calDB)
         throws DOMCalibrationException, IOException, SQLException
     {
         this();
@@ -225,14 +198,13 @@ public class Calibrator
             }
         }
 
-        this.calDB.load(this, mbSerial, date, temp, majorVersion, minorVersion,
-                        patchVersion);
+        this.calDB.load(this, mbSerial, date, temp);
     }
 
     /**
      * Default constructor which sets up data arrays.
      */
-    public Calibrator()
+    Calibrator()
     {
         dacs        = new int[16];
         adcs        = new int[24];
@@ -240,24 +212,6 @@ public class Calibrator
         ampGain     = new double[3];
         ampGainErr  = new double[3];
         freqFits    = new HashMap[2];
-    }
-
-    /**
-     * Add a set of baseline values.
-     * @param voltage voltage
-     * @param values array of atwd/channel values
-     */
-    public void addBaseline(short voltage, float[][] values)
-    {
-        if (values == null || values.length != 2 || values[0].length != 3) {
-            throw new IllegalArgumentException("'values' is not a 2x3 float array");
-        }
-
-        if (baselines == null) {
-            baselines = new HashMap();
-        }
-
-        baselines.put(new Integer(voltage), new Baseline(voltage, values));
     }
 
     /**
@@ -321,42 +275,6 @@ public class Calibrator
     }
 
     /**
-     * Baseline mode: don't use any remnant baseline subtraction
-     */
-    private static final int BASELINE_NONE    = 0;
-    /**
-     * Baseline mode: use baselines in calibration result for baseline subtraction
-     */
-    private static final int BASELINE_CAL     = 1;
-    /**
-     * Baseline mode: dynamically determine baseline per waveform
-     */
-    private static final int BASELINE_DYNAMIC = 2;
-    /**
-     * Set mode of baseline subtraction.
-     *
-     * @param mode string specifying baseline subtraction mode:
-     *             "none": no remnant baseline subtraction
-     *             "calibrated" : use calibrated baselines in XML file
-     *             "dynamic": use dynamic baseline determination
-     */
-    public void setBaselineMode(String mode) throws DOMCalibrationException {
-        if (mode.equals("none")) {
-            baselineMode = BASELINE_NONE;
-        }
-        else if (mode.equals("calibrated")) {
-            baselineMode = BASELINE_CAL;
-        }
-        else if (mode.equals("dynamic")) {
-            baselineMode = BASELINE_DYNAMIC;
-        }
-        else {
-            throw new DOMCalibrationException("Illegal baseline subtraction mode requested");
-        }
-
-    }
-
-    /**
      * Reconstruct PMT signal given an ATWD array and a bias DAC setting.
      * Note this function assumes the ATWD input array is in raw order
      * and returns an array with same ordering (time decreasing with increasing
@@ -367,10 +285,11 @@ public class Calibrator
      *               For example, if offset is 40 then atwdin[0] really holds
      *               the 40th bin of the ATWD.
      * @param biasDAC DAC bias
-     * @param hv HV setting -- baseline is HV dependent!
+     * @param hv HV setting -- baseline id HV dependent!
      * @return ATWD array in V
      * @throws DOMCalibrationException if there is a problem with the data
      */
+
     public double[] atwdCalibrateToPmtSig(short[] atwdin, int ch, int offset,
                                           int biasDAC, int hv)
         throws DOMCalibrationException
@@ -386,17 +305,15 @@ public class Calibrator
          *  This probably needs to be faster.....
          */
         Baseline bl = null;
-        if (baselineMode == BASELINE_CAL) {
-            if (baselines != null) {
-                Set s = baselines.keySet();
-                int abs = 10000;
-                for (Iterator it = s.iterator(); it.hasNext();) {
-                    Baseline base = (Baseline)(baselines.get(it.next()));
-                    int diff = (int)Math.abs(base.getVoltage() - hv);
-                    if (diff < abs) {
-                        bl = base;
-                        abs = diff;
-                    }
+        if (baselines != null) {
+            Set s = baselines.keySet();
+            int abs = 10000;
+            for (Iterator it = s.iterator(); it.hasNext();) {
+                Baseline base = (Baseline)(baselines.get(it.next()));
+                int diff = (int)Math.abs(base.getVoltage() - hv);
+                if (diff < abs) {
+                    bl = base;
+                    abs = diff;
                 }
             }
         }
@@ -427,14 +344,6 @@ public class Calibrator
                 out[i] /= amp;
             }
         }
-
-        if (baselineMode == BASELINE_DYNAMIC) {
-            double rbl = getRemnantBaseline(out, 5);
-            for (int i = 0; i < out.length; i++) {
-                out[i] -= rbl;
-            }
-        }
-
         return out;
     }
 
@@ -472,33 +381,9 @@ public class Calibrator
      */
     public double calcAtwdFreq(int dac, int chip) {
         HashMap h = freqFits[chip];
-        if (((String)h.get("model")).equals("quadratic")) {
-            double c0 = ((Double)h.get("c0")).doubleValue();
-            double c1 = ((Double)h.get("c1")).doubleValue();
-            double c2 = ((Double)h.get("c2")).doubleValue();
-            return c2*dac*dac + c1*dac + c0;
-        } else {
-            double m = ((Double)h.get("slope")).doubleValue();
-            double b = ((Double)h.get("intercept")).doubleValue();
-            return m*dac + b;
-        }
-    }
-
-    /**
-     * Clear all baseline values.
-     */
-    protected void clearBaselines()
-    {
-        baselines = null;
-    }
-
-    /**
-     * Return the constant FADC frequency -- NOT measured
-     * @return constant FADC frequency
-     */
-
-    public double getFadcFreq() {
-        return 40.0;
+        double m = ((Double)h.get("slope")).doubleValue();
+        double b = ((Double)h.get("intercept")).doubleValue();
+        return m*dac + b;
     }
 
     /**
@@ -525,13 +410,11 @@ public class Calibrator
 
     /**
      *
-     * Get the transit time of the PMT and the delay board at a given
-     * high voltage setting.
-     *
      * @param voltage  Voltage applied to PMT
      * @return transit time for given voltage in ns
      * @throws DOMCalibrationException if no transit time data is present
      */
+
     public double getTransitTime(double voltage) throws DOMCalibrationException {
         if (transitFit == null) {
             throw new DOMCalibrationException("No transit time fit");
@@ -543,81 +426,6 @@ public class Calibrator
         double sqrtV = Math.sqrt(voltage);
         return m/sqrtV + b;
 
-    }
-
-    /**
-     *
-     * Calibrate the FADC to voltage given an FADC front-end
-     * bias DAC setting.
-     * @param fadcin input array of shorts
-     * @param fadcDAC front-end bias DAC for the FADC
-     * @return FADC array in V
-     * @throws DOMCalibrationException if no FADC data is present
-     */
-    public double[] fadcCalibrate(short[] fadcin, int fadcDAC) throws DOMCalibrationException {
-
-        if (fadcBaselineFit == null) throw new DOMCalibrationException("No FADC baseline fit");
-
-        Double dbl = (Double) fadcBaselineFit.get("slope");
-        double m = dbl.doubleValue();
-
-        dbl = (Double) fadcBaselineFit.get("intercept");
-        double b = dbl.doubleValue();
-
-        double baseline = m*fadcDAC + b;
-
-        double[] out = new double[fadcin.length];
-        for (int i = 0; i < fadcin.length; i++) {
-            out[i] = fadcin[i] - baseline;
-            /* Note units of FADC gain (V/tick), unlike ATWD gain (dimensionless) */
-            out[i] *= fadcGain;
-        }
-        return out;
-    }
-
-    /**
-     *
-     * Get any remnant baseline in a waveform by iteratively removing peaks.
-     *
-     * @param wf input waveform array in volts
-     * @param maxIter maximum iterations
-     * @return baseline voltage as double
-     */
-    public double getRemnantBaseline(double [] wf, int maxIter) throws DOMCalibrationException {
-
-        if (wf.length == 0) {
-            return 0.0;
-        }
-
-        Statistics s = new Statistics(wf);
-        if (maxIter == 0) {
-            return s.getMean();
-        }
-        else {
-            double [] temp_wf = new double[wf.length];
-            int peakCnt = 0;
-            /* Remove portions of waveform that are 2 sigma away from mean */
-            for (int i = 0; i < wf.length; i++) {
-                if (Math.abs(wf[i] - s.getMean()) > (2 * s.getRMS())) {
-                    peakCnt++;
-                }
-                else {
-                    temp_wf[i-peakCnt] = wf[i];
-                }
-            }
-
-            /* Check to make sure we haven't removed too much waveform */
-            if (peakCnt > 0.5*wf.length) {
-                throw new DOMCalibrationException("Unable to dynamically determine baseline (over 50% pulse)");
-            }
-
-            double [] new_wf = new double[wf.length - peakCnt];
-            for (int i = 0; i < wf.length - peakCnt; i++) {
-                new_wf[i] = temp_wf[i];
-            }
-
-            return getRemnantBaseline(new_wf, maxIter-1);
-        }
     }
 
     /**
@@ -933,152 +741,6 @@ public class Calibrator
     }
 
     /**
-     * Get the list of voltage and baseline values.
-     * @return iterator for baseline value list
-     */
-    public Iterator getBaselines() {
-        if (baselines == null) {
-            return null;
-        }
-
-        ArrayList keys = new ArrayList(baselines.keySet());
-        Collections.sort(keys);
-
-        ArrayList values = new ArrayList();
-        for (int i = 0; i < keys.size(); i++) {
-            Baseline bl = (Baseline) baselines.get(keys.get(i));
-            values.add(bl);
-        }
-
-        return values.iterator();
-    }
-
-    /**
-     * Get the fadc intercept.
-     */
-    public double getFadcIntercept()
-    {
-        if (fadcBaselineFit == null) {
-            return Double.NaN;
-        }
-
-        return ((Double) fadcBaselineFit.get("intercept")).doubleValue();
-    }
-
-    /**
-     * Get the fadc regression coefficient.
-     */
-    public double getFadcRegression()
-    {
-        if (fadcBaselineFit == null) {
-            return Double.NaN;
-        }
-
-        return ((Double) fadcBaselineFit.get("r")).doubleValue();
-    }
-
-    /**
-     * Get the fadc slope.
-     */
-    public double getFadcSlope()
-    {
-        if (fadcBaselineFit == null) {
-            return Double.NaN;
-        }
-
-        return ((Double) fadcBaselineFit.get("slope")).doubleValue();
-    }
-
-    /**
-     * Obtain the fadc gain.
-     * @return double-valued gain
-     */
-    public double getFadcGain() {
-        return fadcGain;
-    }
-
-    /**
-     * Obtain error estimate on fadc gain.
-     * @return the error on the fadc gain.
-     */
-    public double getFadcGainError() {
-        return fadcGainErr;
-    }
-
-    /**
-     * Obtain the fadc offset in ns from the ATWD time.
-     * @return double-valued delta t
-     */
-    public double getFadcDeltaT() {
-        return fadcDeltaT;
-    }
-
-    /**
-     * Obtain error estimate on fadc time offset.
-     * @return the error on the fadc time offset.
-     */
-    public double getFadcDeltaTError() {
-        return fadcDeltaTErr;
-    }
-
-    /**
-     * Obtain discriminator setting corresponding
-     * to given charge
-     * @param charge Discriminator threshold charge
-     * @return discriminator setting corresponding to
-     * the charge
-     */
-    public double getDiscriminatorSetting(double charge, String id) throws DOMCalibrationException {
-
-        HashMap discFit = null;
-        if (id.equalsIgnoreCase("spe")) discFit = speDiscFit;
-        else if (id.equalsIgnoreCase("mpe")) discFit = mpeDiscFit;
-        else {
-            throw new DOMCalibrationException("Illegal discriminator id: " + id + ". ID must be SPE, MPE");
-        }
-        if (discFit == null) {
-            throw new DOMCalibrationException("No discriminator fit");
-        }
-
-        double m = ((Double) discFit.get("slope")).doubleValue();
-        double b = ((Double) discFit.get("intercept")).doubleValue();
-
-        //q = m*DAC + b
-        double set = (charge - b)/m;
-        if (set > 1023) set = 1023;
-        if (set < 0) set = 0;
-        return set;
-    }
-
-    /**
-     * Obtain discriminator charge corresponding
-     * to given DAC setting
-     * @param dac Discriminator DAC setting
-     * @return charge corresponding to discriminator DAC setting
-     */
-    public double getDiscriminatorCharge(double dac, String id) throws DOMCalibrationException {
-
-        if (dac < 0 || dac > 1023)
-                       throw new DOMCalibrationException("Value " + dac + " out of range: 0 - 1023"); 
-
-        HashMap discFit = null;
-        if (id.equalsIgnoreCase("spe")) discFit = speDiscFit;
-        else if (id.equalsIgnoreCase("mpe")) discFit = mpeDiscFit;
-        else {
-            throw new DOMCalibrationException("Illegal discriminator id: " + id + ". ID must be SPE, MPE");
-        }
-        if (discFit == null) {
-            throw new DOMCalibrationException("No discriminator fit");
-        }
-
-        double m = ((Double) discFit.get("slope")).doubleValue();
-        double b = ((Double) discFit.get("intercept")).doubleValue();
-
-        //q = m*DAC + b
-        return m*dac + b;
-    }
-
-    /**
      * Get the calibration timestamp - that is, when the calibration happened.
      * @return Java Calendar object.
      */
@@ -1286,58 +948,6 @@ public class Calibrator
     }
 
     /**
-     * Get the number of PMT transit points.
-     *
-     * @return number of transit points
-     */
-    public int getNumberOfTransitPoints()
-    {
-        return numTransitPts;
-    }
-
-    /**
-     * Get the gain intercept, if present.
-     *
-     * @return <tt>Double.NaN</tt> if PMT transit fit data is not present.
-     */
-    public double getPmtTransitIntercept()
-    {
-        if (transitFit == null) {
-            return Double.NaN;
-        }
-
-        return ((Double) transitFit.get("intercept")).doubleValue();
-    }
-
-    /**
-     * Get the regression coefficient, if present.
-     *
-     * @return <tt>Double.NaN</tt> if PMT transit fit data is not present.
-     */
-    public double getPmtTransitRegression()
-    {
-        if (transitFit == null) {
-            return Double.NaN;
-        }
-
-        return ((Double) transitFit.get("r")).doubleValue();
-    }
-
-    /**
-     * Get the gain slope, if present.
-     *
-     * @return <tt>Double.NaN</tt> if PMT transit fit data is not present.
-     */
-    public double getPmtTransitSlope()
-    {
-        if (transitFit == null) {
-            return Double.NaN;
-        }
-
-        return ((Double) transitFit.get("slope")).doubleValue();
-    }
-
-    /**
      * Obtain the keys used to access data from the
      * DOM analog front-end pulser.
      *
@@ -1345,10 +955,6 @@ public class Calibrator
      */
     public Iterator getPulserFitKeys()
     {
-        if (pulserFit == null) {
-            return new ArrayList().iterator();
-        }
-
         ArrayList keys = new ArrayList(pulserFit.keySet());
         Collections.sort(keys);
         return keys.iterator();
@@ -1357,14 +963,10 @@ public class Calibrator
     /**
      * Obtain the fit model for the DOM analog front-end
      * pulser.
-     * @return pulser fit model value, null if pulser calibration data is absent
+     * @return pulser fit model value
      */
     public String getPulserFitModel()
     {
-        if (pulserFit == null) {
-            return null;
-        }
-
         return (String) pulserFit.get("model");
     }
 
@@ -1379,97 +981,6 @@ public class Calibrator
     public double getPulserFitParam(String param)
     {
         return ((Double) pulserFit.get(param.toLowerCase())).doubleValue();
-    }
-
-    /**
-     * Obtain the keys used to access data from the
-     * DOM analog front-end discriminator.
-     *
-     * @return pulser keys.
-     */
-    public Iterator getDiscriminatorFitKeys(String id) throws DOMCalibrationException
-    {
-        HashMap discFit = null;
-        if (id.equalsIgnoreCase("spe")) discFit = speDiscFit;
-        else if (id.equalsIgnoreCase("mpe")) discFit = mpeDiscFit;
-        else {
-            throw new DOMCalibrationException("Illegal discriminator id: " + id + ". ID must be SPE, MPE");
-        }
-        ArrayList keys = new ArrayList(discFit.keySet());
-        Collections.sort(keys);
-        return keys.iterator();
-    }
-
-    /**
-     * Obtain the fit model for the DOM analog front-end
-     * discriminator.
-     * @return pulser fit model value
-     */
-    public String getDiscriminatorFitModel(String id) throws DOMCalibrationException
-    {
-        HashMap discFit = null;
-        if (id.equalsIgnoreCase("spe")) discFit = speDiscFit;
-        else if (id.equalsIgnoreCase("mpe")) discFit = mpeDiscFit;
-        else {
-            throw new DOMCalibrationException("Illegal discriminator id: " + id + ". ID must be SPE, MPE");
-        }
-        if (discFit == null) {
-            throw new DOMCalibrationException("No data for discriminator id: " + id);
-        }
-        return (String) discFit.get("model");
-    }
-
-    /**
-     * Obtain the fit information for the DOM analog front-end
-     * discriminator. It describes the relation between the discriminator DAC
-     * setting and charge threshold
-     * @param param Named fit paramter.  See the description
-     * of the ATWD fit parameters.
-     * @return pulser fit parameter value
-     */
-    public double getDiscriminatorFitParam(String param, String id) throws DOMCalibrationException
-    {
-        HashMap discFit = null;
-        if (id.equalsIgnoreCase("spe")) discFit = speDiscFit;
-        else if (id.equalsIgnoreCase("mpe")) discFit = mpeDiscFit;
-        else {
-            throw new DOMCalibrationException("Illegal discriminator id: " + id + ". ID must be SPE, MPE");
-        }
-        if (discFit == null) {
-            throw new DOMCalibrationException("No data for discriminator id: " + id);
-        }
-        Double value = (Double) discFit.get(param.toLowerCase());
-        if (value == null) {
-            throw new DOMCalibrationException("No " + param + " data for discriminator id: " + id);
-        }
-        return ((Double) discFit.get(param.toLowerCase())).doubleValue();
-    }
-
-    /**
-     * Get major version.
-     * @return major version number
-     */
-    public short getMajorVersion()
-    {
-        return majorVersion;
-    }
-
-    /**
-     * Get minor version.
-     * @return minor version number
-     */
-    public short getMinorVersion()
-    {
-        return minorVersion;
-    }
-
-    /**
-     * Get patch version.
-     * @return patch version number
-     */
-    public short getPatchVersion()
-    {
-        return patchVersion;
     }
 
     /**
@@ -1488,16 +999,6 @@ public class Calibrator
     public boolean hasHvGainFit()
     {
         return (gainFit != null);
-    }
-
-    /**
-     * Is there PMT transit fit data for this calibration file?
-     *
-     * @return <tt>true</tt> if there is PMT transit data
-     */
-    public boolean hasPmtTransit()
-    {
-        return (transitFit != null);
     }
 
     /**
@@ -1595,32 +1096,10 @@ public class Calibrator
     }
 
     /**
-     * Set the FADC data
-     */
-    protected void setFADC(float slope, float intercept, float regression,
-                           float gain, float gainError,
-                           float deltaT, float deltaTError)
-    {
-        if (fadcBaselineFit == null) {
-            fadcBaselineFit = new HashMap();
-        }
-
-        fadcBaselineFit.put("slope", new Double(slope));
-        fadcBaselineFit.put("intercept", new Double(intercept));
-        fadcBaselineFit.put("r", new Double(regression));
-
-        fadcGain = gain;
-        fadcGainErr = gainError;
-        fadcDeltaT = deltaT;
-        fadcDeltaTErr = deltaTError;
-    }
-
-    /**
-     * Set the high-voltage data
+     * Set the high-voltage slope and intercept data
      *
      * @param slope slope
      * @param intercept intercept
-     * @param regression regression
      */
     protected void setHvGain(double slope, double intercept, double regression)
     {
@@ -1665,8 +1144,7 @@ public class Calibrator
      * @param temp DOMCalibration temperature
      */
     protected void setMain(int domcalId, String mbSerial, DOMProduct domProd,
-                           Date date, double temp, short major, short minor,
-                           short patch)
+                           Date date, double temp)
     {
         this.domcalId = domcalId;
         this.domID = mbSerial;
@@ -1674,9 +1152,6 @@ public class Calibrator
         this.calendar = Calendar.getInstance();
         this.calendar.setTime(date);
         this.temp = temp;
-        this.majorVersion = major;
-        this.minorVersion = minor;
-        this.patchVersion = patch;
     }
 
     /**
@@ -1724,86 +1199,12 @@ public class Calibrator
     }
 
     /**
-     * Set the fit model for the DOM discriminator.
-     *
-     * @param model pulser fit model value
-     */
-    public void setDiscriminatorFitModel(String model, String id) throws DOMCalibrationException
-    {
-        HashMap discFit = null;
-        if (id.equalsIgnoreCase("spe")) discFit = speDiscFit;
-        else if (id.equalsIgnoreCase("mpe")) discFit = mpeDiscFit;
-        else {
-            throw new DOMCalibrationException("Illegal discriminator id: " + id + ". ID must be SPE, MPE");
-        }
-        if (discFit == null) {
-            discFit = new HashMap();
-        }
-
-        discFit.put("model", model);
-    }
-
-    /**
-     * Set the fit information for the DOM analog front-end pulser.
-     *
-     * @param param Named fit paramter.  See the description
-     * of the ATWD fit parameters.
-     * @param value pulser fit parameter value
-     *
-     * @throws DOMCalibrationException if an argument is invalid
-     */
-    public void setDiscriminatorFitParam(String param, String id, double value)
-        throws DOMCalibrationException
-    {
-        if (param == null) {
-            throw new DOMCalibrationException("Parameter name cannot be null");
-        }
-
-        final String paramLow = param.toLowerCase();
-
-        if (paramLow.equals("model")) {
-            throw new DOMCalibrationException("'model' is not a valid" +
-                                              " parameter name");
-        }
-
-        HashMap discFit = null;
-        if (id.equalsIgnoreCase("spe")) discFit = speDiscFit;
-        else if (id.equalsIgnoreCase("mpe")) discFit = mpeDiscFit;
-        else {
-            throw new DOMCalibrationException("Illegal discriminator id: " + id + ". ID must be SPE, MPE");
-        }
-
-        if (discFit == null) {
-            discFit = new HashMap();
-        }
-
-        discFit.put(paramLow, new Double(value));
-    }
-
-    /**
-     * Set PMT transit data.
-     *
-     * @param numPts number of transit points
-     * @param slope slope
-     * @param intercept intercept
-     * @param regression regression
-     */
-    protected void setPmtTransit(short numPts, double slope, double intercept,
-                                 double regression)
-    {
-        if (transitFit == null) {
-            transitFit = new HashMap();
-        }
-
-        numTransitPts = numPts;
-        transitFit.put("slope", new Double(slope));
-        transitFit.put("intercept", new Double(intercept));
-        transitFit.put("r", new Double(regression));
-    }
-
-    /**
      * Constructor from initialized InputStream object.
      * The XML stream is read into a DOM tree over this object.
+     * @param is an initialized, open InputStream object pointing
+     * to the XML file.
+     * @throws IOException
+     * @throws DOMCalibrationException
      */
     class Parser
     {
@@ -1848,8 +1249,6 @@ public class Calibrator
             if (nodes.getLength() != 1) {
                 throw new DOMCalibrationException("XML format error");
             }
-            e       = (Element) nodes.item(0);
-            parseVersion(e.getAttribute("version"));
             dc      = (Element) nodes.item(0);
             logger.debug("Found node " + dc.getNodeName());
             // Get the DOM Id
@@ -1871,39 +1270,25 @@ public class Calibrator
              * information out of the DOM.  The python calibrator emits a full
              * date string but the in-DOM calibrator program (1) needs date
              * input from the caller, and (2) has pretty terse format,
-             * e.g. 24-1-2009.
+             * e.g. 1-24-2009.
              * Try the new format first (non-python) and, failing that revert
              * to the older, python formatting.
              */
             calendar = Calendar.getInstance();
             Date d = null;
-
+	
             String date_string = e.getFirstChild().getNodeValue();
-
-            nodes = dc.getElementsByTagName("time");
-            if (nodes.getLength() > 0) {
-                String date_time = date_string + " " +
-                    nodes.item(0).getFirstChild().getNodeValue();
-
+	
+            try {
+                DateFormat df = new SimpleDateFormat("MM-dd-yyyy");
+                d = df.parse(date_string);
+            } catch (ParseException pexo) {
                 try {
                     DateFormat df =
-                        new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
-                    d = df.parse(date_time);
-                } catch (ParseException pex) {
-                    throw new DOMCalibrationException(pex.getMessage());
-                }
-            } else {
-                try {
-                    DateFormat df = new SimpleDateFormat("dd-MM-yyyy");
+                        new SimpleDateFormat("EEE MMM dd HH:mm:ss yyyy");
                     d = df.parse(date_string);
-                } catch (ParseException pexo) {
-                    try {
-                        DateFormat df =
-                            new SimpleDateFormat("EEE MMM dd HH:mm:ss yyyy");
-                        d = df.parse(date_string);
-                    } catch (ParseException pexi) {
-                        throw new DOMCalibrationException(pexi.getMessage());
-                    }
+                } catch (ParseException pexi) {
+                    throw new DOMCalibrationException(pexi.getMessage());
                 }
             }
 
@@ -1911,7 +1296,18 @@ public class Calibrator
 
             parseAdcDacTags(dc.getElementsByTagName("dac"), dacs);
             parseAdcDacTags(dc.getElementsByTagName("adc"), adcs);
-            parseDiscriminatorFit(dc.getElementsByTagName("discriminator"));
+            nodes = dc.getElementsByTagName("pulser");
+            switch (nodes.getLength()) {
+            case 0:
+                break;
+            case 1:
+                parsePulserFit((Element) nodes.item(0));
+                break;
+            default:
+                final String msg =
+                    "XML format error - more than one <pulser> record";
+                throw new DOMCalibrationException(msg);
+            }
             parseATWDFits(dc.getElementsByTagName("atwd"));
             parseAmplifierGain(dc.getElementsByTagName("amplifier"));
             parseFreqFits(dc.getElementsByTagName("atwdfreq"));
@@ -1919,9 +1315,6 @@ public class Calibrator
             parseHistograms(dc.getElementsByTagName("histo"));
             parseBaselines(dc.getElementsByTagName("baseline"));
             parseTransitTimes(dc.getElementsByTagName("pmtTransitTime"));
-            parseFadcBaselineFit(dc.getElementsByTagName("fadc_baseline"));
-            parseFadcGain(dc.getElementsByTagName("fadc_gain"));
-            parseFadcDeltaT(dc.getElementsByTagName("fadc_delta_t"));
         }
 
         /**
@@ -1934,11 +1327,11 @@ public class Calibrator
                 Element atwd = (Element) atwdNodes.item(i);
                 int ch = Integer.parseInt(atwd.getAttribute("channel"));
                 int bin = Integer.parseInt(atwd.getAttribute("bin"));
-                /*
+                /* 
                  * Check whether the element has an "id" attribute - if
                  * so then that means that the channels are not assigned a
                  * linear range from 0-7 but run 0-4 and ATWD 0/1 are
-                 * differentiated by the "id" attribute.
+                 * differentiated by the "id" attribute. 
                  */
                 String ids = atwd.getAttribute("id");
                 if (ids.length() > 0) {
@@ -2047,12 +1440,10 @@ public class Calibrator
         }
 
         /**
-         * Parses transit time data
+         * Parses new domcal transit time data
          *
-         * @param nodes transit time node list
-         * @throws DOMCalibrationException if more than one &lt;pmtTransitTime&gt;
-         *                                 element is found
          */
+
         private void parseTransitTimes(NodeList nodes)
             throws DOMCalibrationException
         {
@@ -2060,10 +1451,7 @@ public class Calibrator
             case 0:
                 break;
             case 1:
-                Element baseEl = (Element) nodes.item(0);
-                numTransitPts =
-                    Short.parseShort(baseEl.getAttribute("num_pts"));
-                transitFit = parseFit(baseEl);
+                transitFit = parseFit((Element) nodes.item(0));
                 break;
             default:
                 final String errMsg =
@@ -2075,9 +1463,8 @@ public class Calibrator
         /**
          * Parses new domcal baseline data
          *
-         * @param nodes baseline node list
-         *
          */
+
         private void parseBaselines(NodeList nodes) {
             baselines = new HashMap();
             for (int i = 0; i < nodes.getLength(); i++) {
@@ -2093,9 +1480,11 @@ public class Calibrator
                         chanStr = base.getAttribute("ch");
                     }
                     int ch = Integer.parseInt(chanStr);
-                    values[atwd][ch] = Float.parseFloat(base.getAttribute("value"));
+                    float value = Float.parseFloat(base.getAttribute("value"));
+                    values[atwd][ch] = value;
                 }
-                addBaseline(voltage, values);
+                Integer v = new Integer(voltage);
+                baselines.put(v, new Baseline(voltage, values));
             }
         }
 
@@ -2121,162 +1510,11 @@ public class Calibrator
         /**
          * Parse the <code>&lt;pulser&gt;</code> tag
          *
-         * @param nodes pulser node list
-         * @throws DOMCalibrationException if more than one &lt;pulser&gt;
-         *                                 element is found
+         * @param pulser pulser node
          */
-        private void parsePulserFit(NodeList nodes) throws DOMCalibrationException {
-            switch (nodes.getLength()) {
-            case 0:
-                break;
-            case 1:
-                pulserFit = parseFit((Element) nodes.item(0));
-                break;
-            default:
-                final String msg =
-                    "XML format error - more than one <pulser> record";
-                throw new DOMCalibrationException(msg);
-            }
-        }
-
-        /**
-         * Parse the <code>&lt;discriminator&gt;</code> tag
-         *
-         * @param nodes discriminator node list
-         * @throws DOMCalibrationException if more than one &lt;discriminator&gt;
-         *                                 element is found
-         */
-        private void parseDiscriminatorFit(NodeList nodes) throws DOMCalibrationException {
-            switch (nodes.getLength()) {
-            case 0:
-                break;
-            case 1:
-                speDiscFit = parseFit((Element) nodes.item(0));
-                break;
-            case 2:
-                for (int i = 0; i < 2; i++) {
-                    Element disc = (Element) nodes.item(i);
-                    if (disc.getAttribute("id").equals("spe")) speDiscFit = parseFit((Element) nodes.item(i));
-                    else if (disc.getAttribute("id").equals("mpe")) mpeDiscFit = parseFit((Element) nodes.item(i));
-                    else {
-                        final String msg =
-                                    "XML format error - illegal <discriminator> id: " + disc.getAttribute("id");
-                        throw new DOMCalibrationException(msg);
-                    }
-                }
-                break;
-            default:
-                final String msg =
-                    "XML format error - more than one <discriminator> record";
-                throw new DOMCalibrationException(msg);
-            }
-        }
-
-        /**
-         * Parse the <code>&lt;fadc_baseline&gt;</code> tag
-         *
-         * @param nodes fadc_baseline node list
-         * @throws DOMCalibrationException if more than one &lt;fadc_baseline&gt;
-         *                                 element is found
-         */
-        private void parseFadcBaselineFit(NodeList nodes) throws DOMCalibrationException {
-            switch (nodes.getLength()) {
-            case 0:
-                break;
-            case 1:
-                fadcBaselineFit = parseFit((Element) nodes.item(0));
-                break;
-            default:
-                final String errMsg =
-                    "XML format error - more than one <fadc_baseline> record";
-                throw new DOMCalibrationException(errMsg);
-            }
-        }
-
-        /**
-         * Get FADC gain and error from <code>&lt;fadc_gain&gt;</code> tag.
-         *
-         * @param nodes fadc node list
-         * @throws DOMCalibrationException if more than one &lt;fadc_gain&gt;
-         *                                 element is found
-         */
-        private void parseFadcGain(NodeList nodes) throws DOMCalibrationException {
-            switch (nodes.getLength()) {
-            case 0:
-                break;
-            case 1:
-                Element fadc = (Element) nodes.item(0);
-                Element gain = (Element) fadc.getElementsByTagName("gain").item(0);
-                String val = gain.getFirstChild().getNodeValue();
-                fadcGain = Double.parseDouble(val);
-                fadcGainErr = Double.parseDouble(gain.getAttribute("error"));
-                break;
-            default:
-                final String errMsg =
-                    "XML format error - more than one <fadc_gain> record";
-                throw new DOMCalibrationException(errMsg);
-            }
-        }
-
-        /**
-         * Get FADC time offset and error from <code>&lt;fadc_delta_t&gt;</code> tag.
-         *
-         * @param nodes fadc node list
-         * @throws DOMCalibrationException if more than one &lt;fadc_delta_t&gt;
-         *                                 element is found
-         */
-        private void parseFadcDeltaT(NodeList nodes) throws DOMCalibrationException {
-            switch (nodes.getLength()) {
-            case 0:
-                break;
-            case 1:
-                Element e = (Element) nodes.item(0);
-                Element deltat = (Element) e.getElementsByTagName("delta_t").item(0);
-                String val = deltat.getFirstChild().getNodeValue();
-                fadcDeltaT = Double.parseDouble(val);
-                fadcDeltaTErr = Double.parseDouble(deltat.getAttribute("error"));
-                break;
-            default:
-                final String errMsg =
-                    "XML format error - more than one <fadc_delta_t> record";
-                throw new DOMCalibrationException(errMsg);
-            }
-        }
-
-        /**
-         * Get version numbers from <code>&lt;domcal&gt;</code> tag.
-         *
-         * @param vStr version string
-         *
-         * @throws DOMCalibrationException if the version string was not
-         *                                 formatted correctly
-         */
-        private void parseVersion(String vStr)
-            throws DOMCalibrationException
-        {
-            if (vStr == null) {
-                majorVersion = 0;
-                minorVersion = 0;
-                patchVersion = 0;
-            } else {
-                final int firstDot = vStr.indexOf(".");
-                final int lastDot = vStr.lastIndexOf(".");
-
-                if (firstDot < 0 || lastDot < 0 ||
-                    lastDot != vStr.indexOf(".", firstDot + 1))
-                {
-                    throw new DOMCalibrationException("Bad version string \"" +
-                                                      vStr + "\"");
-                }
-
-                majorVersion =
-                    Short.parseShort(vStr.substring(0, firstDot));
-                minorVersion =
-                    Short.parseShort(vStr.substring(firstDot + 1, lastDot));
-                patchVersion =
-                    Short.parseShort(vStr.substring(lastDot + 1));
-            }
+        private void parsePulserFit(Element pulser) {
+            Element elem = (Element) pulser.getElementsByTagName("fit").item(0);
+            pulserFit = parseFit(elem);
         }
     }
-
 }

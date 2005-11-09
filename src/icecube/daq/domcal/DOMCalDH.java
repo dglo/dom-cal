@@ -46,7 +46,6 @@ public class DOMCalDH {
     private Properties props;
     private boolean afecal = false;
     private boolean pmtcal = false;
-    private boolean itercal = false;
     private LinkedList fabric = new LinkedList();
     private Hashtable  fabricMap = new Hashtable(100);
 
@@ -185,11 +184,7 @@ public class DOMCalDH {
                         dsc.getPort(),
                         props.getProperty("icecube.domcal.outputDirectory", "."),
                         afecal,
-                        pmtcal,
-                        itercal,
-                        1020,
-                        1900,
-                        domId
+                        pmtcal
                 ) );
                 // Getting odd behavior from DOMHub - try delay 1.0 sec.
                 Thread.sleep(1000L);

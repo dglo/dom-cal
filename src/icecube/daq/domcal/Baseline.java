@@ -52,27 +52,4 @@ public class Baseline {
         if (atwd > 1 || atwd < 0 || ch < 0 || ch > 2) throw new IndexOutOfBoundsException("" + atwd + " " + ch);
         return baseVals[atwd][ch];
     } 
-
-    public void setBaseline(int atwd, int ch, float val)
-    {
-        if (atwd > 1 || atwd < 0 || ch < 0 || ch > 2) throw new IndexOutOfBoundsException("Bad baseline index [" + atwd + ", " + ch + "]");
-        baseVals[atwd][ch] = val;
-    }
-
-    public String toString()
-    {
-        StringBuffer buf = new StringBuffer("Baseline[");
-        buf.append("v ").append(voltage);
-        buf.append(",[");
-        for (int a = 0; a < baseVals.length; a++) {
-            for (int ch = 0; ch < baseVals[a].length; ch++) {
-                if (a > 0 || ch > 0) {
-                    buf.append(',');
-                }
-                buf.append(baseVals[a][ch]);
-            }
-        }
-        buf.append("]]");
-        return buf.toString();
-    }
 }

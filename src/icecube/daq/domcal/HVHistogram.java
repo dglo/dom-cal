@@ -58,17 +58,10 @@ public class HVHistogram {
 
     public static HVHistogram parseHVHistogram(Element histo) {
         short voltage = Short.parseShort(histo.getAttribute("voltage"));
-        // convergent and ifFilled attributes have changed format
-        boolean convergent, isFilled;
-        try {
-            convergent = (Short.parseShort(histo.getAttribute("convergent")) == 1);
-            isFilled = (Short.parseShort(histo.getAttribute("isFilled")) == 1);            
-        } catch (NumberFormatException e) {
-            convergent = Boolean.parseBoolean(histo.getAttribute("convergent"));
-            isFilled = Boolean.parseBoolean(histo.getAttribute("isFilled"));
-        }
+        boolean convergent = (new Boolean(histo.getAttribute("convergent"))).booleanValue();
         float pv = Float.parseFloat(histo.getAttribute("pv"));
         float noiseRate = Float.parseFloat(histo.getAttribute("noiseRate"));
+        boolean isFilled = (new Boolean(histo.getAttribute("isFilled"))).booleanValue();
         float[] fitParams = new float[5];
         NodeList fitP = histo.getElementsByTagName("param");
         for (int i = 0; i < fitP.getLength(); i++) {
