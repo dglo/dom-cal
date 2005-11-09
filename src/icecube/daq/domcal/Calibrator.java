@@ -394,6 +394,15 @@ public class Calibrator
     }
 
     /**
+     * Return the constant FADC frequency -- NOT measured
+     * @return constant FADC frequency
+     */
+
+    public double getFadcFreq() {
+        return 40.0;
+    }
+
+    /**
      * Find the voltage required for specified gain.  For this
      * to work, the calibration structure must contain a fit
      * of the (log) HV to (log) Gain.
