@@ -29,7 +29,7 @@ public class DOMCalRecordFactory {
 
         bb.order( ByteOrder.BIG_ENDIAN );
         short version = bb.getShort();
-        if ( version > 256 ) {
+        if ( version >= 256 || version < 0 ) {
             bb.order( ByteOrder.LITTLE_ENDIAN );
             version = ( short )( version >> 8 );
         }
@@ -42,7 +42,21 @@ public class DOMCalRecordFactory {
 
         bb.getShort();
 
-        String domId = Long.toHexString( bb.getLong() );
+        String domId = "";
+        String s1 = Integer.toHexString( bb.getInt() );
+
+        while ( s1.length() < 4 ) {
+            s1 = "0" + s1;
+        }
+
+        String s2 = Integer.toHexString( bb.getInt() );
+
+        while ( s2.length() < 8 ) {
+            s2 = "0" + s2;
+        }
+
+        domId += s1;
+        domId += s2;
 
         float temperature = bb.getFloat();
 
@@ -87,9 +101,47 @@ public class DOMCalRecordFactory {
         atwdFrequencyCalibration[0] = LinearFitFactory.parseLinearFit( bb );
         atwdFrequencyCalibration[1] = LinearFitFactory.parseLinearFit( bb );
 
+        Baseline baseline = Baseline.parseBaseline(bb);
+
+        short transitCalValidShort = bb.getShort();
+        boolean transitCalValid = transitCalValidShort == 0 ? false : true;
+
+        LinearFit transitTimeFit = null;
+        if (transitCalValid) {
+            transitTimeFit = LinearFitFactory.parseLinearFit(bb);
+        }
+
+        short numHVHistograms = bb.getShort();
+
+        short hvBaselinesValidShort = bb.getShort();
+        boolean hvBaselinesValid = hvBaselinesValidShort == 0 ? false : true;
+
+        Baseline[] hvBaselines = null;
+        if (hvBaselinesValid) {
+            hvBaselines = new Baseline[numHVHistograms];
+            for (int i = 0; i < numHVHistograms; i++) hvBaselines[i] = Baseline.parseHvBaseline(bb);
+        }
+
+        short hvCalValidShort = bb.getShort();
+        boolean hvCalValid = ( hvCalValidShort == 0 ) ? false : true;
+
+        LinearFit hvGainFit = null;
+
+        HVHistogram[] histos = new HVHistogram[numHVHistograms];
+
+        for (int i = 0; i < numHVHistograms; i++) {
+            histos[i] = HVHistogram.parseHVHistogram(bb);
+        }     
+
+        if ( hvCalValid ) {
+            
+            hvGainFit = LinearFitFactory.parseLinearFit( bb );
+        }    
+
         return new DefaultDOMCalRecord( pulserCalibration, atwdCalibration, atwdFrequencyCalibration,
                 amplifierCalibration, amplifierCalibrationError, temperature, year, month, day, domId, dacValues,
-                                                                                     adcValues, fadcValues, version );
+               adcValues, fadcValues, version, hvCalValid, transitCalValid, hvBaselinesValid, hvGainFit,
+                                                    numHVHistograms, histos, baseline, hvBaselines, transitTimeFit);
     }
     
     private static class DefaultDOMCalRecord implements DOMCalRecord {
@@ -114,12 +166,29 @@ public class DOMCalRecordFactory {
         private short[] fadcValues;
         
         private short version;
-        
-        public DefaultDOMCalRecord( LinearFit pulserCalibration, LinearFit[][][] atwdCalibration, LinearFit[] 
+
+        private boolean hvCalValid;
+        private boolean transitCalValid;
+        private boolean hvBaselineCalValid;
+
+        private LinearFit hvGainCal;
+        private LinearFit transitTimeFit;
+
+        private short numHVHistograms;
+        private HVHistogram[] hvHistos;
+
+        private Baseline baseline;
+        private Baseline[] hvBaselines;
+
+        public DefaultDOMCalRecord( LinearFit pulserCalibration, LinearFit[][][] atwdCalibration, LinearFit[]
                  atwdFrequencyCalibration, float[] amplifierCalibration, float[] amplifierCalibrationError, float
                  temperature, short year, short month, short day, String domId, short[] dacValues, short[] adcValues,
-                                                                                  short[] fadcValues, short version ) {
+                 short[] fadcValues, short version, boolean hvCalValid, boolean transitCalValid,
+                 boolean hvBaselineCalValid, LinearFit hvGainCal, short numHVHistograms, HVHistogram[] hvHistos,
+                                                 Baseline baseline, Baseline[] hvBaselines, LinearFit transitTimeFit) {
 
+            this.baseline = baseline;
+            this.hvBaselines = hvBaselines;
             this.pulserCalibration = pulserCalibration;
             this.atwdCalibration = atwdCalibration;
             this.atwdFrequencyCalibration = atwdFrequencyCalibration;
@@ -134,7 +203,13 @@ public class DOMCalRecordFactory {
             this.adcValues = adcValues;
             this.fadcValues = fadcValues;
             this.version = version;
-
+            this.hvCalValid = hvCalValid;
+            this.transitCalValid = transitCalValid;
+            this.hvBaselineCalValid = hvBaselineCalValid;
+            this.hvGainCal = hvGainCal;
+            this.numHVHistograms = numHVHistograms;
+            this.hvHistos = hvHistos;
+            this.transitTimeFit = transitTimeFit;
         }
 
         public short getVersion() {
@@ -217,7 +292,55 @@ public class DOMCalRecordFactory {
             }
             return atwdCalibration[atwd][channel][bin];
         }
+
+        public boolean isHvCalValid() {
+            return hvCalValid;
+        }
+
+        public boolean isHvBaselineCalValid() {
+            return hvBaselineCalValid;
+        }
+
+        public boolean isTransitCalValid() {
+            return transitCalValid;
+        }
+
+        public LinearFit getTransitTimeFit() {
+            return transitTimeFit;
+        }
+
+
+        public LinearFit getHvGainCal() {
+            return hvGainCal;
+        }
+
+        public short getNumHVHistograms() {
+            return numHVHistograms;
+        }
+
+        public HVHistogram getHVHistogram(int iter) {
+            if (iter >= numHVHistograms || iter < 0) {
+                throw new IndexOutOfBoundsException("" + iter);
+            }
+            return hvHistos[iter];
+        }
+
+        public short getNumHVBaselines() {
+            return numHVHistograms;
+        }
+
+        public Baseline getHVBaseline(int iter) {
+            if (iter >= numHVHistograms || iter < 0) {
+                throw new IndexOutOfBoundsException("" + iter);
+            }
+            return hvBaselines[iter];
+        }
+
+        public Baseline getBaseline() {
+            return baseline;
+        }
+
+
     }
-    
-    
+        
 }

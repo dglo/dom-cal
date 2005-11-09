@@ -41,5 +41,25 @@ public interface DOMCalRecord {
     public short getDay();
 
     public short getVersion();
+    
+    public boolean isHvBaselineCalValid();
+
+    public boolean isTransitCalValid();
+
+    public boolean isHvCalValid();
+
+    public LinearFit getTransitTimeFit();
+
+    public LinearFit getHvGainCal();
+
+    public short getNumHVHistograms();
+
+    public HVHistogram getHVHistogram(int iter);
+
+    public short getNumHVBaselines();
+
+    public Baseline getHVBaseline(int iter);
+
+    public Baseline getBaseline();
 
 }

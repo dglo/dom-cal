@@ -9,8 +9,8 @@ void free_int_vector( int *v );
 void free_matrix( float **m, int nrows );
 int gauss_jordan( float **a, int n, float **b, int m );
 void covariance_sort( float **covariance_matrix, int nparams );
-void lmfit(float *x, float *y, float *sigma, int ndata, float *a, int nparam, 
-           float **covar, float **alpha, float *chisq, 
-           void (*funcs)(float, float *, float *, float *, int), float *alamda);
+int lmfit(float *x, float *y, float *sigma, int ndata, float *a, int nparam, 
+          float **covar, float **alpha, float *chisq, 
+          void (*funcs)(float, float *, float *, float *, int), float *alamda);
 
 #define ESINGULAR_MATRIX  -1

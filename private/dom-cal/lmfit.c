@@ -38,14 +38,14 @@ float *vector( int size ) {
  */
 
 int *int_vector( int size ) {
-                                                                                
+
     int *v;
-    
+
     /* Allocate vector */
     v = ( int* )malloc( ( size_t )( ( size )*sizeof( int ) ) );
-                                                                              
+
     return v;
-                                                                                
+
 }
 
 /*---------------------------------------------------------------------------*/
@@ -89,7 +89,7 @@ void free_vector( float *v ) {
  *
  * Free allocated vector
  */
-                                                                                
+
 void free_int_vector( int *v ) {
     free( v );
 }
@@ -110,6 +110,8 @@ void free_matrix( float **m, int nrows ) {
     free( m );
 }
 
+/*---------------------------------------------------------------------------*/
+
 void swap( float *i, float *j ) {
 
     float temp;
@@ -125,7 +127,7 @@ void swap( float *i, float *j ) {
  *
  * Gauss-Jordan elimination
  */
-                                                                                
+
 int gauss_jordan( float **matrix, int n, float **solution_set, int m ) {
     
     int piv_row, piv_col;
@@ -256,19 +258,7 @@ void lm_matrix(float *x, float *y, float *sigma, int ndata, float *a, int nparam
     int i, j, k;
     float ymod, wt, sigma2i, dy, *dyda;
 
-#ifdef DEBUG
-    /* TEMP */
-    printf(" lm_matrix: Derivative vector init...\n");
-    fflush(stdout);
-#endif
-
     dyda = vector(nparam);
-
-#ifdef DEBUG
-    /* TEMP */
-    printf(" lm_matrix: Matrix init...\n");
-    fflush(stdout);
-#endif
 
     /* Initialize alpha, beta */
     for (j=0; j < nparam; j++) {
@@ -279,15 +269,10 @@ void lm_matrix(float *x, float *y, float *sigma, int ndata, float *a, int nparam
 
     *chisq = 0.0;
 
-#ifdef DEBUG
-    /* TEMP */
-    printf(" lm_matrix: starting data loop...\n");
-    fflush(stdout);
-#endif
-
     /* Summation loop over all data */
     for (i=0; i < ndata; i++) {
 
+        /* Get fit value and derivatives */
         (*funcs)(x[i], a, &ymod, dyda, nparam);
 
         sigma2i = 1.0/(sigma[i]*sigma[i]);
@@ -313,49 +298,45 @@ void lm_matrix(float *x, float *y, float *sigma, int ndata, float *a, int nparam
 }
 
 /*--------------------------------------------------------------------------*/
-
-void lmfit(float *x, float *y, float *sigma, int ndata, float *a, int nparam, 
-           float **covar, float **alpha, float *chisq, 
-           void (*funcs)(float, float *, float *, float *, int), float *alamda) {
+/*
+ * lmfit
+ *
+ * Primary Levenberg-Marquart fit routine.  Takes arrays of floats as input 
+ * data to fit, as well as errors on the y-value at each point.  The function
+ * pointer funcs points to the model for the fit -- values for the function as 
+ * well as the Jacobian with respect to the fit parameters are returned.
+ *
+ * The parameter lambda indicates the weight on the matrix diagonals, but also
+ * controls aspects of lmfit -- a negative value indicates that this is the first
+ * iteration and initializes the necessary structures.  A zero value indicates
+ * the fit has achieved the necessary convergence, and returns the covariance
+ * and curvature matrices.  
+ *
+ */
+int lmfit(float *x, float *y, float *sigma, int ndata, float *a, int nparam, 
+          float **covar, float **alpha, float *chisq, 
+          void (*funcs)(float, float *, float *, float *, int), float *lambda) {
 
     int j,k;
     static float ochisq,*atry,*beta,*da,**oneda;
 
     /* Initialization */
-    if (*alamda < 0.0) {
-
-#ifdef DEBUG
-        /* TEMP */
-        printf("Initializing...\n");
-        fflush(stdout);
-#endif
+    if (*lambda < 0.0) {
 
         atry = vector(nparam);
         beta = vector(nparam);
         da = vector(nparam);
 
         oneda = matrix(nparam,1);
-        *alamda=0.001;
+        *lambda=0.001;
 
         lm_matrix(x,y,sigma,ndata,a,nparam,alpha,beta,chisq,funcs);
 
         ochisq = *chisq;
 
-#ifdef DEBUG
-        /* TEMP */
-        printf("Original chisq: %g\n", ochisq);
-        fflush(stdout);
-#endif
-
         for (j = 0; j < nparam; j++)
             atry[j] = a[j];
     }
-    
-#ifdef DEBUG
-    /* TEMP */
-    printf("Augmenting diagonals...\n");
-    fflush(stdout);
-#endif
         
     /* Augment diagonal elements */
     for (j=0; j < nparam; j++) {
@@ -363,73 +344,38 @@ void lmfit(float *x, float *y, float *sigma, int ndata, float *a, int nparam,
         for (k=0; k < nparam; k++)
             covar[j][k] = alpha[j][k];
 
-        covar[j][j] = alpha[j][j]*(1.0 + (*alamda));
+        covar[j][j] = alpha[j][j]*(1.0 + (*lambda));
         oneda[j][0] = beta[j];
     }
 
-#ifdef DEBUG
-    /* TEMP */
-    printf("Matrix solution...\n");
-    fflush(stdout);
-#endif
-
-#ifdef DEBUG
-    /* TEMP print out matrices */
-    int i;
-    printf("Covar matrix\n");
-    for (i = 0; i < nparam; i++) {
-        for(j = 0; j < nparam; j++)
-            printf("%.2g\t", covar[i][j]);
-        printf("\n");        
-    }
-
-    printf("Matrix solution...\n");
-    fflush(stdout);
-#endif
-
     int err = gauss_jordan(covar, nparam, oneda, 1);
-    if (err) {
-        printf("ERROR: Singular matrix\n");
-    }
+    if ((err) && (*lambda != 0.0))
+        return err;
     
     for (j = 0; j < nparam; j++)
         da[j] = oneda[j][0];
 
     /* Evaluate covariance matrix once converged */
-    if (*alamda == 0.0) {
-        printf("Running covsrt...\n");
+    if (*lambda == 0.0) {
         covariance_sort(covar, nparam);
-        printf("Freeing structures...\n");
         free_matrix(oneda, nparam);
         free_vector(da);
         free_vector(beta);
         free_vector(atry);
-        return;
+        return 0;
     }
 
     /* New values for parameters */
     for (j = 0; j < nparam; j++)
         atry[j] = a[j] + da[j];
 
-#ifdef DEBUG
-    /* TEMP */
-    printf("Mrqcof again...\n");
-    fflush(stdout);
-#endif
-
     lm_matrix(x,y,sigma,ndata,atry,nparam,covar,da,chisq,funcs);
 
     /* Did the trial succeed? */
     if (*chisq < ochisq) {
 
-#ifdef DEBUG
-        /* TEMP */
-        printf("New chisq = %g\n", *chisq);
-        fflush(stdout);
-#endif
-
         /* Accept new solution */        
-        *alamda *= 0.1;
+        *lambda *= 0.1;
         ochisq = *chisq;
 
         for (j=0; j < nparam; j++) {
@@ -442,13 +388,9 @@ void lmfit(float *x, float *y, float *sigma, int ndata, float *a, int nparam,
         }
     }
     else {
-#ifdef DEBUG
-        /* TEMP */
-        printf("Bad chisq = %g\n", *chisq);
-        fflush(stdout);
-#endif
-
-        *alamda *= 10.0;
+        *lambda *= 10.0;
         *chisq = ochisq;       
     }
+
+    return 0;
 }

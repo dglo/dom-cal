@@ -57,13 +57,13 @@ void getBaseline(calib_data *dom_calib, float max_var, float base[2][3]) {
         while (trig < BASELINE_CAL_TRIG_CNT) {
             
             wf_bad = 0;
-            
+
             /* Warm up the ATWD */
             prescanATWD(trigger_mask);
-            
+   
             /* CPU-trigger the ATWD */
             hal_FPGA_TEST_trigger_forced(trigger_mask);
-            
+        
             /* Wait for done */
             while (!hal_FPGA_TEST_readout_done(trigger_mask));
             
@@ -108,17 +108,7 @@ void getBaseline(calib_data *dom_calib, float max_var, float base[2][3]) {
                     if (var > max_var) {
                         wf_bad = 1;
                         wf_bad_cnt++;
-                        printf("Bad variance count %d : %g\r\n", wf_bad_cnt, var);
-                        
                         if (wf_bad_cnt > BASELINE_CAL_TRIG_CNT) {
-                            
-                            /* FIX ME DEBUG */
-                            for (bin = 0; bin < cnt; bin++)
-                                printf("%d %g\r\n", bin, true_wf[0][bin]);
-                            
-#ifdef DEBUG
-                            printf("Too many bad waveforms... scaling variance up!\r\n");
-#endif
                             max_var *= 1.5;
                             wf_bad_cnt = 0;
                         }
@@ -138,23 +128,19 @@ void getBaseline(calib_data *dom_calib, float max_var, float base[2][3]) {
             }
             
         } /* End trigger loop */
-        
+
         /* Get average variance of channel 0 */
         var_avg /= (float)BASELINE_CAL_TRIG_CNT;
-#ifdef DEBUG
-        printf("Average variance: atwd %d ch 0: %g\r\n", atwd, var_avg);
-#endif
         /* Get the average baseline waveform */
         for (ch = 0; ch < 3; ch++) {
             
-            for(bin = 0; bin < cnt; bin++)
+            for(bin = 0; bin < cnt; bin++) {
                 baseline[atwd][ch][bin] /= (float)BASELINE_CAL_TRIG_CNT;
-            
+            }
+             
             /* Just get the mean */
             /* Don't use first 3 samples -- "nook" in baseline is not understood */
             meanVarFloat(baseline[atwd][ch]+3, cnt-3, &(base[atwd][ch]), &var);
-            printf("Mean = %g\r\n", base[atwd][ch]);
-            
         }    
     }               
 }
@@ -216,6 +202,12 @@ int hv_baseline_cal(calib_data *dom_calib) {
     halEnableBaseHV();
 #endif
 
+    /* Ensure HV base exists before performing calibration */
+    if (!checkHVBase()) {
+        dom_calib->hv_baselines_valid = 0;
+        return 0;
+    }
+
     short hv_idx = 0;
     short hv;
 
@@ -239,13 +231,16 @@ int hv_baseline_cal(calib_data *dom_calib) {
        
         /* Store results */
         hv_base_data[hv_idx].voltage = hv; 
+        int ch;
         for (ch = 0; ch < 3; ch++) {
-            hv_base_data[hv_idx].atwd0_hv_baseline[ch] = baselines[0][ch];
-            hv_base_data[hv_idx].atwd1_hv_baseline[ch] = baselines[1][ch];
+            hv_base_data[hv_idx].atwd0_hv_baseline[ch] = baselines[hv_idx][0][ch];
+            hv_base_data[hv_idx].atwd1_hv_baseline[ch] = baselines[hv_idx][1][ch];
         }
-        calib_data->hv_baselines = hv_base_data;
 
     }
+
+    dom_calib->baseline_data = hv_base_data;
+    dom_calib->hv_baselines_valid = 1;
 
     return 0;
 

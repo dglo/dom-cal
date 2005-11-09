@@ -13,12 +13,12 @@
 #
 # Add new calibration routines here
 #
-CALOBJS  = atwd_cal.o amp_cal.o
+CALOBJS  = atwd_cal.o amp_cal.o atwd_freq_cal.o pulser_cal.o hv_gain_cal.o baseline_cal.o hv_amp_cal.o transit_cal.o
 
-EXOBJS = calUtils.o
+EXOBJS = calUtils.o spefit.o lmfit.o
 KOBJS = ../lib/crt0.o ../lib/libkernel.a
+FSOBJS = ../iceboot/fis.o ../iceboot/flashdrv.o
 
-#CFILES   = domcal.c calUtils.c $(CALOBJS:.o=.c)
 ALLOBJS  = domcal.o calUtils.o $(CALOBJS)
 
 all: domcal.elf 
@@ -28,7 +28,7 @@ clean:
 
 domcal.elf: domcal.o $(EXOBJS) $(CALOBJS) $(LIBHAL)
 	$(LD) --script=$(KERNELX) -o domcal.elf \
-	$(KOBJS) domcal.o $(CALOBJS) $(EXOBJS) $(LIBHAL) $(SYSLIBS)
+	$(KOBJS) $(FSOBJS) domcal.o $(CALOBJS) $(EXOBJS) $(LIBHAL) $(SYSLIBS)
 
 ../bin/%.bin.gz: %.bin; gzip -c $< > $@
 
