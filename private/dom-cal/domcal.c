@@ -144,12 +144,15 @@ void init_dom(void) {
     halWriteDAC(DOM_HAL_DAC_ATWD_ANALOG_REF, ATWD_ANALOG_REF_DAC);
     halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, ATWD_PEDESTAL_DAC);   
 
+    halWriteDAC(DOM_HAL_DAC_FAST_ADC_REF, FAST_ADC_REF);
+
     /* Make sure pulser is off */
     hal_FPGA_TEST_disable_pulser();
 
     /* Set disc value for gain cal */
     halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, GAIN_CAL_DISC_DAC);
 
+    halUSleep(DAC_SET_WAIT);
 }
 
 
@@ -578,8 +581,8 @@ int main(void) {
      *  - pulser calibration
      *  - atwd calibration
      *  - baseline calibration
-     *  - amplifier calibration (using only pulser)
      *  - sampling speed calibration
+     *  - amplifier calibration (using only pulser)
      *  - FADC calibration 
      *  - transit time calibration
      *  - HV baseline calibration
@@ -590,8 +593,8 @@ int main(void) {
     pulser_cal(&dom_calib);
     atwd_cal(&dom_calib);
     baseline_cal(&dom_calib);
-    amp_cal(&dom_calib);
     atwd_freq_cal(&dom_calib);
+    amp_cal(&dom_calib);
     fadc_cal(&dom_calib);
     if (doHVCal) {
         transit_cal(&dom_calib);
