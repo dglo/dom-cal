@@ -84,6 +84,8 @@ public class Calibrator
     private HashMap[][] atwdFits;
     /** pulser fit data. */
     private HashMap pulserFit;
+    /** discriminator fit data. */
+    private HashMap discFit;
     /** amplifier gain data. */
     private double[] ampGain;
     /** amplifier gain error data. */
@@ -474,7 +476,7 @@ public class Calibrator
 
     /**
      *
-     * Get the transit time of the PMT and the delay board at a given 
+     * Get the transit time of the PMT and the delay board at a given
      * high voltage setting.
      *
      * @param voltage  Voltage applied to PMT
@@ -496,7 +498,7 @@ public class Calibrator
 
     /**
      *
-     * Calibrate the FADC to voltage given an FADC front-end 
+     * Calibrate the FADC to voltage given an FADC front-end
      * bias DAC setting.
      * @param fadcin input array of shorts
      * @param fadcDAC front-end bias DAC for the FADC
@@ -507,13 +509,13 @@ public class Calibrator
 
         Double dbl = (Double) fadcBaselineFit.get("slope");
         double m = dbl.doubleValue();
-        
+
         dbl = (Double) fadcBaselineFit.get("intercept");
         double b = dbl.doubleValue();
 
         double baseline = m*fadcDAC + b;
 
-        double[] out = new double[fadcin.length];        
+        double[] out = new double[fadcin.length];
         for (int i = 0; i < fadcin.length; i++) {
             out[i] = fadcin[i] - baseline;
             /* Note units of FADC gain (V/tick), unlike ATWD gain (dimensionless) */
@@ -880,6 +882,61 @@ public class Calibrator
     }
 
     /**
+     * Obtain the fadc gain.
+     * @return double-valued gain
+     */
+    public double getFadcGain() {
+        return fadcGain;
+    }
+
+    /**
+     * Obtain error estimate on fadc gain.
+     * @return the error on the fadc gain.
+     */
+    public double getFadcGainError(int ch) {
+        return fadcGainErr;
+    }
+
+    /**
+     * Obtain discriminator setting corresponding
+     * to given charge
+     * @param charge Discriminator threshold charge
+     * @return discriminator setting corresponding to
+     * the charge
+     */
+    public double getDiscriminatorSetting(double charge) throws DOMCalibrationException {
+
+        if (discFit == null) {
+            throw new DOMCalibrationException("No discriminator fit");
+        }
+
+        double m = ((Double) discFit.get("slope")).doubleValue();
+        double b = ((Double) discFit.get("intercept")).doubleValue();
+
+        //q = m*DAC + b
+        return (charge - b)/m;
+    }
+
+    /**
+     * Obtain discriminator charge corresponding
+     * to given DAC setting
+     * @param dac Discriminator DAC setting
+     * @return charge corresponding to discriminator DAC setting
+     */
+    public double getDiscriminatorCharge(double dac) throws DOMCalibrationException {
+
+        if (discFit == null) {
+            throw new DOMCalibrationException("No discriminator fit");
+        }
+
+        double m = ((Double) discFit.get("slope")).doubleValue();
+        double b = ((Double) discFit.get("intercept")).doubleValue();
+
+        //q = m*DAC + b
+        return m*dac + b;
+    }
+
+    /**
      * Get the calibration timestamp - that is, when the calibration happened.
      * @return Java Calendar object.
      */
@@ -1123,6 +1180,42 @@ public class Calibrator
     }
 
     /**
+     * Obtain the keys used to access data from the
+     * DOM analog front-end discriminator.
+     *
+     * @return pulser keys.
+     */
+    public Iterator getDiscriminatorFitKeys()
+    {
+        ArrayList keys = new ArrayList(discFit.keySet());
+        Collections.sort(keys);
+        return keys.iterator();
+    }
+
+    /**
+     * Obtain the fit model for the DOM analog front-end
+     * discriminator.
+     * @return pulser fit model value
+     */
+    public String getDiscriminatorFitModel()
+    {
+        return (String) discFit.get("model");
+    }
+
+    /**
+     * Obtain the fit information for the DOM analog front-end
+     * discriminator. It describes the relation between the discriminator DAC
+     * setting and charge threshold
+     * @param param Named fit paramter.  See the description
+     * of the ATWD fit parameters.
+     * @return pulser fit parameter value
+     */
+    public double getDiscriminatorFitParam(String param)
+    {
+        return ((Double) discFit.get(param.toLowerCase())).doubleValue();
+    }
+
+    /**
      * Return DOM mainboard temperature.
      * @return double-valued temperature (degrees C).
      */
@@ -1338,12 +1431,52 @@ public class Calibrator
     }
 
     /**
+     * Set the fit model for the DOM discriminator.
+     *
+     * @param model pulser fit model value
+     */
+    public void setDiscriminatorFitModel(String model)
+    {
+        if (discFit == null) {
+            discFit = new HashMap();
+        }
+
+        discFit.put("model", model);
+    }
+
+    /**
+     * Set the fit information for the DOM analog front-end pulser.
+     *
+     * @param param Named fit paramter.  See the description
+     * of the ATWD fit parameters.
+     * @param value pulser fit parameter value
+     *
+     * @throws DOMCalibrationException if an argument is invalid
+     */
+    public void setDiscriminatorFitParam(String param, double value)
+        throws DOMCalibrationException
+    {
+        if (param == null) {
+            throw new DOMCalibrationException("Parameter name cannot be null");
+        }
+
+        final String paramLow = param.toLowerCase();
+
+        if (paramLow.equals("model")) {
+            throw new DOMCalibrationException("'model' is not a valid" +
+                                              " parameter name");
+        }
+
+        if (discFit == null) {
+            discFit = new HashMap();
+        }
+
+        discFit.put(paramLow, new Double(value));
+    }
+
+    /**
      * Constructor from initialized InputStream object.
      * The XML stream is read into a DOM tree over this object.
-     * @param is an initialized, open InputStream object pointing
-     * to the XML file.
-     * @throws IOException
-     * @throws DOMCalibrationException
      */
     class Parser
     {
@@ -1415,9 +1548,9 @@ public class Calibrator
              */
             calendar = Calendar.getInstance();
             Date d = null;
-	
+
             String date_string = e.getFirstChild().getNodeValue();
-	
+
             try {
                 DateFormat df = new SimpleDateFormat("MM-dd-yyyy");
                 d = df.parse(date_string);
@@ -1436,6 +1569,7 @@ public class Calibrator
             parseAdcDacTags(dc.getElementsByTagName("dac"), dacs);
             parseAdcDacTags(dc.getElementsByTagName("adc"), adcs);
             parsePulserFit(dc.getElementsByTagName("pulser"));
+            parseDiscriminatorFit(dc.getElementsByTagName("discriminator"));
             parseATWDFits(dc.getElementsByTagName("atwd"));
             parseAmplifierGain(dc.getElementsByTagName("amplifier"));
             parseFreqFits(dc.getElementsByTagName("atwdfreq"));
@@ -1457,11 +1591,11 @@ public class Calibrator
                 Element atwd = (Element) atwdNodes.item(i);
                 int ch = Integer.parseInt(atwd.getAttribute("channel"));
                 int bin = Integer.parseInt(atwd.getAttribute("bin"));
-                /* 
+                /*
                  * Check whether the element has an "id" attribute - if
                  * so then that means that the channels are not assigned a
                  * linear range from 0-7 but run 0-4 and ATWD 0/1 are
-                 * differentiated by the "id" attribute. 
+                 * differentiated by the "id" attribute.
                  */
                 String ids = atwd.getAttribute("id");
                 if (ids.length() > 0) {
@@ -1613,8 +1747,7 @@ public class Calibrator
                         chanStr = base.getAttribute("ch");
                     }
                     int ch = Integer.parseInt(chanStr);
-                    float value = Float.parseFloat(base.getAttribute("value"));
-                    values[atwd][ch] = value;
+                    values[atwd][ch] = Float.parseFloat(base.getAttribute("value"));
                 }
                 Integer v = new Integer(voltage);
                 baselines.put(v, new Baseline(voltage, values));
@@ -1657,6 +1790,27 @@ public class Calibrator
             default:
                 final String msg =
                     "XML format error - more than one <pulser> record";
+                throw new DOMCalibrationException(msg);
+            }
+        }
+
+        /**
+         * Parse the <code>&lt;discriminator&gt;</code> tag
+         *
+         * @param nodes discriminator node list
+         * @throws DOMCalibrationException if more than one &lt;discriminator&gt;
+         *                                 element is found
+         */
+        private void parseDiscriminatorFit(NodeList nodes) throws DOMCalibrationException {
+            switch (nodes.getLength()) {
+            case 0:
+                break;
+            case 1:
+                discFit = parseFit((Element) nodes.item(0));
+                break;
+            default:
+                final String msg =
+                    "XML format error - more than one <discriminator> record";
                 throw new DOMCalibrationException(msg);
             }
         }
