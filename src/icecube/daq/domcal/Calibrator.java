@@ -922,7 +922,10 @@ public class Calibrator
         double b = ((Double) discFit.get("intercept")).doubleValue();
 
         //q = m*DAC + b
-        return (charge - b)/m;
+        double set = (charge - b)/m;
+        if (set > 1023) set = 1023;
+        if (set < 0) set = 0;
+        return set;
     }
 
     /**
@@ -932,6 +935,9 @@ public class Calibrator
      * @return charge corresponding to discriminator DAC setting
      */
     public double getDiscriminatorCharge(double dac) throws DOMCalibrationException {
+
+        if (dac < 0 || dac > 1023)
+                       throw new DOMCalibrationException("Value " + dac + " out of range: 0 - 1023"); 
 
         if (discFit == null) {
             throw new DOMCalibrationException("No discriminator fit");
