@@ -105,6 +105,9 @@ public class Calibrator
     /** FADC gain error data. */
     private double fadcGainErr;
 
+    /** mode for baseline subtraction */
+    private int baselineMode = BASELINE_CAL;
+
     /** calibration database interface. */
     private CalibratorDB calDB;
 
@@ -281,6 +284,42 @@ public class Calibrator
     }
 
     /**
+     * Baseline mode: don't use any remnant baseline subtraction
+     */
+    private static final int BASELINE_NONE    = 0;
+    /**
+     * Baseline mode: use baselines in calibration result for baseline subtraction
+     */
+    private static final int BASELINE_CAL     = 1;
+    /**
+     * Baseline mode: dynamically determine baseline per waveform
+     */
+    private static final int BASELINE_DYNAMIC = 2;
+    /**
+     * Set mode of baseline subtraction.
+     *
+     * @param mode string specifying baseline subtraction mode:
+     *             "none": no remnant baseline subtraction
+     *             "calibrated" : use calibrated baselines in XML file
+     *             "dynamic": use dynamic baseline determination
+     */
+    public void setBaselineMode(String mode) throws DOMCalibrationException {
+        if (mode.equals("none")) {
+            baselineMode = BASELINE_NONE;
+        }
+        else if (mode.equals("calibrated")) {
+            baselineMode = BASELINE_CAL;
+        }
+        else if (mode.equals("dynamic")) {
+            baselineMode = BASELINE_DYNAMIC;
+        }
+        else {
+            throw new DOMCalibrationException("Illegal baseline subtraction mode requested");
+        }
+        
+    }
+    
+    /**
      * Reconstruct PMT signal given an ATWD array and a bias DAC setting.
      * Note this function assumes the ATWD input array is in raw order
      * and returns an array with same ordering (time decreasing with increasing
@@ -291,11 +330,10 @@ public class Calibrator
      *               For example, if offset is 40 then atwdin[0] really holds
      *               the 40th bin of the ATWD.
      * @param biasDAC DAC bias
-     * @param hv HV setting -- baseline id HV dependent!
+     * @param hv HV setting -- baseline is HV dependent!
      * @return ATWD array in V
      * @throws DOMCalibrationException if there is a problem with the data
      */
-
     public double[] atwdCalibrateToPmtSig(short[] atwdin, int ch, int offset,
                                           int biasDAC, int hv)
         throws DOMCalibrationException
@@ -311,15 +349,17 @@ public class Calibrator
          *  This probably needs to be faster.....
          */
         Baseline bl = null;
-        if (baselines != null) {
-            Set s = baselines.keySet();
-            int abs = 10000;
-            for (Iterator it = s.iterator(); it.hasNext();) {
-                Baseline base = (Baseline)(baselines.get(it.next()));
-                int diff = (int)Math.abs(base.getVoltage() - hv);
-                if (diff < abs) {
-                    bl = base;
-                    abs = diff;
+        if (baselineMode == BASELINE_CAL) {
+            if (baselines != null) {
+                Set s = baselines.keySet();
+                int abs = 10000;
+                for (Iterator it = s.iterator(); it.hasNext();) {
+                    Baseline base = (Baseline)(baselines.get(it.next()));
+                    int diff = (int)Math.abs(base.getVoltage() - hv);
+                    if (diff < abs) {
+                        bl = base;
+                        abs = diff;
+                    }
                 }
             }
         }
@@ -350,6 +390,14 @@ public class Calibrator
                 out[i] /= amp;
             }
         }
+
+        if (baselineMode == BASELINE_DYNAMIC) {
+            double rbl = getRemnantBaseline(out, 5);
+            for (int i = 0; i < out.length; i++) {
+                out[i] -= rbl;
+            }
+        }
+
         return out;
     }
 
@@ -474,6 +522,51 @@ public class Calibrator
         return out;
     }
 
+    /**
+     *
+     * Get any remnant baseline in a waveform by iteratively removing peaks.
+     *
+     * @param wf input waveform array in volts
+     * @param maxIter maximum iterations
+     * @return baseline voltage as double
+     */
+    public double getRemnantBaseline(double [] wf, int maxIter) throws DOMCalibrationException {
+
+        if (wf.length == 0) {
+            return 0.0;
+        }
+
+        Statistics s = new Statistics(wf);
+        if (maxIter == 0) {
+            return s.getMean();        
+        }
+        else {
+            double [] temp_wf = new double[wf.length];
+            int peakCnt = 0;
+            /* Remove portions of waveform that are 2 sigma away from mean */
+            for (int i = 0; i < wf.length; i++) {
+                if (Math.abs(wf[i] - s.getMean()) > (2 * s.getRMS())) {
+                    peakCnt++;
+                }
+                else {
+                    temp_wf[i-peakCnt] = wf[i];
+                }
+            }
+
+            /* Check to make sure we haven't removed too much waveform */
+            if (peakCnt > 0.5*wf.length) {
+                throw new DOMCalibrationException("Unable to dynamically determine baseline (over 50% pulse)");
+            }
+            
+            double [] new_wf = new double[wf.length - peakCnt];
+            for (int i = 0; i < wf.length - peakCnt; i++) {
+                new_wf[i] = temp_wf[i];
+            }
+            
+            return getRemnantBaseline(new_wf, maxIter-1);
+        }
+    }
+    
     /**
      * Close all open threads, file handles, database connections, etc.
      */
