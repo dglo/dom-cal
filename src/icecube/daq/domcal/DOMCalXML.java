@@ -28,9 +28,9 @@ public class DOMCalXML {
         for ( int i = 0; i < 24; i++ ) {
             out.print("  <adc channel=\"" + i + "\">" + rec.getAdcValue( i ) + "</adc>\n");
         }
-        out.print("  <pulser>\n");
-        format( rec.getPulserCalibration(), out );
-        out.print("  </pulser>\n");
+        out.print("  <discriminator>\n");
+        format( rec.getDiscriminatorCalibration(), out );
+        out.print("  </discriminator>\n");
         for ( int i = 0; i < 3; i++ ) {
             for ( int j = 0; j < 128; j++ ) {
                 out.print("  <atwd id=\"0\" channel=\"" + i + "\" bin=\"" + j + "\">\n");

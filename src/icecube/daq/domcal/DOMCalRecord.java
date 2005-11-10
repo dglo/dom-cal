@@ -24,7 +24,7 @@ public class DOMCalRecord {
     public static final int MAX_ADC = 24;
     public static final int MAX_DAC = 16;
 
-    private LinearFit pulserCalibration;
+    private LinearFit discriminatorCalibration;
     private LinearFit[][][] atwdCalibration;
     private QuadraticFit[] atwdFrequencyCalibration;
 
@@ -128,8 +128,8 @@ public class DOMCalRecord {
         return amplifierCalibrationError[amp];
     }
 
-    public LinearFit getPulserCalibration() {
-        return pulserCalibration;
+    public LinearFit getDiscriminatorCalibration() {
+        return discriminatorCalibration;
     }
 
     public QuadraticFit getATWDFrequencyCalibration( int atwd ) {
@@ -256,7 +256,7 @@ public class DOMCalRecord {
             rec.fadcGain[i] = bb.getFloat();
         }
 
-        rec.pulserCalibration = LinearFit.parseLinearFit( bb );
+        rec.discriminatorCalibration = LinearFit.parseLinearFit( bb );
 
         rec.atwdCalibration = new LinearFit[MAX_ATWD][MAX_ATWD_CHANNEL][MAX_ATWD_BIN];
         for ( int i = 0; i < MAX_ATWD_CHANNEL; i++ ) {
