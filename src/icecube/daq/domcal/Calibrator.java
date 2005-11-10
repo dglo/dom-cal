@@ -318,9 +318,9 @@ public class Calibrator
         else {
             throw new DOMCalibrationException("Illegal baseline subtraction mode requested");
         }
-        
+
     }
-    
+
     /**
      * Reconstruct PMT signal given an ATWD array and a bias DAC setting.
      * Note this function assumes the ATWD input array is in raw order
@@ -437,10 +437,16 @@ public class Calibrator
      */
     public double calcAtwdFreq(int dac, int chip) {
         HashMap h = freqFits[chip];
-        double c0 = ((Double)h.get("c0")).doubleValue();
-        double c1 = ((Double)h.get("c1")).doubleValue();
-        double c2 = ((Double)h.get("c2")).doubleValue();
-        return c2*dac*dac + c1*dac + c0;
+        if (((String)h.get("model")).equals("quadratic")) {
+            double c0 = ((Double)h.get("c0")).doubleValue();
+            double c1 = ((Double)h.get("c1")).doubleValue();
+            double c2 = ((Double)h.get("c2")).doubleValue();
+            return c2*dac*dac + c1*dac + c0;
+        } else {
+            double m = ((Double)h.get("slope")).doubleValue();
+            double b = ((Double)h.get("intercept")).doubleValue();
+            return m*dac + b;
+        }
     }
 
     /**
@@ -507,6 +513,8 @@ public class Calibrator
      */
     public double[] fadcCalibrate(short[] fadcin, int fadcDAC) throws DOMCalibrationException {
 
+        if (fadcBaselineFit == null) throw new DOMCalibrationException("No FADC baseline fit");
+
         Double dbl = (Double) fadcBaselineFit.get("slope");
         double m = dbl.doubleValue();
 
@@ -540,7 +548,7 @@ public class Calibrator
 
         Statistics s = new Statistics(wf);
         if (maxIter == 0) {
-            return s.getMean();        
+            return s.getMean();
         }
         else {
             double [] temp_wf = new double[wf.length];
@@ -559,16 +567,16 @@ public class Calibrator
             if (peakCnt > 0.5*wf.length) {
                 throw new DOMCalibrationException("Unable to dynamically determine baseline (over 50% pulse)");
             }
-            
+
             double [] new_wf = new double[wf.length - peakCnt];
             for (int i = 0; i < wf.length - peakCnt; i++) {
                 new_wf[i] = temp_wf[i];
             }
-            
+
             return getRemnantBaseline(new_wf, maxIter-1);
         }
     }
-    
+
     /**
      * Close all open threads, file handles, database connections, etc.
      */
@@ -1578,7 +1586,7 @@ public class Calibrator
             parseBaselines(dc.getElementsByTagName("baseline"));
             parseTransitTimes(dc.getElementsByTagName("pmtTransitTime"));
             parseFadcBaselineFit(dc.getElementsByTagName("fadc_baseline"));
-            parseFadcGain(dc.getElementsByTagName("fadc"));
+            parseFadcGain(dc.getElementsByTagName("fadc_gain"));
         }
 
         /**
