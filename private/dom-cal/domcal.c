@@ -32,6 +32,7 @@
 #include "baseline_cal.h"
 #include "hv_amp_cal.h"
 #include "transit_cal.h"
+#include "discriminator_cal.h"
 
 /*---------------------------------------------------------------------------*/
 /* 
@@ -335,8 +336,8 @@ int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
     offset += write_fit( &cal->fadc_baseline, bin_data, offset );
     offset += write_value_error( &cal->fadc_gain, bin_data, offset );
 
-    /* Write FE puser calibration data */
-    offset += write_fit( &cal->pulser_calib, bin_data, offset );
+    /* Write discriminator calibration data */
+    offset += write_fit( &cal->disc_calib, bin_data, offset );
 
     /* Write ATWD gain calibration */
     int j;
@@ -430,10 +431,10 @@ int save_results(calib_data dom_calib) {
 
     printf("Temp: %.1f\r\n", dom_calib.temp);
 
-    printf("Pulser: m=%.6g b=%.6g r^2=%.6g\r\n",
-                   dom_calib.pulser_calib.slope,
-                   dom_calib.pulser_calib.y_intercept,
-                   dom_calib.pulser_calib.r_squared);
+    printf("Disc: m=%.6g b=%.6g r^2=%.6g\r\n",
+                   dom_calib.disc_calib.slope,
+                   dom_calib.disc_calib.y_intercept,
+                   dom_calib.disc_calib.r_squared);
 
     for(ch = 0; ch < 3; ch++)
         for(bin = 0; bin < 128; bin++)
@@ -590,7 +591,7 @@ int main(void) {
      *  - HV gain calibration
      */
     /* FIX ME: return real error codes */
-    pulser_cal(&dom_calib);
+    disc_cal(&dom_calib);
     atwd_cal(&dom_calib);
     baseline_cal(&dom_calib);
     atwd_freq_cal(&dom_calib);

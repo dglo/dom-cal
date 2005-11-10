@@ -104,6 +104,9 @@ typedef struct {
     /* FE pulser calibration */
     linear_fit pulser_calib;
 
+    /* discriminator calibration */
+    linear_fit disc_calib;
+
     /* ATWD gain calibration */
     linear_fit atwd0_gain_calib[3][128];
     linear_fit atwd1_gain_calib[3][128];
