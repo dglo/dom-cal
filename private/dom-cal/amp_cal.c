@@ -167,22 +167,7 @@ int amp_cal(calib_data *dom_calib) {
     
     /*---------------------------------------------------------------------------*/
 
-    float mean, var, pulser_v;
-    for (ch = 0; ch < 3; ch++) {
-        /* Use pulser calibration to convert pulser amplitude to V */
-        pulser_v = (dom_calib->pulser_calib.slope * pulser_settings[ch]) + 
-            dom_calib->pulser_calib.y_intercept;
-
-        /* Find gain and error */
-        meanVarFloat(peaks[ch], AMP_CAL_TRIG_CNT, &mean, &var);
-        
-#ifdef DEBUG
-        printf("ch %d gain (old): %.2f (err: %g)\r\n", ch, mean/pulser_v, 
-               sqrt(var)/(pulser_v*sqrt(AMP_CAL_TRIG_CNT)));
-#endif
-    }
-
-    /* NEW TEST PROCEDURE */
+    float mean, var;
     float freq = getCalibFreq(atwd, *dom_calib, AMP_CAL_SAMPLING_DAC);
 
     float gains[3][AMP_CAL_TRIG_CNT];

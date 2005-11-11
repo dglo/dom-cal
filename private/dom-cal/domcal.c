@@ -335,6 +335,7 @@ int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
     /* Write FADC calibration data */
     offset += write_fit( &cal->fadc_baseline, bin_data, offset );
     offset += write_value_error( &cal->fadc_gain, bin_data, offset );
+    offset += write_value_error( &cal->fadc_delta_t, bin_data, offset );
 
     /* Write discriminator calibration data */
     offset += write_fit( &cal->disc_calib, bin_data, offset );
@@ -474,6 +475,9 @@ int save_results(calib_data dom_calib) {
 
     printf("FADC calibration: gain (V/tick)=%.6g error=%.6g\r\n",
            dom_calib.fadc_gain.value, dom_calib.fadc_gain.error);
+
+    printf("FADC calibration: delta_t (ns)=%.6g error=%.6g\r\n",
+           dom_calib.fadc_delta_t.value, dom_calib.fadc_delta_t.error);
 
     if (dom_calib.hv_gain_valid) {
         printf("HV Gain: m=%.6g b=%.6g r^2=%.6g\r\n",

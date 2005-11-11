@@ -11,11 +11,11 @@
 /* Specific DAC values for this test */
 #ifdef DOMCAL_REV5
 #define FADC_CAL_PEDESTAL_DAC   2130
-#define FADC_CAL_DISC_DAC        700
+#define FADC_CAL_DISC_DAC        800
 #define FADC_CAL_SAMPLING_DAC   2000 /* Higher than standard */
 #else
 #define FADC_CAL_PEDESTAL_DAC   1925
-#define FADC_CAL_DISC_DAC        650
+#define FADC_CAL_DISC_DAC        800
 #define FADC_CAL_SAMPLING_DAC   2000
 #endif
 
