@@ -51,6 +51,9 @@ public class DOMCalXML {
         out.print("  <fadc_gain>\n");
         out.print("    <gain error=\"" + rec.getFadcGainError() + "\">" + rec.getFadcGain() + "</gain>\n");
         out.print("  </fadc_gain>\n");
+        out.print("  <fadc_delta_t>\n");
+        out.print("    <delta_t error=\"" + rec.getFadcDeltaTError() + "\">" + rec.getFadcDeltaT() + "</delta_t>\n");
+        out.print("  </fadc_delta_t>\n");
         for ( int i = 0; i < 3; i++ ) {
             out.print("  <amplifier channel=\"" + i + "\">\n");
             out.print("    <gain error=\"" + rec.getAmplifierGainError( i ) + "\">" +

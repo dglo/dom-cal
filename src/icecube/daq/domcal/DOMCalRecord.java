@@ -44,6 +44,7 @@ public class DOMCalRecord {
 
     private LinearFit fadcFit;
     private float[] fadcGain;
+    private float[] fadcDeltaT;
 
     private short version;
 
@@ -95,6 +96,14 @@ public class DOMCalRecord {
     public float getFadcGainError() {
         return fadcGain[1];
     }
+
+    public float getFadcDeltaT() {
+        return fadcDeltaT[0];
+    }
+
+    public float getFadcDeltaTError() {
+        return fadcDeltaT[1];
+    }    
 
     public LinearFit getFadcFit() {
         return fadcFit;
@@ -254,6 +263,10 @@ public class DOMCalRecord {
         rec.fadcGain = new float[2];
         for ( int i = 0; i < 2; i++ ) {
             rec.fadcGain[i] = bb.getFloat();
+        }
+        rec.fadcDeltaT = new float[2];
+        for ( int i = 0; i < 2; i++ ) {
+            rec.fadcDeltaT[i] = bb.getFloat();
         }
 
         rec.discriminatorCalibration = LinearFit.parseLinearFit( bb );

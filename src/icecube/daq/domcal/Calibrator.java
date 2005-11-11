@@ -106,6 +106,10 @@ public class Calibrator
     private double fadcGain;
     /** FADC gain error data. */
     private double fadcGainErr;
+    /** FADC delta T data. */
+    private double fadcDeltaT;
+    /** FADC delta T error data. */
+    private double fadcDeltaTErr;
 
     /** mode for baseline subtraction */
     private int baselineMode = BASELINE_CAL;
@@ -901,8 +905,24 @@ public class Calibrator
      * Obtain error estimate on fadc gain.
      * @return the error on the fadc gain.
      */
-    public double getFadcGainError(int ch) {
+    public double getFadcGainError() {
         return fadcGainErr;
+    }
+
+    /**
+     * Obtain the fadc offset in ns from the ATWD time.
+     * @return double-valued delta t
+     */
+    public double getFadcDeltaT() {
+        return fadcDeltaT;
+    }
+
+    /**
+     * Obtain error estimate on fadc time offset.
+     * @return the error on the fadc time offset.
+     */
+    public double getFadcDeltaTError() {
+        return fadcDeltaTErr;
     }
 
     /**
@@ -1593,6 +1613,7 @@ public class Calibrator
             parseTransitTimes(dc.getElementsByTagName("pmtTransitTime"));
             parseFadcBaselineFit(dc.getElementsByTagName("fadc_baseline"));
             parseFadcGain(dc.getElementsByTagName("fadc_gain"));
+            parseFadcDeltaT(dc.getElementsByTagName("fadc_delta_t"));
         }
 
         /**
@@ -1851,10 +1872,10 @@ public class Calibrator
         }
 
         /**
-         * Get FADC gain and error from <code>&lt;fadc&gt;</code> tag.
+         * Get FADC gain and error from <code>&lt;fadc_gain&gt;</code> tag.
          *
          * @param nodes fadc node list
-         * @throws DOMCalibrationException if more than one &lt;fadc&gt;
+         * @throws DOMCalibrationException if more than one &lt;fadc_gain&gt;
          *                                 element is found
          */
         private void parseFadcGain(NodeList nodes) throws DOMCalibrationException {
@@ -1870,7 +1891,32 @@ public class Calibrator
                 break;
             default:
                 final String errMsg =
-                    "XML format error - more than one <fadc> record";
+                    "XML format error - more than one <fadc_gain> record";
+                throw new DOMCalibrationException(errMsg);
+            }
+        }
+
+        /**
+         * Get FADC time offset and error from <code>&lt;fadc_delta_t&gt;</code> tag.
+         *
+         * @param nodes fadc node list
+         * @throws DOMCalibrationException if more than one &lt;fadc_delta_t&gt;
+         *                                 element is found
+         */
+        private void parseFadcDeltaT(NodeList nodes) throws DOMCalibrationException {
+            switch (nodes.getLength()) {
+            case 0:
+                break;
+            case 1:
+                Element e = (Element) nodes.item(0);
+                Element deltat = (Element) e.getElementsByTagName("delta_t").item(0);
+                String val = deltat.getFirstChild().getNodeValue();
+                fadcDeltaT = Double.parseDouble(val);
+                fadcDeltaTErr = Double.parseDouble(deltat.getAttribute("error"));
+                break;
+            default:
+                final String errMsg =
+                    "XML format error - more than one <fadc_delta_t> record";
                 throw new DOMCalibrationException(errMsg);
             }
         }
