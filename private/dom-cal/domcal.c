@@ -151,7 +151,7 @@ void init_dom(void) {
     hal_FPGA_TEST_disable_pulser();
 
     /* Set disc value for gain cal */
-    halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, GAIN_CAL_DISC_DAC);
+    halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, GAIN_CAL_DISC_DAC_MED);
 
     halUSleep(DAC_SET_WAIT);
 }

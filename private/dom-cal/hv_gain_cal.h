@@ -4,9 +4,13 @@
 
 /* Specific DAC values for this test */
 #ifdef DOMCAL_REV5
-#define GAIN_CAL_DISC_DAC       556
+#define GAIN_CAL_DISC_DAC_LOW   550
+#define GAIN_CAL_DISC_DAC_MED   556
+#define GAIN_CAL_DISC_DAC_HIGH  600
 #else
-#define GAIN_CAL_DISC_DAC       505
+#define GAIN_CAL_DISC_DAC_LOW   499
+#define GAIN_CAL_DISC_DAC_MED   505
+#define GAIN_CAL_DISC_DAC_HIGH  449
 #endif
 
 /* Which ATWD to use */

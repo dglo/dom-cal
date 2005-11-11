@@ -67,9 +67,6 @@ int hv_gain_cal(calib_data *dom_calib) {
     /* Save DACs that we modify */
     short origDiscDAC = halReadDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH);
 
-    /* Set discriminator */
-    halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, GAIN_CAL_DISC_DAC);
-
     /* Get bias DAC setting */
     bias_dac = halReadDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL);
     float bias_vv = biasDAC2V(bias_dac);
@@ -141,6 +138,13 @@ int hv_gain_cal(calib_data *dom_calib) {
         hv_hist_data[hv_idx].convergent = 0;
         hv_hist_data[hv_idx].is_filled = 0;
         hv_hist_data[hv_idx].pv = 0.0;
+
+        /* Set discriminator */
+        int disc_dac;
+        if (hv_idx < 4) disc_dac = GAIN_CAL_DISC_DAC_LOW;
+        else if (hv_idx < 8) disc_dac = GAIN_CAL_DISC_DAC_MED;
+        else disc_dac = GAIN_CAL_DISC_DAC_HIGH;
+        halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, disc_dac);
 
         halWriteActiveBaseDAC(hv * 2);
         halUSleep(5000000);
