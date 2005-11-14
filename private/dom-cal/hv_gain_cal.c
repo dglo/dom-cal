@@ -198,9 +198,6 @@ int hv_gain_cal(calib_data *dom_calib) {
                         trigger_mask, bias_v,
                         &int_calib, baseline, &ch, DISC_TRIGGER, 0, !idx++);
 
-            /* FIX ME DEBUG */
-            if (trig % 1000 == 0) printf("Reached trigger %d!\n", trig);
-
             /* Find the peak */
             peak_idx = 0;
             volt_t min = 0.0;

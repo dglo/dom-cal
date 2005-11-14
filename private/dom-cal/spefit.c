@@ -109,9 +109,26 @@ int spe_find_valley(float *a, float *valley_x, float *valley_y) {
     /* Find valley (first minimum) with Newton-Raphson search for zero
        of first derivative */
 
-    /* First guess -- set exponential and gaussian equal */
+    /* First guess -- set exponential and gaussian equal
     float root = sqrt(a[1]*a[1] + 4*a[3]*a[4]*a[1] - 4*a[4]*log(a[0]/a[2]));
-    x = (a[1] + 2*a[3]*a[4] - root) / (2 * a[4]);
+    x = (a[1] + 2*a[3]*a[4] - root) / (2 * a[4]); */
+
+    /* Second guess -- find hist bin left of SPE peak minimizing fit function */
+    
+    float min = 1e12;
+    float inc = a[3] / 50.0;
+    float value;
+    x = a[3]/2.0;
+    for (value = a[3]; value >= 0; value -= inc) {
+        
+        float ff = a[0]*exp(-a[1]*value) + 
+                      a[2]*exp(-(value-a[3])*(value-a[3])*a[4]);
+        if (ff < min) {
+            min = ff;
+            x = value;
+        }
+    }
+    printf("Found minimum at %f\n", x);
 
 
     int iter = 0;
