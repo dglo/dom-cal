@@ -247,29 +247,40 @@ int hv_gain_cal(calib_data *dom_calib) {
         /* Create histogram of charge values */
         /* Heuristic maximum for histogram */
 	   
-        int hist_max = ceil(0.9*pow(10.0, 6.37*log10(hv*2)-21.0));
-        int hbin;
+        int hist_max = ceil(0.75*pow(10.0, 6.37*log10(hv*2)-21.0));
+        int hbin, hist_under, hist_over;
+        hist_under = 0;
+        hist_over = 0;
 
-        /* Initialize histogram */
-        for(hbin=0; hbin < GAIN_CAL_BINS; hbin++) {
-            hist_x[hv_idx][hbin] = (float)hbin * hist_max / GAIN_CAL_BINS;
-            hist_y[hv_idx][hbin] = 0.0;
-        }
+        /* Re-bin histogram while too many charge points overflow */
+        /* 200pC is a sane maximum for any IceCube PMT */
+        for (; hist_max < 200.0; hist_max *= 1.5) {
 
-        /* Fill histogram -- histogram minimum is 0.0 */
-        int hist_under, hist_over;
-        hist_under = hist_over = 0;
-        for(trig=0; trig < GAIN_CAL_TRIG_CNT; trig++) {
+            /* Initialize histogram */
+            for(hbin=0; hbin < GAIN_CAL_BINS; hbin++) {
+                hist_x[hv_idx][hbin] = (float)hbin * hist_max / GAIN_CAL_BINS;
+                hist_y[hv_idx][hbin] = 0.0;
+            }
+            hist_under = 0;
+            hist_over = 0;
 
-            hbin = charges[trig] * GAIN_CAL_BINS / hist_max;
+            /* Fill histogram -- histogram minimum is 0.0 */
+            for(trig=0; trig < GAIN_CAL_TRIG_CNT; trig++) {
+
+                hbin = charges[trig] * GAIN_CAL_BINS / hist_max;
             
-            /* Do NOT use an overflow bin; will screw up fit */
-            if ((hbin >= 0) && (hbin < GAIN_CAL_BINS))
-                hist_y[hv_idx][hbin] += 1;
-            else if (hbin < 0)
-                hist_under++;
-            else
-                hist_over++;
+                /* Do NOT use an overflow bin; will screw up fit */
+                if ((hbin >= 0) && (hbin < GAIN_CAL_BINS))
+                    hist_y[hv_idx][hbin] += 1;
+                else if (hbin < 0)
+                    hist_under++;
+                else
+                    hist_over++;
+            }
+
+            /* We don't need to re-bin if less than 15% is overflow */
+            float overflow_ratio = (float)hist_over / GAIN_CAL_TRIG_CNT;
+            if (overflow_ratio < 0.15) break;
         }
 
 #ifdef DEBUG
