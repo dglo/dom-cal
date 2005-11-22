@@ -21,6 +21,7 @@
 #include "hv_gain_cal.h"
 #include "calUtils.h"
 #include "spefit.h"
+#include "fast_acq.h"
 
 /*---------------------------------------------------------------------------*/
 
@@ -29,16 +30,12 @@ int hv_gain_cal(calib_data *dom_calib) {
     const int cnt = 128;
     int trigger_mask;
     short bias_dac;
-    int ch, bin, trig, peak_idx;
-    float bin_v, peak_v, vsum;
+    int ch, bin, trig, peak_idx, i;
+    float vsum;
 
     /* Which ATWD to use */
     short atwd = GAIN_CAL_ATWD;
 
-    /* Channel readout buffers for each channel and bin */
-    /* This test only uses a single ATWD, ch0 and ch1 */
-    short channels[2][128];
-    
     /* Charge arrays for each waveform */
     float charges[GAIN_CAL_TRIG_CNT];
 
@@ -70,12 +67,10 @@ int hv_gain_cal(calib_data *dom_calib) {
     /* Save DACs that we modify */
     short origDiscDAC = halReadDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH);
 
-    /* Set discriminator */
-    halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, GAIN_CAL_DISC_DAC);
-
     /* Get bias DAC setting */
     bias_dac = halReadDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL);
-    float bias_v = biasDAC2V(bias_dac);
+    float bias_vv = biasDAC2V(bias_dac);
+    volt_t bias_v = to_volt_t(bias_vv);
 
     /* Make sure pulser is off */
     hal_FPGA_TEST_disable_pulser();
@@ -118,6 +113,10 @@ int hv_gain_cal(calib_data *dom_calib) {
     short hv_idx = 0;
     short hv;
 
+    /* Build integer calibration tables */
+    integer_calib int_calib;
+    build_integer_calib(dom_calib, &int_calib);
+
     /* Loop over HV settings */
     for (hv_idx = 0; hv_idx < GAIN_CAL_HV_CNT; hv_idx++) {
         
@@ -139,6 +138,13 @@ int hv_gain_cal(calib_data *dom_calib) {
         hv_hist_data[hv_idx].convergent = 0;
         hv_hist_data[hv_idx].is_filled = 0;
         hv_hist_data[hv_idx].pv = 0.0;
+
+        /* Set discriminator */
+        int disc_dac;
+        if (hv_idx < 4) disc_dac = GAIN_CAL_DISC_DAC_LOW;
+        else if (hv_idx < 8) disc_dac = GAIN_CAL_DISC_DAC_MED;
+        else disc_dac = GAIN_CAL_DISC_DAC_HIGH;
+        halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, disc_dac);
 
         halWriteActiveBaseDAC(hv * 2);
         halUSleep(5000000);
@@ -172,100 +178,58 @@ int hv_gain_cal(calib_data *dom_calib) {
             continue;
         }
 
-        /* retrieve baseline vals vor atwd/hv_idx, correct for amp gain */
-        
-        float baseline[3];
-        int i;
-        for (i = 0; i < 3; i++) baseline[i] = (atwd == 0) ? 
-                   dom_calib->baseline_data[hv_idx].atwd0_hv_baseline[i] / dom_calib->amplifier_calib[i].value :
-                   dom_calib->baseline_data[hv_idx].atwd1_hv_baseline[i] / dom_calib->amplifier_calib[i].value;
+        volt_t baseline[2][3];
+        for (i = 0; i < 3; i++) {
+            baseline[0][i] = to_volt_t(dom_calib->baseline_data[hv_idx].atwd0_hv_baseline[i]);
+            baseline[1][i] = to_volt_t(dom_calib->baseline_data[hv_idx].atwd1_hv_baseline[i]);
+        }
 
         /* Number of points with negative charge */
         int bad_trig = 0;
 
+        /* Index, used to determine prescan */
+        int idx = 0;
+
+        volt_t vdat[cnt];
+
         for (trig=0; trig<(int)GAIN_CAL_TRIG_CNT; trig++) {
                 
-            /* Warm up the ATWD */
-            prescanATWD(trigger_mask);
-            
-            /* Discriminator trigger the ATWD */
-            hal_FPGA_TEST_trigger_disc(trigger_mask);
-            
-            /* Wait for done */
-            while (!hal_FPGA_TEST_readout_done(trigger_mask));
-
-            /* Read out one waveform from channels 0 and 1 */
-            if (atwd == 0) {
-                hal_FPGA_TEST_readout(channels[0], channels[1], NULL, NULL, 
-                                      NULL, NULL, NULL, NULL,
-                                      cnt, NULL, 0, trigger_mask);
-            }
-            else {
-                hal_FPGA_TEST_readout(NULL, NULL, NULL, NULL,
-                                      channels[0], channels[1], NULL, NULL,
-                                      cnt, NULL, 0, trigger_mask);
-            }
-
-            /* Make sure we aren't in danger of saturating channel 0 */            
-            /* If so, switch to channel 1 */
-            ch = 0;
-            for (bin=0; bin<cnt; bin++) {
-                if (channels[0][bin] > 800) {
-                    ch = 1;
-                    break;
-                }
-            }
+            fast_acq_wf(vdat, atwd, cnt, GAIN_CAL_START_BIN,
+                        trigger_mask, bias_v,
+                        &int_calib, baseline, &ch, DISC_TRIGGER, 0, !idx++);
 
             /* Find the peak */
             peak_idx = 0;
-            if (atwd == 0) {
-                peak_v = (float)channels[ch][0] * dom_calib->atwd0_gain_calib[ch][0].slope
-                    + dom_calib->atwd0_gain_calib[ch][0].y_intercept;
-            }
-            else {
-                peak_v = (float)channels[ch][0] * dom_calib->atwd1_gain_calib[ch][0].slope
-                    + dom_calib->atwd1_gain_calib[ch][0].y_intercept;
-            }
+            volt_t min = 0.0;
+            for (bin = GAIN_CAL_START_BIN; bin < cnt; bin++) {
 
-            for (bin=96; bin<cnt; bin++) {
-
-                /* Use calibration to convert to V */
-                /* Don't need to subtract out bias or correct for amplification to find */
-                /* peak location -- but without correction, it is really a minimum */
-                if (atwd == 0) {
-                    bin_v = (float)channels[ch][bin] * dom_calib->atwd0_gain_calib[ch][bin].slope
-                        + dom_calib->atwd0_gain_calib[ch][bin].y_intercept;
-                }
-                else {
-                    bin_v = (float)channels[ch][bin] * dom_calib->atwd1_gain_calib[ch][bin].slope
-                        + dom_calib->atwd1_gain_calib[ch][bin].y_intercept;
-                }
-
-                if (bin_v < peak_v) {
+                if (bin == GAIN_CAL_START_BIN) {
+                    min = vdat[bin];
                     peak_idx = bin;
-                    peak_v = bin_v;
+                } else {
+                    if (vdat[bin] < min) {
+                        min = vdat[bin];
+                        peak_idx = bin;
+                    }
                 }
             }
 
-            /* Now integrate around the peak to get the charge */
-            /* FIX ME: increase sampling speed? */
-            /* FIX ME: use time window instead? */
+            /* Integrate wf */
             int int_min, int_max;
-            int_min = (peak_idx - INT_WIN_MIN >= 0) ? peak_idx - INT_WIN_MIN : 0;
+            int_min = (peak_idx - INT_WIN_MIN >= GAIN_CAL_START_BIN) ?
+                                         peak_idx - INT_WIN_MIN : GAIN_CAL_START_BIN;
             int_max = (peak_idx + INT_WIN_MAX <= cnt-1) ? peak_idx + INT_WIN_MAX : cnt-1;
             vsum = 0;
 
-            for (bin = int_min; bin <= int_max; bin++)
-                vsum += (getCalibV(channels[ch][bin], *dom_calib, atwd, ch, bin, bias_v) - baseline[ch]);
+            /* Do current integral -- work in front end 50 Ohm load */
+            /* to avoid integer overflow */
+            for (bin = int_min; bin <= int_max; bin++) vsum += vdat[bin]/50;
 
             /* True charge, in pC = 1/R_ohm * sum(V) * 1e12 / (freq_mhz * 1e6) */
-            /* FE sees a 50 Ohm load */
-            charges[trig] = 0.02 * 1e6 * vsum / freq;
+            /* Need to now divide by amplification factor */
+            charges[trig] =  (to_v(vsum) * 1e6 / freq) /
+                                          int_calib.amplifier_calib[ch].value;            
 
-            if (charges[trig] < 0) {
-                trig--;
-                if (++bad_trig > GAIN_CAL_TRIG_CNT) break;
-            }
 
         } /* End trigger loop */
 
@@ -283,29 +247,40 @@ int hv_gain_cal(calib_data *dom_calib) {
         /* Create histogram of charge values */
         /* Heuristic maximum for histogram */
 	   
-        int hist_max = ceil(0.9*pow(10.0, 6.37*log10(hv*2)-21.0));
-        int hbin;
+        int hist_max = ceil(0.75*pow(10.0, 6.37*log10(hv*2)-21.0));
+        int hbin, hist_under, hist_over;
+        hist_under = 0;
+        hist_over = 0;
 
-        /* Initialize histogram */
-        for(hbin=0; hbin < GAIN_CAL_BINS; hbin++) {
-            hist_x[hv_idx][hbin] = (float)hbin * hist_max / GAIN_CAL_BINS;
-            hist_y[hv_idx][hbin] = 0.0;
-        }
+        /* Re-bin histogram while too many charge points overflow */
+        /* 200pC is a sane maximum for any IceCube PMT */
+        for (; hist_max < 200.0; hist_max *= 1.5) {
 
-        /* Fill histogram -- histogram minimum is 0.0 */
-        int hist_under, hist_over;
-        hist_under = hist_over = 0;
-        for(trig=0; trig < GAIN_CAL_TRIG_CNT; trig++) {
+            /* Initialize histogram */
+            for(hbin=0; hbin < GAIN_CAL_BINS; hbin++) {
+                hist_x[hv_idx][hbin] = (float)hbin * hist_max / GAIN_CAL_BINS;
+                hist_y[hv_idx][hbin] = 0.0;
+            }
+            hist_under = 0;
+            hist_over = 0;
 
-            hbin = charges[trig] * GAIN_CAL_BINS / hist_max;
+            /* Fill histogram -- histogram minimum is 0.0 */
+            for(trig=0; trig < GAIN_CAL_TRIG_CNT; trig++) {
+
+                hbin = charges[trig] * GAIN_CAL_BINS / hist_max;
             
-            /* Do NOT use an overflow bin; will screw up fit */
-            if ((hbin >= 0) && (hbin < GAIN_CAL_BINS))
-                hist_y[hv_idx][hbin] += 1;
-            else if (hbin < 0)
-                hist_under++;
-            else
-                hist_over++;
+                /* Do NOT use an overflow bin; will screw up fit */
+                if ((hbin >= 0) && (hbin < GAIN_CAL_BINS))
+                    hist_y[hv_idx][hbin] += 1;
+                else if (hbin < 0)
+                    hist_under++;
+                else
+                    hist_over++;
+            }
+
+            /* We don't need to re-bin if less than 15% is overflow */
+            float overflow_ratio = (float)hist_over / GAIN_CAL_TRIG_CNT;
+            if (overflow_ratio < 0.15) break;
         }
 
 #ifdef DEBUG

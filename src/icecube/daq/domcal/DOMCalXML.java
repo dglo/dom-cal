@@ -19,7 +19,7 @@ public class DOMCalXML {
     public static void format( String version, DOMCalRecord rec, PrintWriter out ) {
         
         out.print( "<domcal version=\"" + version + "\">\n" );
-	out.print("  <date>" + rec.getMonth() + "-" + rec.getDay() + "-" + rec.getYear() + "</date>\n" );
+	    out.print("  <date>" + rec.getMonth() + "-" + rec.getDay() + "-" + rec.getYear() + "</date>\n" );
         out.print("  <domid>" + rec.getDomId() + "</domid>\n" );
         out.print("  <temperature format=\"Kelvin\">" + rec.getTemperature() + "</temperature>\n");
         for ( int i = 0; i < 16; i++ ) {
@@ -28,9 +28,9 @@ public class DOMCalXML {
         for ( int i = 0; i < 24; i++ ) {
             out.print("  <adc channel=\"" + i + "\">" + rec.getAdcValue( i ) + "</adc>\n");
         }
-        out.print("  <pulser>\n");
-        format( rec.getPulserCalibration(), out );
-        out.print("  </pulser>\n");
+        out.print("  <discriminator>\n");
+        format( rec.getDiscriminatorCalibration(), out );
+        out.print("  </discriminator>\n");
         for ( int i = 0; i < 3; i++ ) {
             for ( int j = 0; j < 128; j++ ) {
                 out.print("  <atwd id=\"0\" channel=\"" + i + "\" bin=\"" + j + "\">\n");
@@ -45,8 +45,15 @@ public class DOMCalXML {
                 out.print("  </atwd>\n");
             }
         }
-        out.print("  <fadc parname=\"pedestal\" value=\"" + rec.getFadcValue( 0 ) + "\"/>\n");
-        out.print("  <fadc parname=\"gain\" value=\"" + rec.getFadcValue( 1 ) + "\"/>\n");
+        out.print("  <fadc_baseline>\n");
+        format(rec.getFadcFit(), out);
+        out.print("  </fadc_baseline>\n");
+        out.print("  <fadc_gain>\n");
+        out.print("    <gain error=\"" + rec.getFadcGainError() + "\">" + rec.getFadcGain() + "</gain>\n");
+        out.print("  </fadc_gain>\n");
+        out.print("  <fadc_delta_t>\n");
+        out.print("    <delta_t error=\"" + rec.getFadcDeltaTError() + "\">" + rec.getFadcDeltaT() + "</delta_t>\n");
+        out.print("  </fadc_delta_t>\n");
         for ( int i = 0; i < 3; i++ ) {
             out.print("  <amplifier channel=\"" + i + "\">\n");
             out.print("    <gain error=\"" + rec.getAmplifierGainError( i ) + "\">" +
@@ -63,7 +70,7 @@ public class DOMCalXML {
 
 
         if (rec.isTransitCalValid()) {
-            out.print("  <pmtTransitTime>\n");
+            out.print("  <pmtTransitTime num_pts=\"" + rec.getNumTransitCalPts() + "\">\n");
             format(rec.getTransitTimeFit(), out);
             out.print("  </pmtTransitTime>\n");
         }
@@ -89,6 +96,15 @@ public class DOMCalXML {
         out.print("    <fit model=\"linear\">\n");
         out.print("      <param name=\"slope\">" + fit.getSlope() + "</param>\n");
         out.print("      <param name=\"intercept\">" + fit.getYIntercept() + "</param>\n");
+        out.print("      <regression-coeff>" + fit.getRSquared() + "</regression-coeff>\n");
+        out.print("    </fit>\n");
+    }
+
+    public static void format( QuadraticFit fit, PrintWriter out ) {
+        out.print("    <fit model=\"quadratic\">\n");
+        for (int i = 0; i < 3; i++) {
+            out.print("      <param name=\"c" + i + "\">" + fit.getParameter(i) + "</param>\n");
+        }
         out.print("      <regression-coeff>" + fit.getRSquared() + "</regression-coeff>\n");
         out.print("    </fit>\n");
     }

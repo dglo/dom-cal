@@ -27,10 +27,12 @@
 #include "amp_cal.h"
 #include "pulser_cal.h"
 #include "atwd_freq_cal.h"
+#include "fadc_cal.h"
 #include "hv_gain_cal.h"
 #include "baseline_cal.h"
 #include "hv_amp_cal.h"
 #include "transit_cal.h"
+#include "discriminator_cal.h"
 
 /*---------------------------------------------------------------------------*/
 /* 
@@ -143,12 +145,15 @@ void init_dom(void) {
     halWriteDAC(DOM_HAL_DAC_ATWD_ANALOG_REF, ATWD_ANALOG_REF_DAC);
     halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, ATWD_PEDESTAL_DAC);   
 
+    halWriteDAC(DOM_HAL_DAC_FAST_ADC_REF, FAST_ADC_REF);
+
     /* Make sure pulser is off */
     hal_FPGA_TEST_disable_pulser();
 
     /* Set disc value for gain cal */
-    halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, GAIN_CAL_DISC_DAC);
+    halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, GAIN_CAL_DISC_DAC_MED);
 
+    halUSleep(DAC_SET_WAIT);
 }
 
 
@@ -214,13 +219,21 @@ int get_bytes_from_short( short s, char *c, int offset ) {
 }
 
 /* Writes a linear fit to binary format given byte array and pos */
-
 int write_fit( linear_fit *fit, char *bin_data, int offset ) {
     int bytes_written = get_bytes_from_float( fit->slope, bin_data, offset );
     bytes_written += 
               get_bytes_from_float( fit->y_intercept, bin_data, offset + 4 );
     bytes_written += 
                 get_bytes_from_float( fit->r_squared, bin_data, offset + 8 );
+    return bytes_written;
+}
+
+/* Writes a quadratic fit to binary format given byte array and pos */
+int write_quadratic_fit( quadratic_fit *fit, char *bin_data, int offset ) {
+    int bytes_written = get_bytes_from_float( fit->c0, bin_data, offset );
+    bytes_written += get_bytes_from_float( fit->c1, bin_data, offset + 4 );
+    bytes_written += get_bytes_from_float( fit->c2, bin_data, offset + 8 );
+    bytes_written += get_bytes_from_float( fit->r_squared, bin_data, offset + 12 );
     return bytes_written;
 }
 
@@ -320,13 +333,12 @@ int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
     }
 
     /* Write FADC calibration data */
-    short *fadc = cal->fadc_values;
-    for ( i = 0; i < 2; i++ ) {
-        offset += get_bytes_from_short( fadc[i], bin_data, offset );
-    }
+    offset += write_fit( &cal->fadc_baseline, bin_data, offset );
+    offset += write_value_error( &cal->fadc_gain, bin_data, offset );
+    offset += write_value_error( &cal->fadc_delta_t, bin_data, offset );
 
-    /* Write FE puser calibration data */
-    offset += write_fit( &cal->pulser_calib, bin_data, offset );
+    /* Write discriminator calibration data */
+    offset += write_fit( &cal->disc_calib, bin_data, offset );
 
     /* Write ATWD gain calibration */
     int j;
@@ -347,8 +359,8 @@ int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
     }
 
     /* Write ATWD sampling speed calibration */
-    offset += write_fit( &cal->atwd0_freq_calib, bin_data, offset );
-    offset += write_fit( &cal->atwd1_freq_calib, bin_data, offset );
+    offset += write_quadratic_fit( &cal->atwd0_freq_calib, bin_data, offset );
+    offset += write_quadratic_fit( &cal->atwd1_freq_calib, bin_data, offset );
 
     /* Write baseline data */
     offset += write_baseline(cal->atwd0_baseline, bin_data, offset);
@@ -359,6 +371,7 @@ int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
 
     /* Write transit time data if necessary */
     if (cal->transit_calib_valid) {
+        offset += get_bytes_from_short( cal->transit_calib_points, bin_data, offset );
         offset += write_fit(&cal->transit_calib, bin_data, offset);
     }
 
@@ -419,10 +432,10 @@ int save_results(calib_data dom_calib) {
 
     printf("Temp: %.1f\r\n", dom_calib.temp);
 
-    printf("Pulser: m=%.6g b=%.6g r^2=%.6g\r\n",
-                   dom_calib.pulser_calib.slope,
-                   dom_calib.pulser_calib.y_intercept,
-                   dom_calib.pulser_calib.r_squared);
+    printf("Disc: m=%.6g b=%.6g r^2=%.6g\r\n",
+                   dom_calib.disc_calib.slope,
+                   dom_calib.disc_calib.y_intercept,
+                   dom_calib.disc_calib.r_squared);
 
     for(ch = 0; ch < 3; ch++)
         for(bin = 0; bin < 128; bin++)
@@ -443,15 +456,28 @@ int save_results(calib_data dom_calib) {
                dom_calib.amplifier_calib[ch].value,
                dom_calib.amplifier_calib[ch].error);
 
-    printf("ATWD0 Frequency: m=%.6g b=%.6g r^2=%.6g\r\n",
-                   dom_calib.atwd0_freq_calib.slope,
-                   dom_calib.atwd0_freq_calib.y_intercept,
+    printf("ATWD0 Frequency: c0=%.6g c1=%.6g c2=%.6g r^2=%.6g\r\n",
+                   dom_calib.atwd0_freq_calib.c0,
+                   dom_calib.atwd0_freq_calib.c1,
+                   dom_calib.atwd0_freq_calib.c2,
                    dom_calib.atwd0_freq_calib.r_squared);
 
-    printf("ATWD1 Frequency: m=%.6g b=%.6g r^2=%.6g\r\n",
-                   dom_calib.atwd1_freq_calib.slope,
-                   dom_calib.atwd1_freq_calib.y_intercept,
+    printf("ATWD1 Frequency: c0=%.6g c1=%.6g c2=%.6g r^2=%.6g\r\n",
+                   dom_calib.atwd1_freq_calib.c0,
+                   dom_calib.atwd1_freq_calib.c1,
+                   dom_calib.atwd1_freq_calib.c2,
                    dom_calib.atwd1_freq_calib.r_squared);
+
+    printf("FADC calibration: baseline fit m=%.6g b=%.6g r^2=%.6g\r\n",
+           dom_calib.fadc_baseline.slope,
+           dom_calib.fadc_baseline.y_intercept,
+           dom_calib.fadc_baseline.r_squared);
+
+    printf("FADC calibration: gain (V/tick)=%.6g error=%.6g\r\n",
+           dom_calib.fadc_gain.value, dom_calib.fadc_gain.error);
+
+    printf("FADC calibration: delta_t (ns)=%.6g error=%.6g\r\n",
+           dom_calib.fadc_delta_t.value, dom_calib.fadc_delta_t.error);
 
     if (dom_calib.hv_gain_valid) {
         printf("HV Gain: m=%.6g b=%.6g r^2=%.6g\r\n",
@@ -463,10 +489,9 @@ int save_results(calib_data dom_calib) {
 #endif
 
     /* Calculate record length */
-    short r_size = DEFAULT_RECORD_LENGTH;
-    if ( dom_calib.hv_gain_valid ) {
+    int r_size = DEFAULT_RECORD_LENGTH;
+    if ( dom_calib.hv_gain_valid )
         r_size += 12; //log-log fit
-    }
 
     r_size += dom_calib.num_histos * GAIN_CAL_BINS * 8; //histos
     r_size += dom_calib.num_histos * 20; //fits;
@@ -476,7 +501,6 @@ int save_results(calib_data dom_calib) {
     r_size += dom_calib.num_histos * 4; //PV data
     r_size += dom_calib.num_histos * 4; //Noise rate
     r_size += dom_calib.num_histos * 2; //is_filled flag
-
     
     r_size += 2; //hv_baselines_valid
     if (dom_calib.hv_baselines_valid) {
@@ -486,7 +510,8 @@ int save_results(calib_data dom_calib) {
 
     r_size += 2; //transit_calib_valid
     if (dom_calib.transit_calib_valid) {
-        /* Transit cal */
+        /* Number of points and linear fit */
+        r_size +=  2;
         r_size += 12;
     }
 
@@ -561,27 +586,27 @@ int main(void) {
      *  - pulser calibration
      *  - atwd calibration
      *  - baseline calibration
-     *  - amplifier calibration
      *  - sampling speed calibration
+     *  - amplifier calibration (using only pulser)
+     *  - FADC calibration 
+     *  - transit time calibration
      *  - HV baseline calibration
+     *  - HV amplifier calibration (using LED)
      *  - HV gain calibration
      */
     /* FIX ME: return real error codes */
-    pulser_cal(&dom_calib);
+    disc_cal(&dom_calib);
     atwd_cal(&dom_calib);
     baseline_cal(&dom_calib);
-    amp_cal(&dom_calib);
     atwd_freq_cal(&dom_calib);
+    amp_cal(&dom_calib);
+    fadc_cal(&dom_calib);
     if (doHVCal) {
         transit_cal(&dom_calib);
         hv_baseline_cal(&dom_calib);
         hv_amp_cal(&dom_calib);
         hv_gain_cal(&dom_calib);
     }
-
-    /* FIX ME: FADC calibration is a placeholder */
-    dom_calib.fadc_values[0] = 0;
-    dom_calib.fadc_values[1] = 1; //set default gain to 1.0
 
     /* Write calibration record to flash */
     int save_ret = save_results( dom_calib );
@@ -591,7 +616,7 @@ int main(void) {
 #endif
     } else {
 #ifdef DEBUG       
-        printf( "FAILED. %d\r\n", save_ret );
+        printf( "FAILED (error %d)\r\n", save_ret );
 #endif
         err = save_ret;
     }    

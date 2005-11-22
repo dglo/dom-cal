@@ -59,7 +59,7 @@ int hv_amp_cal(calib_data *dom_calib) {
     halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, AMP_CAL_PEDESTAL_DAC);   
     halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, HV_AMP_CAL_DISC_DAC);
     halWriteDAC((atwd == 0) ? DOM_HAL_DAC_ATWD0_TRIGGER_BIAS : 
-                DOM_HAL_DAC_ATWD1_TRIGGER_BIAS, AMP_CAL_SAMPLING_DAC);
+                DOM_HAL_DAC_ATWD1_TRIGGER_BIAS, HV_AMP_CAL_SAMPLING_DAC);
 
     bias_v = biasDAC2V(AMP_CAL_PEDESTAL_DAC);
 
@@ -390,7 +390,7 @@ float get_average_amplitude(int atwd, int ch, int trig_time_sec) {
      * construct peak histograms instead?  Possibly better performance.
      */
 
-    /* LED rate is >1KHz, so no prescan needed in this loop */
+    /* LED rate is 610Hz, so no prescan needed in this loop */
 
     /* ATWD readout */
     short channels[2][128];
