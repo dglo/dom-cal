@@ -34,20 +34,20 @@ public class DOMCalCom extends SocketSerialCom {
      */
 
     public byte[] zRead() throws IOException {
-        
+
         InputStream in = getInputStream();
 
         byte [] len = new byte[4];
         for (int i = 0; i < 4; i++) {
             len[i] = (byte)in.read();
         }
-        
+
         ByteBuffer buf = ByteBuffer.wrap(len);
         buf.order(ByteOrder.LITTLE_ENDIAN);
         int length = buf.getInt();
 
         InflaterInputStream z = new InflaterInputStream(in);
-        
+
         byte[] out = new byte[length];
         for (int offset = 0; offset != length;) {
             offset += z.read(out, offset, length-offset);
@@ -80,8 +80,10 @@ public class DOMCalCom extends SocketSerialCom {
         /* If in iceboot, we're good */
         if (promptChar == '>') {
 
-            /* Read remaining chars */
-            receive("> ");
+            /* Sync I/O */
+            send("ls\r\n");
+            receive("ls\r\n");
+            receive("\r\n> ");
             return;
         }
 
