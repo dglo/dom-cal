@@ -1193,11 +1193,12 @@ public class Calibrator
     /**
      * Obtain the fit model for the DOM analog front-end
      * pulser.
-     * @return pulser fit model value
+     * @return pulser fit model value, null if pulser calibration data is absent
      */
     public String getPulserFitModel()
     {
-        return (String) pulserFit.get("model");
+        Object o = pulserFit.get("model");
+        return o == null ? null : (String)o;
     }
 
     /**
