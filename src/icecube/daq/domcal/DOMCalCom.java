@@ -67,9 +67,10 @@ public class DOMCalCom extends SocketSerialCom {
 
         super.connect("socket");
 
-        /* Determine runstate -- send enough newline characters to deal with configboot power-on info */
-        send("\r\n\r\n\r\n\r\n");
+        /* Determine runstate with prompt -- send enough newline characters to deal with configboot power-on info */
+        send("\r\n");
         String promptStr = receive("\r\n");
+        send("\r\n\r\n\r\n");
         promptStr = receive("\r\n");
         promptStr = receive("\r\n");
         promptStr = receive("\r\n");
