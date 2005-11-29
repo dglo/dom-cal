@@ -88,7 +88,7 @@ float temp2K(short temp) {
  *
  */
 float pulserDAC2Q(int pulser_dac) {
-    return (pulser_dac * 0.0207);
+    return (pulser_dac * 0.0247);
 }
 
 /*---------------------------------------------------------------------------*/

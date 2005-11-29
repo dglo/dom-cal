@@ -193,7 +193,7 @@ int hv_gain_cal(calib_data *dom_calib) {
         volt_t vdat[cnt];
 
         for (trig=0; trig<(int)GAIN_CAL_TRIG_CNT; trig++) {
-                
+
             fast_acq_wf(vdat, atwd, cnt, GAIN_CAL_START_BIN,
                         trigger_mask, bias_v,
                         &int_calib, baseline, &ch, DISC_TRIGGER, 0, !idx++);
@@ -228,8 +228,11 @@ int hv_gain_cal(calib_data *dom_calib) {
             /* True charge, in pC = 1/R_ohm * sum(V) * 1e12 / (freq_mhz * 1e6) */
             /* Need to now divide by amplification factor */
             charges[trig] =  (to_v(vsum) * 1e6 / freq) /
-                                          int_calib.amplifier_calib[ch].value;            
+                                          int_calib.amplifier_calib[ch].value;
 
+#ifdef DEBUG
+            if (trig%1000 == 0) printf("Got trigger %d\n", trig);      
+#endif
 
         } /* End trigger loop */
 
@@ -247,7 +250,7 @@ int hv_gain_cal(calib_data *dom_calib) {
         /* Create histogram of charge values */
         /* Heuristic maximum for histogram */
 	   
-        int hist_max = ceil(0.75*pow(10.0, 6.37*log10(hv*2)-21.0));
+        float hist_max = 0.75*pow(10.0, 6.37*log10(hv*2)-21.0);
         int hbin, hist_under, hist_over;
         hist_under = 0;
         hist_over = 0;
@@ -255,6 +258,8 @@ int hv_gain_cal(calib_data *dom_calib) {
         /* Re-bin histogram while too many charge points overflow */
         /* 200pC is a sane maximum for any IceCube PMT */
         for (; hist_max < 200.0; hist_max *= 1.5) {
+
+            printf("Trying histogram with maximum %fpC\n", hist_max);
 
             /* Initialize histogram */
             for(hbin=0; hbin < GAIN_CAL_BINS; hbin++) {
