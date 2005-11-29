@@ -39,6 +39,9 @@
 /* FADC sampling frequency, in MHz */
 #define FADC_CLOCK_FREQ         40.0
 
+/* DOM front-end impedance in Ohms, with PMT attached */
+#define DOM_FE_IMPEDANCE        43.0
+
 /* Wait time after setting a DAC */
 #define DAC_SET_WAIT         1000000
 
