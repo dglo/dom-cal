@@ -49,6 +49,14 @@
 #define FAILED_BINARY_CONVERSION -1;
 #define FAILED_FLASH_WRITE -2;
 
+/* Initial discriminator DAC setting */
+#ifdef DOMCAL_REV5
+#define DISC_DAC_INIT   556
+#else
+#define DISC_DAC_INIT   505
+#endif
+
+
 /* Linear fit parameters */
 typedef struct {
     float slope, y_intercept, r_squared;

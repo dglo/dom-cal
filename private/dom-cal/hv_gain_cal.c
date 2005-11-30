@@ -141,10 +141,13 @@ int hv_gain_cal(calib_data *dom_calib) {
 
         /* Set discriminator */
         int disc_dac;
-        if (hv_idx < 4) disc_dac = GAIN_CAL_DISC_DAC_LOW;
-        else if (hv_idx < 8) disc_dac = GAIN_CAL_DISC_DAC_MED;
-        else disc_dac = GAIN_CAL_DISC_DAC_HIGH;
+        if (hv_idx < 4) disc_dac = getDiscDAC(GAIN_CAL_PC_LOW, *dom_calib);
+        else if (hv_idx < 8) disc_dac = getDiscDAC(GAIN_CAL_PC_MED, *dom_calib);
+        else disc_dac = getDiscDAC(GAIN_CAL_PC_HIGH, *dom_calib);
         halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, disc_dac);
+#ifdef DEBUG
+        printf("Using disc DAC %d\n", disc_dac);
+#endif
 
         halWriteActiveBaseDAC(hv * 2);
         halUSleep(5000000);
