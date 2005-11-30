@@ -362,7 +362,7 @@ public class HVHistogramGrapher implements Runnable {
 
     private int getYPixel(int val) {
         double logVal = Math.log(val);
-        double staticHVal = Math.log(3e8);
+        double staticHVal = Math.log(1e9);
         double staticLVal = Math.log(1e6);
 
         return 249 - (int)(220 * ((logVal - staticLVal)/(staticHVal - staticLVal)));
