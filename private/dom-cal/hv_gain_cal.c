@@ -32,6 +32,7 @@ int hv_gain_cal(calib_data *dom_calib) {
     short bias_dac;
     int ch, bin, trig, peak_idx, i;
     float vsum;
+    int histo_range_adjustable = 1;
 
     /* Which ATWD to use */
     short atwd = GAIN_CAL_ATWD;
@@ -181,6 +182,9 @@ int hv_gain_cal(calib_data *dom_calib) {
             continue;
         }
 
+        /* If noise rate is too high (IceTop) we don't adjust histo range */
+        histo_range_adjustable = noise_rate > 10000 ? 0 : 1;
+
         volt_t baseline[2][3];
         for (i = 0; i < 3; i++) {
             baseline[0][i] = to_volt_t(dom_calib->baseline_data[hv_idx].atwd0_hv_baseline[i]);
@@ -251,16 +255,17 @@ int hv_gain_cal(calib_data *dom_calib) {
         hv_hist_data[hv_idx].is_filled = 1;
 
         /* Create histogram of charge values */
-        /* Heuristic maximum for histogram */
-	   
+        /* Heuristic maximum for histogram */ 
         float hist_max_guess = 0.75*pow(10.0, 6.37*log10(hv*2)-21.0);
+
         int hbin, hist_under, hist_over;
         hist_under = 0;
         hist_over = 0;
 
         /* Re-bin histogram while too many charge points overflow */
         /* 200pC is a sane maximum for any IceCube PMT */
-        for (; hist_max_guess < 200.0; hist_max_guess *= 1.5) {
+        for (; hist_max_guess < 200.0 && 
+                     histo_range_adjustable; hist_max_guess *= 1.5) {
 
             int hist_max = ceil(hist_max_guess);
             printf("Trying histogram with maximum %dpC\n", hist_max);
