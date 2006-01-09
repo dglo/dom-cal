@@ -39,12 +39,23 @@
 /* FADC sampling frequency, in MHz */
 #define FADC_CLOCK_FREQ         40.0
 
+/* DOM front-end impedance in Ohms, with PMT attached */
+#define DOM_FE_IMPEDANCE        43.0
+
 /* Wait time after setting a DAC */
 #define DAC_SET_WAIT         1000000
 
 /* Error codes */
 #define FAILED_BINARY_CONVERSION -1;
 #define FAILED_FLASH_WRITE -2;
+
+/* Initial discriminator DAC setting */
+#ifdef DOMCAL_REV5
+#define DISC_DAC_INIT   556
+#else
+#define DISC_DAC_INIT   505
+#endif
+
 
 /* Linear fit parameters */
 typedef struct {

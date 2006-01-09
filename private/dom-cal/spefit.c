@@ -76,7 +76,7 @@ void get_fit_initialization( float *x, float *y, int num, float *params ) {
     meanVarFloat( xvals, ( int )sum , &mean, &variance );
 
     /* Exponential decay rate */
-    params[1] = mean / 4.0;
+    params[1] = 10.0 / mean;
 
     /* Exponential amplitude */
     params[0] = y[0];
@@ -332,7 +332,7 @@ int spe_fit(float *xdata, float *ydata, int pts,
 #endif
         /* Check that all fit parameters are positive and sane */
         for (i = 0; i < SPE_FIT_PARAMS; i++) {
-            if (fit_params[i] <= 0.0 || fit_params[i] > 10000)
+            if (fit_params[i] <= 0.0)
                 err = SPE_FIT_ERR_BAD_FIT;
         }
 

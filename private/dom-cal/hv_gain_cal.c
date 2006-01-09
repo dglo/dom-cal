@@ -32,6 +32,7 @@ int hv_gain_cal(calib_data *dom_calib) {
     short bias_dac;
     int ch, bin, trig, peak_idx, i;
     float vsum;
+    int histo_range_adjustable = 1;
 
     /* Which ATWD to use */
     short atwd = GAIN_CAL_ATWD;
@@ -141,10 +142,13 @@ int hv_gain_cal(calib_data *dom_calib) {
 
         /* Set discriminator */
         int disc_dac;
-        if (hv_idx < 4) disc_dac = GAIN_CAL_DISC_DAC_LOW;
-        else if (hv_idx < 8) disc_dac = GAIN_CAL_DISC_DAC_MED;
-        else disc_dac = GAIN_CAL_DISC_DAC_HIGH;
+        if (hv_idx < 4) disc_dac = getDiscDAC(GAIN_CAL_PC_LOW, *dom_calib);
+        else if (hv_idx < 8) disc_dac = getDiscDAC(GAIN_CAL_PC_MED, *dom_calib);
+        else disc_dac = getDiscDAC(GAIN_CAL_PC_HIGH, *dom_calib);
         halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, disc_dac);
+#ifdef DEBUG
+        printf("Using disc DAC %d\n", disc_dac);
+#endif
 
         halWriteActiveBaseDAC(hv * 2);
         halUSleep(5000000);
@@ -178,6 +182,9 @@ int hv_gain_cal(calib_data *dom_calib) {
             continue;
         }
 
+        /* If noise rate is too high (IceTop) we don't adjust histo range */
+        histo_range_adjustable = noise_rate > 10000 ? 0 : 1;
+
         volt_t baseline[2][3];
         for (i = 0; i < 3; i++) {
             baseline[0][i] = to_volt_t(dom_calib->baseline_data[hv_idx].atwd0_hv_baseline[i]);
@@ -193,7 +200,7 @@ int hv_gain_cal(calib_data *dom_calib) {
         volt_t vdat[cnt];
 
         for (trig=0; trig<(int)GAIN_CAL_TRIG_CNT; trig++) {
-                
+
             fast_acq_wf(vdat, atwd, cnt, GAIN_CAL_START_BIN,
                         trigger_mask, bias_v,
                         &int_calib, baseline, &ch, DISC_TRIGGER, 0, !idx++);
@@ -221,15 +228,18 @@ int hv_gain_cal(calib_data *dom_calib) {
             int_max = (peak_idx + INT_WIN_MAX <= cnt-1) ? peak_idx + INT_WIN_MAX : cnt-1;
             vsum = 0;
 
-            /* Do current integral -- work in front end 50 Ohm load */
+            /* Do current integral -- work in front end load */
             /* to avoid integer overflow */
-            for (bin = int_min; bin <= int_max; bin++) vsum += vdat[bin]/50;
+            for (bin = int_min; bin <= int_max; bin++) vsum += vdat[bin]/DOM_FE_IMPEDANCE;
 
             /* True charge, in pC = 1/R_ohm * sum(V) * 1e12 / (freq_mhz * 1e6) */
             /* Need to now divide by amplification factor */
             charges[trig] =  (to_v(vsum) * 1e6 / freq) /
-                                          int_calib.amplifier_calib[ch].value;            
+                                          int_calib.amplifier_calib[ch].value;
 
+#ifdef DEBUG
+            if (trig%1000 == 0) printf("Got trigger %d\n", trig);      
+#endif
 
         } /* End trigger loop */
 
@@ -245,16 +255,20 @@ int hv_gain_cal(calib_data *dom_calib) {
         hv_hist_data[hv_idx].is_filled = 1;
 
         /* Create histogram of charge values */
-        /* Heuristic maximum for histogram */
-	   
-        int hist_max = ceil(0.75*pow(10.0, 6.37*log10(hv*2)-21.0));
+        /* Heuristic maximum for histogram */ 
+        float hist_max_guess = 0.75*pow(10.0, 6.37*log10(hv*2)-21.0);
+
         int hbin, hist_under, hist_over;
         hist_under = 0;
         hist_over = 0;
 
         /* Re-bin histogram while too many charge points overflow */
         /* 200pC is a sane maximum for any IceCube PMT */
-        for (; hist_max < 200.0; hist_max *= 1.5) {
+        for (; hist_max_guess < 200.0 && 
+                     histo_range_adjustable; hist_max_guess *= 1.5) {
+
+            int hist_max = ceil(hist_max_guess);
+            printf("Trying histogram with maximum %dpC\n", hist_max);
 
             /* Initialize histogram */
             for(hbin=0; hbin < GAIN_CAL_BINS; hbin++) {

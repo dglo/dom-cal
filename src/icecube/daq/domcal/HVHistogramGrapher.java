@@ -274,8 +274,8 @@ public class HVHistogramGrapher implements Runnable {
         }
 
         //draw Y tick marks
-        int[] yTicks = {1000000, 3000000, 10000000, 30000000, 100000000};
-        String[] yTickStr = {"1e6", "3e6", "1e7", "3e7", "1e8"};
+        int[] yTicks = {1000000, 10000000, 100000000, 1000000000};
+        String[] yTickStr = {"1e6", "1e7", "1e8", "1e9"};
         for (int i = 0; i < yTicks.length; i++) {
             int y = getYPixel(yTicks[i]);
             g.drawLine(48, y, 52, y);
@@ -362,7 +362,7 @@ public class HVHistogramGrapher implements Runnable {
 
     private int getYPixel(int val) {
         double logVal = Math.log(val);
-        double staticHVal = Math.log(1e8);
+        double staticHVal = Math.log(1e9);
         double staticLVal = Math.log(1e6);
 
         return 249 - (int)(220 * ((logVal - staticLVal)/(staticHVal - staticLVal)));

@@ -88,7 +88,7 @@ float temp2K(short temp) {
  *
  */
 float pulserDAC2Q(int pulser_dac) {
-    return (pulser_dac * 0.0207);
+    return (pulser_dac * 0.0247);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -100,6 +100,20 @@ float pulserDAC2Q(int pulser_dac) {
  */
 float discDAC2V(int disc_dac, int bias_dac) {
     return (0.0000244 * (0.4 * disc_dac - 0.1 * bias_dac) * 5.0);
+}
+
+/*
+ * getDiscDAC
+ *
+ * Returns appropriate discriminator DAC for given charge threshold
+ *
+ */
+int getDiscDAC(float charge_threshold, calib_data dom_calib) {
+
+    //q = m*DAC + b
+    return (int)((charge_threshold - dom_calib.disc_calib.y_intercept) /
+                                              dom_calib.disc_calib.slope);
+
 }
 
 /*---------------------------------------------------------------------------*/

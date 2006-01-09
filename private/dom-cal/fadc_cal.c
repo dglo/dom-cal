@@ -455,19 +455,6 @@ int fadc_cal(calib_data *dom_calib) {
         printf("Offset between ATWD and FADC leading edges: %.1f ns\r\n", delta_t[pulser_cnt]);
 #endif
 
-#ifdef DEBUG
-        /* Print average waveforms */
-        printf("Average ATWD ch0 waveform\r\n");
-        printf("ns     mV\r\n");
-        for (i=cnt-1; i >= 0; i--) {
-            printf("%g %g\r\n", (cnt-i-1)*1000.0/freq, atwd_avg[i]*1000.0);
-        }
-        printf("Average FADC waveform\r\n");
-        for (i=0; i < fadc_cnt; i++) {
-            printf("%g %g\r\n", i*1000.0/fadc_freq + delta_t[pulser_cnt], fadc_avg[i]*1000.0);
-        }
-#endif
-
     } /* End pulser amplitude loop */
 
     /* Calculate average gain over all pulser settings */
