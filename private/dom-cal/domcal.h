@@ -11,10 +11,10 @@
  * be incremented when changing structure of binary output
  */
 #define MAJOR_VERSION 6
-#define MINOR_VERSION 0
+#define MINOR_VERSION 1
 
 /* Default number of bytes in binary output */
-#define DEFAULT_RECORD_LENGTH 9420
+#define DEFAULT_RECORD_LENGTH 9432
 
 /* Default ATWD DAC settings */
 #ifdef DOMCAL_REV5
@@ -118,7 +118,8 @@ typedef struct {
     linear_fit pulser_calib;
 
     /* discriminator calibration */
-    linear_fit disc_calib;
+    linear_fit spe_disc_calib;
+    linear_fit mpe_disc_calib;
 
     /* ATWD gain calibration */
     linear_fit atwd0_gain_calib[3][128];

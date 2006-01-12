@@ -105,14 +105,14 @@ float discDAC2V(int disc_dac, int bias_dac) {
 /*
  * getDiscDAC
  *
- * Returns appropriate discriminator DAC for given charge threshold
+ * Returns appropriate SPE discriminator DAC for given charge threshold
  *
  */
 int getDiscDAC(float charge_threshold, calib_data dom_calib) {
 
     //q = m*DAC + b
-    return (int)((charge_threshold - dom_calib.disc_calib.y_intercept) /
-                                              dom_calib.disc_calib.slope);
+    return (int)((charge_threshold - dom_calib.spe_disc_calib.y_intercept) /
+                                              dom_calib.spe_disc_calib.slope);
 
 }
 

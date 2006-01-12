@@ -5,7 +5,8 @@
 /* Disc settings to calibrate */
 #define DISC_CAL_CNT  10
 #define DISC_CAL_MIN  550
-#define DISC_CAL_INC  50
+#define SPE_DISC_CAL_INC  50
+#define MPE_DISC_CAL_INC  10 //smaller due to limited charge range of pulser
 
 /* Pedestal value setting for pulser calibration */
 #ifdef DOMCAL_REV5

@@ -84,8 +84,10 @@ public class Calibrator
     private HashMap[][] atwdFits;
     /** pulser fit data. */
     private HashMap pulserFit;
-    /** discriminator fit data. */
-    private HashMap discFit;
+    /** SPE discriminator fit data. */
+    private HashMap speDiscFit;
+    /** MPE discriminator fit data. */
+    private HashMap mpeDiscFit;
     /** amplifier gain data. */
     private double[] ampGain;
     /** amplifier gain error data. */
@@ -932,8 +934,14 @@ public class Calibrator
      * @return discriminator setting corresponding to
      * the charge
      */
-    public double getDiscriminatorSetting(double charge) throws DOMCalibrationException {
+    public double getDiscriminatorSetting(double charge, String id) throws DOMCalibrationException {
 
+        HashMap discFit = null;
+        if (id.equalsIgnoreCase("spe")) discFit = speDiscFit;
+        else if (id.equalsIgnoreCase("mpe")) discFit = mpeDiscFit;
+        else {
+            throw new DOMCalibrationException("Illegal discriminator id: " + id + ". ID must be SPE, MPE");
+        }
         if (discFit == null) {
             throw new DOMCalibrationException("No discriminator fit");
         }
@@ -954,11 +962,17 @@ public class Calibrator
      * @param dac Discriminator DAC setting
      * @return charge corresponding to discriminator DAC setting
      */
-    public double getDiscriminatorCharge(double dac) throws DOMCalibrationException {
+    public double getDiscriminatorCharge(double dac, String id) throws DOMCalibrationException {
 
         if (dac < 0 || dac > 1023)
                        throw new DOMCalibrationException("Value " + dac + " out of range: 0 - 1023"); 
 
+        HashMap discFit = null;
+        if (id.equalsIgnoreCase("spe")) discFit = speDiscFit;
+        else if (id.equalsIgnoreCase("mpe")) discFit = mpeDiscFit;
+        else {
+            throw new DOMCalibrationException("Illegal discriminator id: " + id + ". ID must be SPE, MPE");
+        }
         if (discFit == null) {
             throw new DOMCalibrationException("No discriminator fit");
         }
@@ -1220,8 +1234,14 @@ public class Calibrator
      *
      * @return pulser keys.
      */
-    public Iterator getDiscriminatorFitKeys()
+    public Iterator getDiscriminatorFitKeys(String id) throws DOMCalibrationException
     {
+        HashMap discFit = null;
+        if (id.equalsIgnoreCase("spe")) discFit = speDiscFit;
+        else if (id.equalsIgnoreCase("mpe")) discFit = mpeDiscFit;
+        else {
+            throw new DOMCalibrationException("Illegal discriminator id: " + id + ". ID must be SPE, MPE");
+        }
         ArrayList keys = new ArrayList(discFit.keySet());
         Collections.sort(keys);
         return keys.iterator();
@@ -1232,8 +1252,14 @@ public class Calibrator
      * discriminator.
      * @return pulser fit model value
      */
-    public String getDiscriminatorFitModel()
+    public String getDiscriminatorFitModel(String id) throws DOMCalibrationException
     {
+        HashMap discFit = null;
+        if (id.equalsIgnoreCase("spe")) discFit = speDiscFit;
+        else if (id.equalsIgnoreCase("mpe")) discFit = mpeDiscFit;
+        else {
+            throw new DOMCalibrationException("Illegal discriminator id: " + id + ". ID must be SPE, MPE");
+        }
         return (String) discFit.get("model");
     }
 
@@ -1245,8 +1271,14 @@ public class Calibrator
      * of the ATWD fit parameters.
      * @return pulser fit parameter value
      */
-    public double getDiscriminatorFitParam(String param)
+    public double getDiscriminatorFitParam(String param, String id) throws DOMCalibrationException
     {
+        HashMap discFit = null;
+        if (id.equalsIgnoreCase("spe")) discFit = speDiscFit;
+        else if (id.equalsIgnoreCase("mpe")) discFit = mpeDiscFit;
+        else {
+            throw new DOMCalibrationException("Illegal discriminator id: " + id + ". ID must be SPE, MPE");
+        }
         return ((Double) discFit.get(param.toLowerCase())).doubleValue();
     }
 
@@ -1470,8 +1502,14 @@ public class Calibrator
      *
      * @param model pulser fit model value
      */
-    public void setDiscriminatorFitModel(String model)
+    public void setDiscriminatorFitModel(String model, String id) throws DOMCalibrationException
     {
+        HashMap discFit = null;
+        if (id.equalsIgnoreCase("spe")) discFit = speDiscFit;
+        else if (id.equalsIgnoreCase("mpe")) discFit = mpeDiscFit;
+        else {
+            throw new DOMCalibrationException("Illegal discriminator id: " + id + ". ID must be SPE, MPE");
+        }
         if (discFit == null) {
             discFit = new HashMap();
         }
@@ -1488,7 +1526,7 @@ public class Calibrator
      *
      * @throws DOMCalibrationException if an argument is invalid
      */
-    public void setDiscriminatorFitParam(String param, double value)
+    public void setDiscriminatorFitParam(String param, String id, double value)
         throws DOMCalibrationException
     {
         if (param == null) {
@@ -1500,6 +1538,13 @@ public class Calibrator
         if (paramLow.equals("model")) {
             throw new DOMCalibrationException("'model' is not a valid" +
                                               " parameter name");
+        }
+
+        HashMap discFit = null;
+        if (id.equalsIgnoreCase("spe")) discFit = speDiscFit;
+        else if (id.equalsIgnoreCase("mpe")) discFit = mpeDiscFit;
+        else {
+            throw new DOMCalibrationException("Illegal discriminator id: " + id + ". ID must be SPE, MPE");
         }
 
         if (discFit == null) {
@@ -1842,7 +1887,19 @@ public class Calibrator
             case 0:
                 break;
             case 1:
-                discFit = parseFit((Element) nodes.item(0));
+                speDiscFit = parseFit((Element) nodes.item(0));
+                break;
+            case 2:
+                for (int i = 0; i < 2; i++) {
+                    Element disc = (Element) nodes.item(i);
+                    if (disc.getAttribute("id").equals("spe")) speDiscFit = parseFit((Element) nodes.item(i));
+                    else if (disc.getAttribute("id").equals("mpe")) mpeDiscFit = parseFit((Element) nodes.item(i));
+                    else {
+                        final String msg =
+                                    "XML format error - illegal <discriminator> id: " + disc.getAttribute("id");
+                        throw new DOMCalibrationException(msg);
+                    }
+                }
                 break;
             default:
                 final String msg =
