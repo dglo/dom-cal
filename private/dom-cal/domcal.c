@@ -338,7 +338,8 @@ int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
     offset += write_value_error( &cal->fadc_delta_t, bin_data, offset );
 
     /* Write discriminator calibration data */
-    offset += write_fit( &cal->disc_calib, bin_data, offset );
+    offset += write_fit( &cal->spe_disc_calib, bin_data, offset );
+    offset += write_fit( &cal->mpe_disc_calib, bin_data, offset );
 
     /* Write ATWD gain calibration */
     int j;
@@ -432,10 +433,15 @@ int save_results(calib_data dom_calib) {
 
     printf("Temp: %.1f\r\n", dom_calib.temp);
 
-    printf("Disc: m=%.6g b=%.6g r^2=%.6g\r\n",
-                   dom_calib.disc_calib.slope,
-                   dom_calib.disc_calib.y_intercept,
-                   dom_calib.disc_calib.r_squared);
+    printf("SPE Disc: m=%.6g b=%.6g r^2=%.6g\r\n",
+                   dom_calib.spe_disc_calib.slope,
+                   dom_calib.spe_disc_calib.y_intercept,
+                   dom_calib.spe_disc_calib.r_squared);
+
+    printf("MPE Disc: m=%.6g b=%.6g r^2=%.6g\r\n",
+                   dom_calib.mpe_disc_calib.slope,
+                   dom_calib.mpe_disc_calib.y_intercept,
+                   dom_calib.mpe_disc_calib.r_squared);
 
     for(ch = 0; ch < 3; ch++)
         for(bin = 0; bin < 128; bin++)
