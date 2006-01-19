@@ -118,7 +118,7 @@ public class DOMCal implements Runnable {
                 com.send( "" + month + "\r" );
                 com.receive( ": " );
                 com.send( "" + day + "\r" );
-                com.receive( "? " );
+                com.receive( "\r\n" );
                 if ( calibrateHv ) {
                     com.send( "y" + "\r" );
                 } else {
