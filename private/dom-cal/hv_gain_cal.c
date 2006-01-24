@@ -264,8 +264,7 @@ int hv_gain_cal(calib_data *dom_calib) {
 
         /* Re-bin histogram while too many charge points overflow */
         /* 200pC is a sane maximum for any IceCube PMT */
-        for (; hist_max_guess < 200.0 && 
-                     histo_range_adjustable; hist_max_guess *= 1.5) {
+        for (; hist_max_guess < 200.0; hist_max_guess *= 1.5) {
 
             int hist_max = ceil(hist_max_guess);
             printf("Trying histogram with maximum %dpC\n", hist_max);
@@ -294,7 +293,7 @@ int hv_gain_cal(calib_data *dom_calib) {
 
             /* We don't need to re-bin if less than 15% is overflow */
             float overflow_ratio = (float)hist_over / GAIN_CAL_TRIG_CNT;
-            if (overflow_ratio < 0.15) break;
+            if (overflow_ratio < 0.15 || !histo_range_adjustable) break;
         }
 
 #ifdef DEBUG
