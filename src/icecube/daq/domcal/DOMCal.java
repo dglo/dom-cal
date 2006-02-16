@@ -38,7 +38,6 @@ public class DOMCal implements Runnable {
     private boolean calibrate;
     private boolean calibrateHv;
     private DOMCalRecord rec;
-    private String version;
 
     public DOMCal( String host, int port, String outDir ) {
         this(host, port, outDir, false, false);
@@ -52,7 +51,6 @@ public class DOMCal implements Runnable {
         this.host = host;
         this.port = port;
         this.outDir = outDir;
-        this.version = "Unknown";
         if ( !outDir.endsWith( "/" ) ) {
             this.outDir += "/";
         }
@@ -103,21 +101,20 @@ public class DOMCal implements Runnable {
 
                 /* Start domcal */
                 com.send( "exec\r" );
-                Calendar cal = new GregorianCalendar();
+                Calendar cal = new GregorianCalendar(TimeZone.getTimeZone("GMT"));
                 int day = cal.get( Calendar.DAY_OF_MONTH );
                 int month = cal.get( Calendar.MONTH ) + 1;
                 int year = cal.get( Calendar.YEAR );
-                StringTokenizer st = new StringTokenizer( com.receive( ": " ),
-                           "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ \">\r\n" );
-                if ( st.hasMoreTokens() ) {
-                    version = st.nextToken();
-                }
+                String timeStr = String.format("%1$tH%1$tM%1$tS", cal);
 
+                com.receive( ": " );
                 com.send( "" + year + "\r" );
                 com.receive( ": " );
                 com.send( "" + month + "\r" );
                 com.receive( ": " );
                 com.send( "" + day + "\r" );
+                com.receive( ": " );
+                com.send( timeStr + "\r" );
                 com.receive( "\r\n" );
                 if ( calibrateHv ) {
                     com.send( "y" + "\r" );
@@ -180,7 +177,6 @@ public class DOMCal implements Runnable {
             die( e );
             return;
         }
-
         String domId = rec.getDomId();
 
         logger.debug( "Saving output to " + outDir );
@@ -188,7 +184,7 @@ public class DOMCal implements Runnable {
 
         try {
             PrintWriter out = new PrintWriter(new FileWriter(fn, false ), false );
-            DOMCalXML.format( version, rec, out );
+            DOMCalXML.format( rec, out );
             out.flush();
             out.close();
         } catch ( IOException e ) {

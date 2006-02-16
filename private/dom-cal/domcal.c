@@ -4,7 +4,7 @@
  * IceCube DOM front-end calibration application.
  * 
  * John Kelley and Jim Braun
- * UW-Madison, 2004-2005
+ * UW-Madison, 2004-2006
  *
  */
 
@@ -12,6 +12,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 #include "hal/DOM_MB_hal.h"
 #include "hal/DOM_MB_fpga.h"
@@ -43,13 +44,17 @@ static void getstr(char *str) {
    while (1) {
        const int nr = read(0, str, 1);
        if (nr==1) {
+           /* CR means end of string */
            if (*str == '\r') {
                *str = 0;
                return;
            }
            else {
-               write(1, str, 1);
-               str++;
+               /* Ignore newline */
+               if (*str != '\n') {
+                   write(1, str, 1);
+                   str++;
+               }
            }
            
        }
@@ -67,12 +72,14 @@ static void getstr(char *str) {
 void get_date(calib_data *dom_calib) {
 
     short day, month, year;
+    char timestr[7];
     char buf[100];
+    int i;
 
     /* Get year */
     year = month = 0;
-    while ((year < 2005) || (year > 2050)) {
-        printf("Enter year (2005-...): ");
+    while ((year < 2006) || (year > 2050)) {
+        printf("Enter year (2006-...): ");
         fflush(stdout);    
         getstr(buf);
         year = atoi(buf);
@@ -115,10 +122,45 @@ void get_date(calib_data *dom_calib) {
         day_ok = ((day >= 1) && (day <= day_max));
     }
 
+    /* Get time string */
+    printf("Enter time (HHMMSS, <return> for 000000): ");
+    fflush(stdout);
+    getstr(buf);
+    if (strlen(buf) != 6)
+        sprintf(timestr, "000000");
+    else {
+        for (i = 0; i < 6; i++) {
+            if (!isdigit(buf[i])) {
+                sprintf(timestr, "000000");
+                break;
+            }
+            else 
+                timestr[i] = buf[i];
+        }
+    }        
+    printf("\r\n");
+
     /* Store results */
     dom_calib->year = year;
     dom_calib->month = month;
     dom_calib->day = day;
+
+    /* Extract hour, minute, and second */
+    char timeBit[3];
+    strncpy(timeBit, &(timestr[0]), 2);
+    dom_calib->hour = atoi(timeBit);
+    strncpy(timeBit, &(timestr[2]), 2);
+    dom_calib->minute = atoi(timeBit);
+    strncpy(timeBit, &(timestr[4]), 2);
+    dom_calib->second = atoi(timeBit);
+
+    if ((dom_calib->hour < 0) || (dom_calib->hour > 24))
+        dom_calib->hour = 0;
+    if ((dom_calib->minute < 0) || (dom_calib->minute > 59))
+        dom_calib->minute = 0;
+    /* Java client supports leap seconds! */
+    if ((dom_calib->second < 0) || (dom_calib->second > 60))
+        dom_calib->second = 0;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -196,7 +238,7 @@ int get_bytes_from_float( float f, char *c, int offset ) {
 }
 
 
-/* Routine to write a 4 byte memory image of a in into
+/* Routine to write a 4 byte memory image of a int into
  * an array of bytes at the specified offset
  */
 int get_bytes_from_int( int d, char *c, int offset ) {
@@ -279,16 +321,17 @@ int write_histogram(hv_histogram *hist, char *bin_data, int offset) {
     return bytes_written;
 } 
 
-/* Writes a dom_calib srtuct to binary format given byte array and pos */
+/* Writes a dom_calib struct to binary format given byte array and pos */
 
 int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
 
     int offset = 0;
     int i;
 
-    /* Use version to determine endian-ness */
-    short vers = MAJOR_VERSION;
-    offset += get_bytes_from_short( vers, bin_data, offset );
+    /* Write version */
+    offset += get_bytes_from_short(MAJOR_VERSION, bin_data, offset );
+    offset += get_bytes_from_short(MINOR_VERSION, bin_data, offset );
+    offset += get_bytes_from_short(PATCH_VERSION, bin_data, offset );
 
     /* Write record length */
     offset += get_bytes_from_short( size, bin_data, offset );
@@ -298,9 +341,10 @@ int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
     offset += get_bytes_from_short( cal->month, bin_data, offset );
     offset += get_bytes_from_short( cal->year, bin_data, offset );
     
-    /* Add padding */
-    short z = 0;
-    offset += get_bytes_from_short( z, bin_data, offset );
+    /* Write time */
+    offset += get_bytes_from_short( cal->hour, bin_data, offset );  
+    offset += get_bytes_from_short( cal->minute, bin_data, offset );
+    offset += get_bytes_from_short( cal->second, bin_data, offset );
 
     /* Write DOM ID, as true hex value (not ASCII) */
     char *id = cal->dom_id;
@@ -553,11 +597,11 @@ int main(void) {
     int doHVCal;
 
 #ifdef DEBUG
-    printf("Welcome to domcal version %d.%d\r\n", 
-           MAJOR_VERSION, MINOR_VERSION);
+    printf("Welcome to domcal version %d.%d.%d\r\n", 
+           MAJOR_VERSION, MINOR_VERSION, PATCH_VERSION);
 #endif
 
-    /* Get the date from the user */
+    /* Get the date and time from the user */
     get_date(&dom_calib);
     
     /* Ask user if they want an HV calibration */

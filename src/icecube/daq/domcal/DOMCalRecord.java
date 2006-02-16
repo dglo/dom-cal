@@ -24,6 +24,10 @@ public class DOMCalRecord {
     public static final int MAX_ADC = 24;
     public static final int MAX_DAC = 16;
 
+    private short majorVersion;
+    private short minorVersion;
+    private short patchVersion;
+
     private LinearFit speDiscriminatorCalibration;
     private LinearFit mpeDiscriminatorCalibration;
     private LinearFit[][][] atwdCalibration;
@@ -37,6 +41,10 @@ public class DOMCalRecord {
     private short year;
     private short month;
     private short day;
+
+    private short hour;
+    private short minute;
+    private short second;
 
     private String domId;
 
@@ -66,8 +74,16 @@ public class DOMCalRecord {
     private DOMCalRecord() {
     }
 
-    public short getVersion() {
-        return version;
+    public short getMajorVersion() {
+        return majorVersion;
+    }
+
+    public short getMinorVersion() {
+        return minorVersion;
+    }
+
+    public short getPatchVersion() {
+        return patchVersion;
     }
 
     public short getYear() {
@@ -80,6 +96,18 @@ public class DOMCalRecord {
 
     public short getDay() {
         return day;
+    }
+
+    public short getHour() {
+        return hour;
+    }
+
+    public short getMinute() {
+        return minute;
+    }
+
+    public short getSecond() {
+        return second;
     }
 
     public String getDomId() {
@@ -218,20 +246,26 @@ public class DOMCalRecord {
 
         DOMCalRecord rec = new DOMCalRecord();
 
+        // Figure out endianness from major version
         bb.order( ByteOrder.BIG_ENDIAN );
-        rec.version = bb.getShort();
-        if ( rec.version >= 256 || rec.version < 0 ) {
+        rec.majorVersion = bb.getShort();
+        if ( rec.majorVersion >= 256 || rec.majorVersion < 0 ) {
             bb.order( ByteOrder.LITTLE_ENDIAN );
-            rec.version = ( short )( rec.version >> 8 );
+            rec.majorVersion = ( short )( rec.majorVersion >> 8 );
         }
+        rec.minorVersion = bb.getShort();
+        rec.patchVersion = bb.getShort();
 
+        // Record length
         bb.getShort();
 
         rec.day = bb.getShort();
         rec.month = bb.getShort();
         rec.year = bb.getShort();
 
-        bb.getShort();
+        rec.hour = bb.getShort();
+        rec.minute = bb.getShort();
+        rec.second = bb.getShort();
 
         String domId = "";
         String s1 = Integer.toHexString( bb.getInt() );

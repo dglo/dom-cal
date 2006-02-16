@@ -1648,7 +1648,6 @@ public class Calibrator
 
             parseAdcDacTags(dc.getElementsByTagName("dac"), dacs);
             parseAdcDacTags(dc.getElementsByTagName("adc"), adcs);
-            parsePulserFit(dc.getElementsByTagName("pulser"));
             parseDiscriminatorFit(dc.getElementsByTagName("discriminator"));
             parseATWDFits(dc.getElementsByTagName("atwd"));
             parseAmplifierGain(dc.getElementsByTagName("amplifier"));
