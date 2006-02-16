@@ -7,14 +7,13 @@
 /* Print debugging information */
 #define DEBUG 1
 
-/* Version of calibration program -- Major version must
- * be incremented when changing structure of binary output
- */
+/* Version of calibration program */
 #define MAJOR_VERSION 6
-#define MINOR_VERSION 1
+#define MINOR_VERSION 2
+#define PATCH_VERSION 0
 
 /* Default number of bytes in binary output */
-#define DEFAULT_RECORD_LENGTH 9432
+#define DEFAULT_RECORD_LENGTH 9440
 
 /* Default ATWD DAC settings */
 #ifdef DOMCAL_REV5
@@ -97,7 +96,10 @@ typedef struct {
     
     /* Date */
     short day, month, year;
-    
+
+    /* Time */
+    short hour, minute, second;
+
     /* DOM ID */
     char dom_id[13];
     
