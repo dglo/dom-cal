@@ -16,10 +16,12 @@ import java.io.PrintWriter;
 
 public class DOMCalXML {
 
-    public static void format( String version, DOMCalRecord rec, PrintWriter out ) {
+    public static void format( DOMCalRecord rec, PrintWriter out ) {
         
+        String version = rec.getMajorVersion()+"."+rec.getMinorVersion()+"."+rec.getPatchVersion();
         out.print( "<domcal version=\"" + version + "\">\n" );
-	    out.print("  <date>" + rec.getMonth() + "-" + rec.getDay() + "-" + rec.getYear() + "</date>\n" );
+	    out.print("  <date>" + rec.getDay() + "-" + rec.getMonth() + "-" + rec.getYear() + "</date>\n" );
+	    out.print("  <time>" + rec.getHour() + ":" + rec.getMinute() + ":" + rec.getSecond() + "</time>\n" );
         out.print("  <domid>" + rec.getDomId() + "</domid>\n" );
         out.print("  <temperature format=\"Kelvin\">" + rec.getTemperature() + "</temperature>\n");
         for ( int i = 0; i < 16; i++ ) {
