@@ -18,6 +18,7 @@ import org.apache.log4j.Level;
 import java.nio.ByteBuffer;
 import java.io.*;
 import java.util.*;
+import java.text.*;
 
 public class DOMCal implements Runnable {
     
@@ -105,8 +106,11 @@ public class DOMCal implements Runnable {
                 int day = cal.get( Calendar.DAY_OF_MONTH );
                 int month = cal.get( Calendar.MONTH ) + 1;
                 int year = cal.get( Calendar.YEAR );
-                String timeStr = String.format("%1$tH%1$tM%1$tS", cal);
 
+                SimpleDateFormat formatter = new SimpleDateFormat("HHmmss");
+                formatter.setTimeZone(TimeZone.getTimeZone("GMT"));
+                String timeStr = formatter.format(cal.getTime());
+                
                 com.receive( ": " );
                 com.send( "" + year + "\r" );
                 com.receive( ": " );
