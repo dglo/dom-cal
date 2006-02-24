@@ -228,9 +228,9 @@ int spe_fit(float *xdata, float *ydata, int pts,
     int nonzero_bin = 0;
     int nonzero_found = 0;
 
-    while ((ydata[start_bin] < (SPE_FIT_NOISE_FRACT * num_samples) || 
+    while (((ydata[start_bin] < (SPE_FIT_NOISE_FRACT * num_samples)) || 
             ((ydata[start_bin] < ydata[start_bin + 1]) && 
-             (ydata[start_bin] < (2 * SPE_FIT_NOISE_FRACT * num_samples))) &&
+             (ydata[start_bin] < (2 * SPE_FIT_NOISE_FRACT * num_samples)))) &&
            (start_bin < pts - 1)) {
         
         /* Also record first non-zero bin as a fallback */
