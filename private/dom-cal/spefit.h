@@ -14,6 +14,9 @@
 #define SPE_FIT_NR_MAX_ERR     0.01
 #define SPE_FIT_NR_MAX_ITER      20
 
+/* Number of profiles to try */
+#define SPE_FIT_PROFILE_CNT    3
+
 /* LM fit errors */
 #define SPE_FIT_ERR_NO_CONVERGE       1
 #define SPE_FIT_ERR_BAD_FIT           2
@@ -25,5 +28,5 @@
 #define SPE_FIT_ERR_NR_BAD_X          6
 
 int spe_fit(float *xdata, float *ydata, int pts,
-                         float *fit_params, int num_samples );
+                         float *fit_params, int num_samples, int profile );
 int spe_find_valley(float *a, float *valley_x, float *valley_y);
