@@ -1622,7 +1622,7 @@ public class Calibrator
              * information out of the DOM.  The python calibrator emits a full
              * date string but the in-DOM calibrator program (1) needs date
              * input from the caller, and (2) has pretty terse format,
-             * e.g. 1-24-2009.
+             * e.g. 24-1-2009.
              * Try the new format first (non-python) and, failing that revert
              * to the older, python formatting.
              */
@@ -1632,7 +1632,7 @@ public class Calibrator
             String date_string = e.getFirstChild().getNodeValue();
 
             try {
-                DateFormat df = new SimpleDateFormat("MM-dd-yyyy");
+                DateFormat df = new SimpleDateFormat("dd-MM-yyyy");
                 d = df.parse(date_string);
             } catch (ParseException pexo) {
                 try {

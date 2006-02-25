@@ -305,74 +305,89 @@ int hv_gain_cal(calib_data *dom_calib) {
             printf("%d %g %g\r\n", hbin, hist_x[hv_idx][hbin], hist_y[hv_idx][hbin]);
 #endif
 
-	/* Fit histograms */
-	int fiterr;
-	fiterr = spe_fit(hist_x[hv_idx], hist_y[hv_idx], GAIN_CAL_BINS, fit_params[hv_idx], GAIN_CAL_TRIG_CNT );
+        /* Fit histograms */
+        /* Try a number of different times with different starting fit parameters */
+        /* Some work better for some profiles, others with different ones */
+        int profile = 0;
+        int fiterr;
+        
+        while ((profile < SPE_FIT_PROFILE_CNT) && (!hv_hist_data[hv_idx].convergent)) {
 
-        /* Record fit params */
-        hv_hist_data[hv_idx].fit = fit_params[hv_idx];
-
-        /* Record histogram */
-        hv_hist_data[hv_idx].x_data = hist_x[hv_idx];
-        hv_hist_data[hv_idx].y_data = hist_y[hv_idx];
-    /* If no error in fit, record gain and P/V */
-    if (!fiterr) {
-
-        float valley_x, valley_y, peak_y, pv_ratio;
-        /* Find valley */
-        int val = spe_find_valley(fit_params[hv_idx], &valley_x, &valley_y);
-        if (val == 0) {
-
-            /* Peak value is Gaussian + exponential at x-value defined */
-            /* by Gaussian peak */
-            peak_y = fit_params[hv_idx][2] + 
-                (fit_params[hv_idx][0] * exp(-1.0 * fit_params[hv_idx][1] * fit_params[hv_idx][3]));
-
-            pv_ratio = peak_y / valley_y;
 #ifdef DEBUG
-            printf("Full peak (exp + gaussian) = %.6g\r\n", peak_y);
-            printf("Valley located at %.6g, %.6g: PV = %.2g\r\n", valley_x, valley_y, pv_ratio);
+            printf("Attempting fit with parameter profile %d...\r\n", profile); 
 #endif
+            fiterr = spe_fit(hist_x[hv_idx], hist_y[hv_idx], GAIN_CAL_BINS, 
+                             fit_params[hv_idx], GAIN_CAL_TRIG_CNT, profile );
+        
+            /* Record fit params */
+            hv_hist_data[hv_idx].fit = fit_params[hv_idx];
             
-            /* If PV < 1.1, we have fit problems */
-            if (pv_ratio > 1.1) {
-
-                log_hv[spe_cnt] = log10(hv);
-                log_gain[spe_cnt] = log10(fit_params[hv_idx][3] / Q_E) - 12.0;
-
+            /* Record histogram */
+            hv_hist_data[hv_idx].x_data = hist_x[hv_idx];
+            hv_hist_data[hv_idx].y_data = hist_y[hv_idx];
+            
+            /* If no error in fit, record gain and P/V */
+            if (!fiterr) {
+            
+                float valley_x, valley_y, peak_y, pv_ratio;
+                /* Find valley */
+                int val = spe_find_valley(fit_params[hv_idx], &valley_x, &valley_y);
+                if (val == 0) {
+                
+                    /* Peak value is Gaussian + exponential at x-value defined */
+                    /* by Gaussian peak */
+                    peak_y = fit_params[hv_idx][2] + 
+                        (fit_params[hv_idx][0] * exp(-1.0 * fit_params[hv_idx][1] * fit_params[hv_idx][3]));
+                    
+                    pv_ratio = peak_y / valley_y;
 #ifdef DEBUG
-                printf("New gain point: log(V) %.6g log(gain) %.6g\r\n", log_hv[spe_cnt], log_gain[spe_cnt]);
+                    printf("Full peak (exp + gaussian) = %.6g\r\n", peak_y);
+                    printf("Valley located at %.6g, %.6g: PV = %.2g\r\n", valley_x, valley_y, pv_ratio);
+#endif
+                    
+                    /* If PV < 1.1, we have fit problems */
+                    if (pv_ratio > 1.1) {
+                        
+                        log_hv[spe_cnt] = log10(hv);
+                        log_gain[spe_cnt] = log10(fit_params[hv_idx][3] / Q_E) - 12.0;
+                        
+#ifdef DEBUG
+                        printf("New gain point: log(V) %.6g log(gain) %.6g\r\n", log_hv[spe_cnt], log_gain[spe_cnt]);
 #endif         
-                /* note fit convergence */
-                hv_hist_data[hv_idx].convergent = 1; 
-               
-                hv_hist_data[hv_idx].pv = pv_ratio;
-                
-                spe_cnt++;
-                
+                        /* note fit convergence */
+                        hv_hist_data[hv_idx].convergent = 1; 
+                        
+                        hv_hist_data[hv_idx].pv = pv_ratio;
+                        
+                        spe_cnt++;
+                        
+                    }
+                    /* Enter the tangled skein of else statements */
+                    else {
+#ifdef DEBUG
+                        printf("PV ratio unrealistic: gain point at %d V not used\r\n", hv);
+#endif
+                    }
+                }
+                else {
+#ifdef DEBUG
+                    printf("SPE valley finder error: gain point at %d V not used\r\n", hv);
+                    printf("Error is: %d\r\n", val);
+#endif
+                }
             }
             else {
 #ifdef DEBUG
-                printf("PV ratio unrealistic: gain point at %d V not used\r\n", hv);
+                printf("Bad SPE fit: gain point at %d V not used\r\n", hv);
+                printf("Error is: %d\r\n", fiterr);
 #endif
             }
-        }
-        else {
-#ifdef DEBUG
-            printf("SPE valley finder error: gain point at %d V not used\r\n", hv);
-            printf("Error is: %d\r\n", val);
-#endif
-        }
-    }
-    else {
-#ifdef DEBUG
-        printf("Bad SPE fit: gain point at %d V not used\r\n", hv);
-        printf("Error is: %d\r\n", fiterr);
-#endif
-    }
-    
+            
+            profile++;
+        } /* End profile loop */
+        
     } /* End HV loop */
-
+    
     /* Add histos to calib struct */
     dom_calib->histogram_data = hv_hist_data;
 

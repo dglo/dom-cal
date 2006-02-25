@@ -10,7 +10,7 @@
 /* Version of calibration program */
 #define MAJOR_VERSION 6
 #define MINOR_VERSION 2
-#define PATCH_VERSION 0
+#define PATCH_VERSION 1
 
 /* Default number of bytes in binary output */
 #define DEFAULT_RECORD_LENGTH 9440

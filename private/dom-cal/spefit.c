@@ -46,20 +46,21 @@ void f_spe(float x, float *a, float *y, float *dyda, int nparam) {
  *
  */
 
-void get_fit_initialization( float *x, float *y, int num, float *params ) {
+void get_fit_initialization( float *x, float *y, int num, float *params, int profile ) {
 	    
     /* Find mean and variance */
     float sum = 0;
     float histmax = y[0];
+    float histmax_x = x[0];
     int i;
     for ( i = 0; i < num; i++ ) {
         /* we know y values are actually integers */
         sum += y[i];
-	if (y[i] > histmax) histmax = y[i];
+        if (y[i] > histmax) {
+            histmax = y[i];
+            histmax_x = x[i];
+        }
     }
-
-    /* Gaussian amplitude */
-    params[2] = histmax;
 
     float xvals[(int)sum];
 
@@ -75,16 +76,37 @@ void get_fit_initialization( float *x, float *y, int num, float *params ) {
     float mean, variance;
     meanVarFloat( xvals, ( int )sum , &mean, &variance );
 
-    /* Exponential decay rate */
-    params[1] = 10.0 / mean;
+    /* Gaussian amplitude */
+    params[2] = histmax;
 
     /* Exponential amplitude */
     params[0] = y[0];
     /* Zero amplitude will crash fit! */
     if (params[0] == 0.0) params[0] = 0.01;
 
-    /* Gaussian center */
-    params[3] = mean;
+    if (profile == 0) {
+        /* Gaussian center */
+        params[3] = histmax_x;
+
+        /* Exponential decay rate */
+        /* Estimate hits 30% point at gaussian center */
+        params[1] = -(1.0 / params[3]) * log(0.3 * histmax / params[0]);
+        params[1] = (params[1] < 0.0) ? 0.0 : params[1];
+    }
+    else if (profile == 1) {
+        /* Gaussian center */
+        params[3] = mean;
+
+        /* Exponential decay rate */
+        params[1] = 10.0 / mean;
+    }
+    else {
+        /* Gaussian center */
+        params[3] = mean;
+
+        /* Exponential decay rate */
+        params[1] = 0.0;
+    }
 
     /* Gaussian width */
     params[4] = 1.0 / ( 2 * variance );
@@ -185,7 +207,7 @@ int spe_find_valley(float *a, float *valley_x, float *valley_y) {
 
 /*--------------------------------------------------------------------------*/
 int spe_fit(float *xdata, float *ydata, int pts,
-            float *fit_params, int num_samples ) {
+            float *fit_params, int num_samples, int profile ) {
 
     int i, ndata;
     int iter = 0;
@@ -206,10 +228,11 @@ int spe_fit(float *xdata, float *ydata, int pts,
     int nonzero_bin = 0;
     int nonzero_found = 0;
 
-    while ((ydata[start_bin] < (SPE_FIT_NOISE_FRACT * num_samples) || 
-           (ydata[start_bin] < ydata[start_bin + 1])) && 
+    while (((ydata[start_bin] < (SPE_FIT_NOISE_FRACT * num_samples)) || 
+            ((ydata[start_bin] < ydata[start_bin + 1]) && 
+             (ydata[start_bin] < (2 * SPE_FIT_NOISE_FRACT * num_samples)))) &&
            (start_bin < pts - 1)) {
-
+        
         /* Also record first non-zero bin as a fallback */
         if ((!nonzero_found) && (ydata[start_bin] > 0)) {
             nonzero_found = 1;
@@ -219,9 +242,9 @@ int spe_fit(float *xdata, float *ydata, int pts,
         start_bin++;
     }
 
-    /* if start_bin > pts / 20, we're better off starting at first nonzero bin + 2 -- +2 to get rid of disc effects*/
-    if ( start_bin > pts / 20 )
-        start_bin = ydata[nonzero_bin + 2] > ydata[nonzero_bin] ? nonzero_bin + 2 : nonzero_bin;
+    /* if start_bin is too high, we're better off starting at first nonzero */
+    if ( start_bin > (pts / 10))
+        start_bin = nonzero_bin;
 
     ndata = pts;
     /*  OK -- let's chop off the last few % -- these are probably non-gaussian */
@@ -260,7 +283,7 @@ int spe_fit(float *xdata, float *ydata, int pts,
   
     /* Get starting fit parameters */
     get_fit_initialization( &xdata[start_bin], &ydata[start_bin],
-                            ndata, fit_params);
+                            ndata, fit_params, profile);
 
 #ifdef DEBUG
     printf("Fitting SPE histogram...\r\n");
