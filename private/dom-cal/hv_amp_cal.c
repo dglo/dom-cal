@@ -136,7 +136,8 @@ int hv_amp_cal(calib_data *dom_calib) {
     halUSleep(DAC_SET_WAIT);        
 
     /* Loop over channels and pulser settings for each channel */
-    for (ch = 1; ch < 3; ch++) {
+    /* Start with brightest channel to reduce chance of interference with other DOMs' HV gain cal */
+    for (ch = 2; ch >= 1; ch--) {
 
         /* Do binary search to place average LED pulse at prime level */
         int l_max = LED_MAX_AMPLITUDE;

@@ -46,5 +46,11 @@
 /* bin to start looking for disc pulse */
 #define GAIN_CAL_START_BIN     96
 
+/* Minimum acceptable R^2 */
+#define GAIN_CAL_MIN_R2        0.99
+
+/* Decrease points in fit until you have this many or fewer */
+#define GAIN_CAL_MIN_R2_PTS    4
+
 /* Prototypes */
 int hv_gain_cal(calib_data *dom_calib);

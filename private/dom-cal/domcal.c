@@ -639,9 +639,9 @@ int main(void) {
      *  - sampling speed calibration
      *  - amplifier calibration (using only pulser)
      *  - FADC calibration 
-     *  - transit time calibration
      *  - HV baseline calibration
      *  - HV amplifier calibration (using LED)
+     *  - transit time calibration
      *  - HV gain calibration
      */
     /* FIX ME: return real error codes */
@@ -652,9 +652,9 @@ int main(void) {
     amp_cal(&dom_calib);
     fadc_cal(&dom_calib);
     if (doHVCal) {
-        transit_cal(&dom_calib);
         hv_baseline_cal(&dom_calib);
         hv_amp_cal(&dom_calib);
+        transit_cal(&dom_calib);
         hv_gain_cal(&dom_calib);
     }
 
