@@ -23,6 +23,55 @@ public class FixDB
 {
     private static final String[] modelVals = new String[] {
         "linear",
+        "quadratic",
+    };
+
+    private static final String[] discrimVals = new String[] {
+        "mpe",
+        "spe",
+    };
+
+    private static final String[][] newTables = new String[][] {
+        { "DOMCal_PmtTransit",
+          "domcal_id int not null," +
+          "dc_model_id int not null," +
+          "num_points int not null," +
+          "slope double not null," +
+          "intercept double not null," +
+          "regression double not null," +
+          "primary key(domcal_id)", },
+        { "DOMCal_FADC",
+          "domcal_id int not null," +
+          "slope double not null," +
+          "intercept double not null," +
+          "regression double not null," +
+          "gain double not null," +
+          "gain_error double not null," +
+          "delta_t double not null," +
+          "delta_t_error double not null," +
+          "primary key(domcal_id)", },
+        { "DOMCal_Discriminator",
+          "domcal_id int not null," +
+          "dc_discrim_id smallint not null," +
+          "dc_model_id smallint not null," +
+          "slope double not null," +
+          "intercept double not null," +
+          "regression double not null," +
+          "primary key(domcal_id,dc_discrim_id)", },
+        { "DOMCal_DiscrimType",
+          "dc_discrim_id smallint not null," +
+          "name varchar(8) not null," +
+          "primary key(dc_discrim_id)", },
+        { "DOMCal_Baseline",
+          "domcal_id int not null," +
+          "voltage smallint not null," +
+          "atwd0_chan0 double not null," +
+          "atwd0_chan1 double not null," +
+          "atwd0_chan2 double not null," +
+          "atwd1_chan0 double not null," +
+          "atwd1_chan1 double not null," +
+          "atwd1_chan2 double not null," +
+          "primary key(domcal_id,voltage)", },
     };
 
     /**
@@ -64,16 +113,30 @@ public class FixDB
                 clearData = true;
             }
 
+            if (isOldMainTable(conn)) {
+                fixMainTable(conn);
+            }
+
+            addMissingTables(conn);
+
             if (clearData) {
                 clearData(conn);
                 System.err.println("Cleared old data from database");
             }
 
+            addMissingDiscrimValues(conn);
             addMissingModelValues(conn);
             addMissingParameterValues(conn);
         } finally {
             conn.close();
         }
+    }
+
+    private void addMissingDiscrimValues(Connection conn)
+        throws SQLException
+    {
+        addMissingRows(conn, "DOMCal_DiscrimType", "dc_discrim_id", "name",
+                       discrimVals);
     }
 
     private void addMissingModelValues(Connection conn)
@@ -88,6 +151,9 @@ public class FixDB
         ArrayList params = new ArrayList();
         params.add("intercept");
         params.add("slope");
+        params.add("c0");
+        params.add("c1");
+        params.add("c2");
 
         int num = 0;
         while (true) {
@@ -165,6 +231,42 @@ public class FixDB
         }
     }
 
+    private void addMissingTables(Connection conn)
+        throws SQLException
+    {
+        DatabaseMetaData meta = conn.getMetaData();
+
+        for (int i = 0; i < newTables.length; i++) {
+            ResultSet rs = meta.getColumns(conn.getCatalog(), null,
+                                           newTables[i][0], null);
+
+            final boolean found = rs.next();
+            rs.close();
+
+            if (found) {
+                continue;
+            }
+
+            Statement stmt;
+            try {
+                stmt = conn.createStatement();
+            } catch (SQLException se) {
+                System.err.println("Couldn't get initial statement: " +
+                                   se.getMessage());
+                return;
+            }
+
+            final String tblCmd = "create table " + newTables[i][0] +
+                "(" + newTables[i][1] + ")";
+
+            try {
+                stmt.executeUpdate(tblCmd);
+            } finally {
+                try { stmt.close(); } catch (SQLException se) { }
+            }
+        }
+    }
+
     private void clearData(Connection conn)
         throws SQLException
     {
@@ -233,6 +335,33 @@ public class FixDB
         clearData(conn);
     }
 
+    private void fixMainTable(Connection conn)
+        throws SQLException
+    {
+        Statement stmt;
+        try {
+            stmt = conn.createStatement();
+        } catch (SQLException se) {
+            System.err.println("Couldn't get initial statement: " +
+                               se.getMessage());
+            return;
+        }
+
+        final String[] cmds = new String[] {
+            "alter table DOMCalibration add column time time after date," +
+            "add major_version smallint, add minor_version smallint," +
+            "add patch_version smallint",
+        };
+
+        try {
+            for (int i = 0; i < cmds.length; i++) {
+                stmt.executeUpdate(cmds[i]);
+            }
+        } finally {
+            try { stmt.close(); } catch (SQLException se) { }
+        }
+    }
+
     private boolean isOldGainHv(Connection conn)
         throws SQLException
     {
@@ -248,6 +377,34 @@ public class FixDB
 
         ResultSet rs = meta.getColumns(conn.getCatalog(), null, "DOMCal_HvGain",
                                        null);
+        while (isOldTable && rs.next()) {
+            final String colName = rs.getString("COLUMN_NAME");
+            final int pos = rs.getInt("ORDINAL_POSITION");
+
+            isOldTable &= (pos > 0 && pos <= expCols.length &&
+                           colName.equalsIgnoreCase(expCols[pos - 1]));
+        }
+        rs.close();
+
+        return isOldTable;
+    }
+
+    private boolean isOldMainTable(Connection conn)
+        throws SQLException
+    {
+        DatabaseMetaData meta = conn.getMetaData();
+
+        String[] expCols = new String[] {
+            "domcal_id",
+            "prod_id",
+            "date",
+            "temperature",
+        };
+
+        boolean isOldTable = true;
+
+        ResultSet rs = meta.getColumns(conn.getCatalog(), null,
+                                       "DOMCalibration", null);
         while (isOldTable && rs.next()) {
             final String colName = rs.getString("COLUMN_NAME");
             final int pos = rs.getInt("ORDINAL_POSITION");
