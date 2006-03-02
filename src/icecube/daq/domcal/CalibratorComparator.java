@@ -457,6 +457,16 @@ public class CalibratorComparator
         Iterator iter1 = c1.getBaselines();
         Iterator iter2 = c2.getBaselines();
 
+        if (iter1 == null) {
+            if (iter2 == null) {
+                return 0;
+            }
+
+            return 1;
+        } else if (iter2 == null) {
+            return -1;
+        }
+
         int num = 0;
         while (true) {
             if (!iter1.hasNext() && !iter2.hasNext()) {
