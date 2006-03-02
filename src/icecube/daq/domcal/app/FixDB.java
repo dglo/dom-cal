@@ -221,8 +221,6 @@ public class FixDB
                     int id = DOMProdTestUtil.addId(stmt, tblName,
                                                    idCol, cols, vals,
                                                    1, Integer.MAX_VALUE);
-                    System.out.println("Added " + tblName + " value '" +
-                                       valList[i] + "' as ID#" + id);
                 }
             }
 
