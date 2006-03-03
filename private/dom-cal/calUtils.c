@@ -2,7 +2,7 @@
  * calUtils.c
  *
  */
-
+#include <stdio.h>
 #include <math.h>
 #include <string.h>
 
@@ -291,4 +291,74 @@ void quadraticFitFloat(float *x, float *y, int pts, quadratic_fit *fit) {
     }
 
     fit->r_squared = sq_res / y_sq_res;
+}
+
+
+/*---------------------------------------------------------------------------*/
+/*
+ * refineLinearFit
+ *
+ * Refine a linear fit by iteratively removing points with bad 
+ * residuals.  Modifies x, y arrays, valid number of points, and linear
+ * fit passed in.  
+ *
+ * minR2 is the minimum acceptable R^2 value (typically 0.99), minPts is
+ * the number of points at which to stop if the R^2 target isn't reached.
+ *
+ * x_bad and bad_cnt can be used to record the x values discarded (and the
+ * number of them thrown out).  If this info isn't needed, these two pointers
+ * can be NULL.
+ *
+ */
+void refineLinearFit(float *x, float *y, int *vld_cnt, linear_fit *fit,
+                     float minR2, int minPts, float *x_bad, int *bad_cnt) {
+
+    if (bad_cnt != NULL)
+        *bad_cnt = 0;
+
+    /* Iterate until the R2 is high enough or we've run out of points */
+    while ((fit->r_squared < minR2) && (*vld_cnt > minPts)) {
+        
+        /* Find worst point */
+        int worst_idx = 0;
+        float worst_residual = 0.0;
+        float residual, y_calc;
+        int i, j;
+        for (i = 0; i < *vld_cnt; i++) {
+            y_calc = fit->slope * x[i] + fit->y_intercept;
+            
+            residual = fabs(y_calc - y[i]);
+            
+            if (residual > worst_residual) {
+                worst_residual = residual;
+                worst_idx = i;
+            }                    
+        }
+        
+#ifdef DEBUG
+        printf("R^2 value is too low (%g): discarding point %d\r\n",
+               fit->r_squared, worst_idx);
+#endif
+        /* Discard that point */
+        j = 0;
+        for (i = 0; i < *vld_cnt; i++) {
+            if (i != worst_idx) {
+                y[j] = y[i];
+                x[j] = x[i];
+                j++;
+            }
+        }
+
+        /* Record the x-values removed */
+        if ((x_bad != NULL) && (bad_cnt != NULL)) {
+            x_bad[*bad_cnt] = x[worst_idx];
+            (*bad_cnt)++;
+        }
+
+        (*vld_cnt)--;
+
+        /* Try the fit again */
+        linearFitFloat(x, y, *vld_cnt, fit);
+
+    }
 }

@@ -96,6 +96,8 @@ public class Calibrator
     private HashMap[] freqFits;
     /** gain vs. HV fit data. */
     private HashMap gainFit;
+    /** number of transit points. */
+    private short numTransitPts;
     /** transit time fit data. */
     private HashMap transitFit;
     /** HV histogram data. */
@@ -123,6 +125,12 @@ public class Calibrator
     private int domcalId;
     /** DOM product information. */
     private DOMProduct domProd ;
+    /** major version */
+    private short majorVersion;
+    /** minor version */
+    private short minorVersion;
+    /** patch version */
+    private short patchVersion;
 
     /**
      * Constructor to obtain from URL location.
@@ -185,7 +193,7 @@ public class Calibrator
     public Calibrator(String mbSerial, Date date, double temp)
         throws DOMCalibrationException, IOException, SQLException
     {
-        this(mbSerial, date, temp, null);
+        this(mbSerial, date, temp, (short) -1, (short) -1, (short) -1, null);
     }
 
     /**
@@ -194,13 +202,15 @@ public class Calibrator
      * @param mbSerial mainboard serial number of DOM being loaded
      * @param date date of data being loaded
      * @param temp temperature of data being loaded
+     * @param calDB calibrator database object
      *
      * @throws DOMCalibrationException if an argument is invalid
      * @throws IOException if there is a problem reading the stream
      * @throws SQLException if there is a database problem
      */
     public Calibrator(String mbSerial, Date date, double temp,
-                      CalibratorDB calDB)
+                      short majorVersion, short minorVersion,
+                      short patchVersion, CalibratorDB calDB)
         throws DOMCalibrationException, IOException, SQLException
     {
         this();
@@ -215,7 +225,8 @@ public class Calibrator
             }
         }
 
-        this.calDB.load(this, mbSerial, date, temp);
+        this.calDB.load(this, mbSerial, date, temp, majorVersion, minorVersion,
+                        patchVersion);
     }
 
     /**
@@ -229,6 +240,24 @@ public class Calibrator
         ampGain     = new double[3];
         ampGainErr  = new double[3];
         freqFits    = new HashMap[2];
+    }
+
+    /**
+     * Add a set of baseline values.
+     * @param voltage voltage
+     * @param values array of atwd/channel values
+     */
+    public void addBaseline(short voltage, float[][] values)
+    {
+        if (values == null || values.length != 2 || values[0].length != 3) {
+            throw new IllegalArgumentException("'values' is not a 2x3 float array");
+        }
+
+        if (baselines == null) {
+            baselines = new HashMap();
+        }
+
+        baselines.put(new Integer(voltage), new Baseline(voltage, values));
     }
 
     /**
@@ -453,6 +482,14 @@ public class Calibrator
             double b = ((Double)h.get("intercept")).doubleValue();
             return m*dac + b;
         }
+    }
+
+    /**
+     * Clear all baseline values.
+     */
+    protected void clearBaselines()
+    {
+        baselines = null;
     }
 
     /**
@@ -896,6 +933,51 @@ public class Calibrator
     }
 
     /**
+     * Get the list of voltage and baseline values.
+     * @return iterator for baseline value list
+     */
+    public Iterator getBaselines() {
+        if (baselines == null) {
+            return null;
+        }
+
+        ArrayList keys = new ArrayList(baselines.keySet());
+        Collections.sort(keys);
+
+        ArrayList values = new ArrayList();
+        for (int i = 0; i < keys.size(); i++) {
+            Baseline bl = (Baseline) baselines.get(keys.get(i));
+            values.add(bl);
+        }
+
+        return values.iterator();
+    }
+
+    /**
+     * Get the fadc intercept.
+     */
+    public double getFadcIntercept()
+    {
+        return ((Double) fadcBaselineFit.get("intercept")).doubleValue();
+    }
+
+    /**
+     * Get the fadc regression coefficient.
+     */
+    public double getFadcRegression()
+    {
+        return ((Double) fadcBaselineFit.get("r")).doubleValue();
+    }
+
+    /**
+     * Get the fadc slope.
+     */
+    public double getFadcSlope()
+    {
+        return ((Double) fadcBaselineFit.get("slope")).doubleValue();
+    }
+
+    /**
      * Obtain the fadc gain.
      * @return double-valued gain
      */
@@ -1192,6 +1274,58 @@ public class Calibrator
     }
 
     /**
+     * Get the number of PMT transit points.
+     *
+     * @return number of transit points
+     */
+    public int getNumberOfTransitPoints()
+    {
+        return numTransitPts;
+    }
+
+    /**
+     * Get the gain intercept, if present.
+     *
+     * @return <tt>Double.NaN</tt> if PMT transit fit data is not present.
+     */
+    public double getPmtTransitIntercept()
+    {
+        if (transitFit == null) {
+            return Double.NaN;
+        }
+
+        return ((Double) transitFit.get("intercept")).doubleValue();
+    }
+
+    /**
+     * Get the regression coefficient, if present.
+     *
+     * @return <tt>Double.NaN</tt> if PMT transit fit data is not present.
+     */
+    public double getPmtTransitRegression()
+    {
+        if (transitFit == null) {
+            return Double.NaN;
+        }
+
+        return ((Double) transitFit.get("r")).doubleValue();
+    }
+
+    /**
+     * Get the gain slope, if present.
+     *
+     * @return <tt>Double.NaN</tt> if PMT transit fit data is not present.
+     */
+    public double getPmtTransitSlope()
+    {
+        if (transitFit == null) {
+            return Double.NaN;
+        }
+
+        return ((Double) transitFit.get("slope")).doubleValue();
+    }
+
+    /**
      * Obtain the keys used to access data from the
      * DOM analog front-end pulser.
      *
@@ -1199,6 +1333,10 @@ public class Calibrator
      */
     public Iterator getPulserFitKeys()
     {
+        if (pulserFit == null) {
+            return new ArrayList().iterator();
+        }
+
         ArrayList keys = new ArrayList(pulserFit.keySet());
         Collections.sort(keys);
         return keys.iterator();
@@ -1211,8 +1349,11 @@ public class Calibrator
      */
     public String getPulserFitModel()
     {
-        Object o = pulserFit.get("model");
-        return o == null ? null : (String)o;
+        if (pulserFit == null) {
+            return null;
+        }
+
+        return (String) pulserFit.get("model");
     }
 
     /**
@@ -1260,6 +1401,9 @@ public class Calibrator
         else {
             throw new DOMCalibrationException("Illegal discriminator id: " + id + ". ID must be SPE, MPE");
         }
+        if (discFit == null) {
+            throw new DOMCalibrationException("No data for discriminator id: " + id);
+        }
         return (String) discFit.get("model");
     }
 
@@ -1279,7 +1423,41 @@ public class Calibrator
         else {
             throw new DOMCalibrationException("Illegal discriminator id: " + id + ". ID must be SPE, MPE");
         }
+        if (discFit == null) {
+            throw new DOMCalibrationException("No data for discriminator id: " + id);
+        }
+        Double value = (Double) discFit.get(param.toLowerCase());
+        if (value == null) {
+            throw new DOMCalibrationException("No " + param + " data for discriminator id: " + id);
+        }
         return ((Double) discFit.get(param.toLowerCase())).doubleValue();
+    }
+
+    /**
+     * Get major version.
+     * @return major version number
+     */
+    public short getMajorVersion()
+    {
+        return majorVersion;
+    }
+
+    /**
+     * Get minor version.
+     * @return minor version number
+     */
+    public short getMinorVersion()
+    {
+        return minorVersion;
+    }
+
+    /**
+     * Get patch version.
+     * @return patch version number
+     */
+    public short getPatchVersion()
+    {
+        return patchVersion;
     }
 
     /**
@@ -1298,6 +1476,16 @@ public class Calibrator
     public boolean hasHvGainFit()
     {
         return (gainFit != null);
+    }
+
+    /**
+     * Is there PMT transit fit data for this calibration file?
+     *
+     * @return <tt>true</tt> if there is PMT transit data
+     */
+    public boolean hasPmtTransit()
+    {
+        return (transitFit != null);
     }
 
     /**
@@ -1395,10 +1583,32 @@ public class Calibrator
     }
 
     /**
-     * Set the high-voltage slope and intercept data
+     * Set the FADC data
+     */
+    protected void setFADC(float slope, float intercept, float regression,
+                           float gain, float gainError,
+                           float deltaT, float deltaTError)
+    {
+        if (fadcBaselineFit == null) {
+            fadcBaselineFit = new HashMap();
+        }
+
+        fadcBaselineFit.put("slope", new Double(slope));
+        fadcBaselineFit.put("intercept", new Double(intercept));
+        fadcBaselineFit.put("r", new Double(regression));
+
+        fadcGain = gain;
+        fadcGainErr = gainError;
+        fadcDeltaT = deltaT;
+        fadcDeltaTErr = deltaTError;
+    }
+
+    /**
+     * Set the high-voltage data
      *
      * @param slope slope
      * @param intercept intercept
+     * @param regression regression
      */
     protected void setHvGain(double slope, double intercept, double regression)
     {
@@ -1443,7 +1653,8 @@ public class Calibrator
      * @param temp DOMCalibration temperature
      */
     protected void setMain(int domcalId, String mbSerial, DOMProduct domProd,
-                           Date date, double temp)
+                           Date date, double temp, short major, short minor,
+                           short patch)
     {
         this.domcalId = domcalId;
         this.domID = mbSerial;
@@ -1451,6 +1662,9 @@ public class Calibrator
         this.calendar = Calendar.getInstance();
         this.calendar.setTime(date);
         this.temp = temp;
+        this.majorVersion = major;
+        this.minorVersion = minor;
+        this.patchVersion = patch;
     }
 
     /**
@@ -1555,6 +1769,27 @@ public class Calibrator
     }
 
     /**
+     * Set PMT transit data.
+     *
+     * @param numPts number of transit points
+     * @param slope slope
+     * @param intercept intercept
+     * @param regression regression
+     */
+    protected void setPmtTransit(short numPts, double slope, double intercept,
+                                 double regression)
+    {
+        if (transitFit == null) {
+            transitFit = new HashMap();
+        }
+
+        numTransitPts = numPts;
+        transitFit.put("slope", new Double(slope));
+        transitFit.put("intercept", new Double(intercept));
+        transitFit.put("r", new Double(regression));
+    }
+
+    /**
      * Constructor from initialized InputStream object.
      * The XML stream is read into a DOM tree over this object.
      */
@@ -1601,6 +1836,8 @@ public class Calibrator
             if (nodes.getLength() != 1) {
                 throw new DOMCalibrationException("XML format error");
             }
+            e       = (Element) nodes.item(0);
+            parseVersion(e.getAttribute("version"));
             dc      = (Element) nodes.item(0);
             logger.debug("Found node " + dc.getNodeName());
             // Get the DOM Id
@@ -1631,16 +1868,30 @@ public class Calibrator
 
             String date_string = e.getFirstChild().getNodeValue();
 
-            try {
-                DateFormat df = new SimpleDateFormat("dd-MM-yyyy");
-                d = df.parse(date_string);
-            } catch (ParseException pexo) {
+            nodes = dc.getElementsByTagName("time");
+            if (nodes.getLength() > 0) {
+                String date_time = date_string + " " +
+                    nodes.item(0).getFirstChild().getNodeValue();
+
                 try {
                     DateFormat df =
-                        new SimpleDateFormat("EEE MMM dd HH:mm:ss yyyy");
+                        new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+                    d = df.parse(date_time);
+                } catch (ParseException pex) {
+                    throw new DOMCalibrationException(pex.getMessage());
+                }
+            } else {
+                try {
+                    DateFormat df = new SimpleDateFormat("dd-MM-yyyy");
                     d = df.parse(date_string);
-                } catch (ParseException pexi) {
-                    throw new DOMCalibrationException(pexi.getMessage());
+                } catch (ParseException pexo) {
+                    try {
+                        DateFormat df =
+                            new SimpleDateFormat("EEE MMM dd HH:mm:ss yyyy");
+                        d = df.parse(date_string);
+                    } catch (ParseException pexi) {
+                        throw new DOMCalibrationException(pexi.getMessage());
+                    }
                 }
             }
 
@@ -1797,7 +2048,10 @@ public class Calibrator
             case 0:
                 break;
             case 1:
-                transitFit = parseFit((Element) nodes.item(0));
+                Element baseEl = (Element) nodes.item(0);
+                numTransitPts =
+                    Short.parseShort(baseEl.getAttribute("num_pts"));
+                transitFit = parseFit(baseEl);
                 break;
             default:
                 final String errMsg =
@@ -1829,8 +2083,7 @@ public class Calibrator
                     int ch = Integer.parseInt(chanStr);
                     values[atwd][ch] = Float.parseFloat(base.getAttribute("value"));
                 }
-                Integer v = new Integer(voltage);
-                baselines.put(v, new Baseline(voltage, values));
+                addBaseline(voltage, values);
             }
         }
 
@@ -1978,5 +2231,40 @@ public class Calibrator
             }
         }
 
+        /**
+         * Get version numbers from <code>&lt;domcal&gt;</code> tag.
+         *
+         * @param vStr version string
+         *
+         * @throws DOMCalibrationException if the version string was not
+         *                                 formatted correctly
+         */
+        private void parseVersion(String vStr)
+            throws DOMCalibrationException
+        {
+            if (vStr == null) {
+                majorVersion = 0;
+                minorVersion = 0;
+                patchVersion = 0;
+            } else {
+                final int firstDot = vStr.indexOf(".");
+                final int lastDot = vStr.lastIndexOf(".");
+
+                if (firstDot < 0 || lastDot < 0 ||
+                    lastDot != vStr.indexOf(".", firstDot + 1))
+                {
+                    throw new DOMCalibrationException("Bad version string \"" +
+                                                      vStr + "\"");
+                }
+
+                majorVersion =
+                    Short.parseShort(vStr.substring(0, firstDot));
+                minorVersion =
+                    Short.parseShort(vStr.substring(firstDot + 1, lastDot));
+                patchVersion =
+                    Short.parseShort(vStr.substring(lastDot + 1));
+            }
+        }
     }
+
 }

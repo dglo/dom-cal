@@ -9,6 +9,9 @@ import java.util.Date;
 
 class FakeCalXML
 {
+    public static final int TEMP_RAW = 1;
+    public static final int TEMP_KELVIN = 2;
+
     private static final String DEFAULT_MODEL = "linear";
     private static final int NUM_AMP_CHANNELS = 3;
     private static final SimpleDateFormat dateFmt =
@@ -16,6 +19,7 @@ class FakeCalXML
 
     private Date date;
     private String domId;
+    private int tempType;
     private double temp;
     private short[] dac;
     private short[] adc;
@@ -27,11 +31,16 @@ class FakeCalXML
     private FitData hvGain;
     private HVHistogram[] histo;
 
-    FakeCalXML(Date date, String domId, double temp)
+    FakeCalXML(Date date, String domId, double temp, int tempType)
     {
         this.date = date;
         this.domId = domId;
         this.temp = temp;
+        this.tempType = tempType;
+
+        if (tempType != TEMP_RAW && tempType != TEMP_KELVIN) {
+            throw new Error("Bad temperature type #" + tempType);
+        }
 
         dac = new short[16];
         for (int i = 0; i < dac.length; i++) {
@@ -162,6 +171,23 @@ class FakeCalXML
             buf.append(">");
     }
 
+    private String getTempTypeString()
+    {
+        String str;
+        switch (tempType) {
+        case TEMP_RAW:
+            str = "raw";
+            break;
+        case TEMP_KELVIN:
+            str = "Kelvin";
+            break;
+        default:
+            str = "???";
+            break;
+        }
+        return str;
+    }
+
     void setADC(int channel, short val)
     {
         if (channel < 0 || channel >= adc.length) {
@@ -289,7 +315,7 @@ class FakeCalXML
         buf.append(domId);
         buf.append("</domid>");
         
-        buf.append("<temperature format=\"raw\">");
+        buf.append("<temperature format=\"" + getTempTypeString() + "\">");
         int rawTemp = (int) (temp * 256.0);
         if (rawTemp < 0) {
             rawTemp += 65536;

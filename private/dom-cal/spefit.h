@@ -1,14 +1,23 @@
 /* Fraction of hits in first real bin */
 #define SPE_FIT_NOISE_FRACT     0.0075
 
+/* Fraction of hits to consider essentially zero */
+#define SPE_FIT_ZERO_FRACT      0.0004
+
 /* Fraction of data to chop off high end of SPE peak -- eliminate non-gaussian component */
 #define SPE_BAD_TAIL_FRACTION   0.04
+
+/* Fraction of gaussian peak position for allowable negative valley */
+#define SPE_FIT_VALLEY_PEAK_FRACT  0.075
 
 /* Fit information */
 #define SPE_FIT_PARAMS              5
 #define SPE_FIT_MAX_ITER           75
 #define SPE_FIT_CHISQ_ABS_DONE   0.01
 #define SPE_FIT_CHISQ_PCT_DONE  0.001
+
+/* Largest gaussian width parameter (most narrow) */
+#define SPE_FIT_MAX_GAUSS_WIDTH  1000
 
 /* Newton-Raphson valley finder parameters */
 #define SPE_FIT_NR_MAX_ERR     0.01

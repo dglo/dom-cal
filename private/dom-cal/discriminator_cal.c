@@ -28,9 +28,6 @@ int pulser_loop(int *pulser_dac, int mpe) {
     /* Binary search until max and min differ by one bin */
     for (count = 0; max - min > 1; count++) {
 
-        /* Should require 0(10) iterations. >25 implies an error occurred */
-        if (count > 25) return AMPLITUDE_NOT_LOCALIZED;
-
         *pulser_dac = (max + min) / 2;
 
         /* Set pulser amplitude and wait */
@@ -105,13 +102,31 @@ int disc_cal(calib_data *dom_calib) {
 
         /* Convert pulser amplitude to charge */
         pulser_mpe_charge_data[i] = pulserDAC2Q(pulser_dac);
+
+        #ifdef DEBUG
+        printf("Got disc point: SPE DAC: %f SPE Q: %f MPE DAC: %f MPE Q: %f\r\n",
+                                  spe_disc_data[i], pulser_spe_charge_data[i],
+                                  mpe_disc_data[i], pulser_mpe_charge_data[i]);
+        #endif
     }
 
     /* Do linear fit, x-axis pulser amplitude, y-axis SPE thresh */
     linearFitFloat(spe_disc_data, pulser_spe_charge_data,
                          DISC_CAL_CNT, &dom_calib->spe_disc_calib);
-    linearFitFloat(mpe_disc_data, pulser_spe_charge_data,
+    linearFitFloat(mpe_disc_data, pulser_mpe_charge_data,
                          DISC_CAL_CNT, &dom_calib->mpe_disc_calib);
+
+    /* Refine each fit */
+    int vld_cnt = DISC_CAL_CNT;
+    refineLinearFit(spe_disc_data, pulser_spe_charge_data, 
+                   &vld_cnt, &(dom_calib->spe_disc_calib),
+                   DISC_CAL_MIN_R2, DISC_CAL_MIN_R2_PTS, NULL, NULL);
+    if (vld_cnt != DISC_CAL_CNT) printf("Using only %d pts for fit\n", vld_cnt);
+    vld_cnt = DISC_CAL_CNT;
+    refineLinearFit(mpe_disc_data, pulser_mpe_charge_data, 
+                   &vld_cnt, &(dom_calib->mpe_disc_calib),
+                   DISC_CAL_MIN_R2, DISC_CAL_MIN_R2_PTS, NULL, NULL);
+    if (vld_cnt != DISC_CAL_CNT) printf("Using only %d pts for fit\n", vld_cnt);
 
     /* Restore DAC values */
     halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, old_pedestal_value);

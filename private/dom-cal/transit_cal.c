@@ -523,8 +523,14 @@ int transit_cal(calib_data *dom_calib) {
     }
 
     if (vld_cnt >= TRANSIT_CAL_MIN_VLD_PTS) {
-        linearFitFloat(x, y, vld_cnt, &dom_calib->transit_calib);
+
+        linearFitFloat(x, y, vld_cnt, &(dom_calib->transit_calib));
         dom_calib->transit_calib_valid = 1;
+
+        /* Remove outliers */
+        refineLinearFit(x, y, &vld_cnt, &(dom_calib->transit_calib), TRANSIT_CAL_MIN_R2, 
+                        TRANSIT_CAL_MIN_R2_PTS, NULL, NULL);
+
         dom_calib->transit_calib_points = vld_cnt;
     }
     else {
