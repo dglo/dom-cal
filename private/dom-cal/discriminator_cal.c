@@ -104,7 +104,7 @@ int disc_cal(calib_data *dom_calib) {
         pulser_mpe_charge_data[i] = pulserDAC2Q(pulser_dac);
 
         #ifdef DEBUG
-        printf("Got disc point: SPE DAC: %f SPE Q: %f MPE DAC: %f MPE Q: %f",
+        printf("Got disc point: SPE DAC: %f SPE Q: %f MPE DAC: %f MPE Q: %f\r\n",
                                   spe_disc_data[i], pulser_spe_charge_data[i],
                                   mpe_disc_data[i], pulser_mpe_charge_data[i]);
         #endif
