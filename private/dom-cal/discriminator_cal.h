@@ -15,8 +15,12 @@
 #define PEDESTAL_VALUE          1925
 #endif
 
-/* Error code indicating correct amplitude could not be localized */
-#define AMPLITUDE_NOT_LOCALIZED 2
+/* Lowest acceptable R^2 */
+#define DISC_CAL_MIN_R2          0.999
+
+/* Minimum points to leave when improving R^2 */
+#define DISC_CAL_MIN_R2_PTS        6
+
 
 /* Prototypes */
 int disc_cal(calib_data *dom_calib);
