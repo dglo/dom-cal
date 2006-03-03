@@ -81,6 +81,7 @@ void get_fit_initialization( float *x, float *y, int num, float *params, int pro
 
     /* Exponential amplitude */
     params[0] = y[0];
+
     /* Zero amplitude will crash fit! */
     if (params[0] == 0.0) params[0] = 0.01;
 
@@ -198,8 +199,9 @@ int spe_find_valley(float *a, float *valley_x, float *valley_y) {
         err = SPE_FIT_ERR_NR_NO_CONVERGE;
 
     /* Check sanity of valley */
-    /* Should be positive and to the left of the gaussian peak */
-    if ((*valley_x < 0) || (*valley_x > a[3]))
+    /* Should generally be positive and to the left of the gaussian peak */
+    /* Allow slightly negative valley position */
+    if ((*valley_x < -SPE_FIT_VALLEY_PEAK_FRACT*a[3]) || (*valley_x > a[3]))
         err = SPE_FIT_ERR_NR_BAD_X;
 
     return err;
@@ -233,8 +235,8 @@ int spe_fit(float *xdata, float *ydata, int pts,
              (ydata[start_bin] < (2 * SPE_FIT_NOISE_FRACT * num_samples)))) &&
            (start_bin < pts - 1)) {
         
-        /* Also record first non-zero bin as a fallback */
-        if ((!nonzero_found) && (ydata[start_bin] > 0)) {
+        /* Also record first essentially non-zero bin as a fallback */
+        if ((!nonzero_found) && (ydata[start_bin] > SPE_FIT_ZERO_FRACT * num_samples)) {
             nonzero_found = 1;
             nonzero_bin = start_bin;
         }
@@ -360,7 +362,10 @@ int spe_fit(float *xdata, float *ydata, int pts,
         }
 
         /* Make sure gaussian max isn't out of the fitted range */
-        if (fit_params[3] > xdata[start_bin + ndata-1]) err = SPE_FIT_ERR_BAD_FIT;
+        /* Make sure gaussian width isn't ridiculously small */
+        if ((fit_params[3] > xdata[start_bin + ndata-1]) ||
+            (fit_params[4] > SPE_FIT_MAX_GAUSS_WIDTH)) 
+            err = SPE_FIT_ERR_BAD_FIT;
     }
     else {
 #ifdef DEBUG

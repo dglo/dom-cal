@@ -397,50 +397,20 @@ int hv_gain_cal(calib_data *dom_calib) {
         linearFitFloat(log_hv, log_gain, spe_cnt, &(dom_calib->hv_gain_calib)); 
         dom_calib->hv_gain_valid = 1;
 
+        float *log_hv_bad = (float *)malloc(spe_cnt * sizeof(float));
+        int bad_cnt = 0;
+
         /* Check for bad R^2 */
-        while ((dom_calib->hv_gain_calib.r_squared < GAIN_CAL_MIN_R2) && 
-               (spe_cnt > GAIN_CAL_MIN_R2_PTS)) {
-            
-            /* Find worst point */
-            int worst_idx = 0;
-            float worst_residual = 0.0;
-            float residual, gain_calc;
-            int i, j;
-            for (i = 0; i < spe_cnt; i++) {
-                gain_calc = dom_calib->hv_gain_calib.slope * log_hv[i] +
-                    dom_calib->hv_gain_calib.y_intercept;
-
-                residual = fabs(gain_calc - log_gain[i]);
-
-                if (residual > worst_residual) {
-                    worst_residual = residual;
-                    worst_idx = i;
-                }                    
-            }
-
-            /* Mark that fit as bad -- and round correctly */
-            hv_idx = (int)(((pow(10.0, log_hv[worst_idx]) - GAIN_CAL_HV_LOW) / GAIN_CAL_HV_INC) + 0.5);
+        refineLinearFit(log_hv, log_gain, &spe_cnt, &dom_calib->hv_gain_calib,
+                        GAIN_CAL_MIN_R2, GAIN_CAL_MIN_R2_PTS, log_hv_bad, &bad_cnt);        
+        
+        /* Mark the discarded fits as bad -- and round correctly */
+        int idx;
+        for (idx = 0; idx < bad_cnt; idx++) {
+            hv_idx = (int)(((pow(10.0, log_hv_bad[idx]) - GAIN_CAL_HV_LOW) / GAIN_CAL_HV_INC) + 0.5);
             dom_calib->histogram_data[hv_idx].convergent = 0;
-
-#ifdef DEBUG
-            printf("R^2 value is too low (%g): discarding point at index %d\r\n",
-                   dom_calib->hv_gain_calib.r_squared, hv_idx);
-#endif
-
-            /* Discard that point */
-            j = 0;
-            for (i = 0; i < spe_cnt; i++) {
-                if (i != worst_idx) {
-                    log_gain[j] = log_gain[i];
-                    log_hv[j] = log_hv[i];
-                    j++;
-                }
-            }            
-            spe_cnt--;
-
-            /* Try the fit again */
-            linearFitFloat(log_hv, log_gain, spe_cnt, &(dom_calib->hv_gain_calib)); 
-        } /* End R^2 optimization */
+        }
+        
     }
     else {
 #ifdef DEBUG

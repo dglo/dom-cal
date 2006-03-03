@@ -59,6 +59,12 @@
 /* Otherwise don't accept the point for fit */
 #define TRANSIT_CAL_MAX_SIGMA       5.0
 
+/* Lowest acceptable R^2 */
+#define TRANSIT_CAL_MIN_R2          0.99
+
+/* Minimum points to leave when improving R^2 */
+#define TRANSIT_CAL_MIN_R2_PTS        4
+
 /* Error code for no HV base */
 #define TRANSIT_CAL_NO_HV_BASE        2
 
