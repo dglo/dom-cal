@@ -22,8 +22,8 @@
 #define TRANSIT_CAL_ATWD              0
 
 /* LED brightness starting/stopping values */
-#define TRANSIT_CAL_LED_AMP_START   950
-#define TRANSIT_CAL_LED_AMP_STOP    450
+#define TRANSIT_CAL_LED_AMP_START  1023
+#define TRANSIT_CAL_LED_AMP_STOP      0
 #define TRANSIT_CAL_LED_AMP_STEP      3
 
 /* Which channel to use */
