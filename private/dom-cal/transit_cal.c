@@ -31,6 +31,7 @@ int transit_cal(calib_data *dom_calib) {
     float le_x[128], le_y[128];
     int le_cnt;
     linear_fit le_fit;
+    int err = 0;
 
     /* Which atwd to use */
     short atwd = TRANSIT_CAL_ATWD;
@@ -540,13 +541,15 @@ int transit_cal(calib_data *dom_calib) {
         dom_calib->transit_calib.slope = 0.0; 
         dom_calib->transit_calib.y_intercept = 0.0;
         dom_calib->transit_calib.r_squared = 0.0;
-        return TRANSIT_CAL_PTS_ERR;
+        err = TRANSIT_CAL_PTS_ERR;
 #endif
     }
 
-#ifdef DEBUG
-    printf("Fit: m %g b %g r2 %g\r\n", dom_calib->transit_calib.slope,
-            dom_calib->transit_calib.y_intercept, dom_calib->transit_calib.r_squared);
+#ifdef DEBUG   
+    if (!err) {
+        printf("Fit: m %g b %g r2 %g\r\n", dom_calib->transit_calib.slope,
+               dom_calib->transit_calib.y_intercept, dom_calib->transit_calib.r_squared);
+    }
 #endif
 
     /*---------------------------------------------------------------------------*/
@@ -564,6 +567,6 @@ int transit_cal(calib_data *dom_calib) {
     
     /* Won't turn off the HV for now...*/
     
-    return 0;
+    return err;
     
 }
