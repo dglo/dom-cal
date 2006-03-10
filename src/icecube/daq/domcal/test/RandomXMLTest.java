@@ -160,8 +160,7 @@ public class RandomXMLTest
                                        (i == 1));
         };
 
-        FakeCalXML xml = new FakeCalXML(date, mbHardSerial, temp,
-                                        FakeCalXML.TEMP_KELVIN);
+        FakeCalXML xml = new FakeCalXML(date, mbHardSerial, temp);
 
         xml.setDACs(dacs);
         xml.setADCs(adcs);
@@ -220,19 +219,15 @@ public class RandomXMLTest
                                   mainbdTagSerial, MockSQLUtil.DOM_TYPE_ID,
                                   MockSQLUtil.DOM_ID, domTagSerial);
 
-        MockSQLUtil.addMainSQL(stmt, MockSQLUtil.DOM_ID, date, temp, (short) 0,
-                               (short) 0, (short) 0, domcalId);
+        MockSQLUtil.addMainSQL(stmt, MockSQLUtil.DOM_ID, date, temp, domcalId);
 
         MockSQLUtil.addChanValSQL(stmt, "ADC", domcalId, adcs);
         MockSQLUtil.addChanValSQL(stmt, "DAC", domcalId, dacs);
-        MockSQLUtil.addPulserSQL(stmt, domcalId, MockSQLUtil.MODEL_LINEAR_ID,
-                                 pulserSlope, pulserIntercept,
-                                 pulserRegression);
-        MockSQLUtil.addATWDSQL(stmt, domcalId, MockSQLUtil.MODEL_LINEAR_ID,
-                               atwdData);
+        MockSQLUtil.addPulserSQL(stmt, domcalId, pulserSlope,
+                                 pulserIntercept, pulserRegression);
+        MockSQLUtil.addATWDSQL(stmt, domcalId, atwdData);
         MockSQLUtil.addAmpGainSQL(stmt, domcalId, ampGain, ampError);
-        MockSQLUtil.addATWDFreqSQL(stmt, domcalId, MockSQLUtil.MODEL_LINEAR_ID,
-                                   freqData);
+        MockSQLUtil.addATWDFreqSQL(stmt, domcalId, freqData);
         MockSQLUtil.addHvGainSQL(stmt, domcalId, hvGainSlope, hvGainIntercept,
                                  hvGainRegression);
         MockSQLUtil.addHvHistoSQL(stmt, domcalId, histo);

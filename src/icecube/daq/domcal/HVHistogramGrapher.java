@@ -20,7 +20,6 @@ import org.xml.sax.SAXException;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.ParserConfigurationException;
-import javax.imageio.ImageIO;
 import java.io.*;
 import java.util.Hashtable;
 import java.util.Iterator;
@@ -38,25 +37,12 @@ public class HVHistogramGrapher implements Runnable {
 
     public static final double EC = 1.6022e-19;
 
-    public static short[] VOLTAGES = {1020,
-                                      1100,
-                                      1180,
-                                      1260,
-                                      1340,
-                                      1420,
-                                      1500,
-                                      1580,
-                                      1660,
-                                      1740,
-                                      1820,
-                                      1900};
+    public static short[] VOLTAGES = {1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900};
 
     private String inDir;
     private String outDir;
     private String htmlRoot;
     private Properties calProps;
-
-    public static final double SCALE_FACTOR = 5.0;
 
     public static void main( String[] args) {
         try {
@@ -68,12 +54,13 @@ public class HVHistogramGrapher implements Runnable {
             (new HVHistogramGrapher(inDir, outDir, htmlRoot)).run();
         } catch (Exception e) {
             usage();
+            e.printStackTrace();
             System.exit(-1);
         }
     }
 
     public static void usage() {
-        System.out.println("Usage: java icecube.daq.domcal.HVHistogramGrapher {inDir} {outDir} {htmlRoot}");
+        System.out.println("Usage: java icecube.daq.domcal.HVHistogramGrapher {inDir} {outDir}");
     }
 
     public HVHistogramGrapher(String inDir, String outDir, String htmlRoot) {
@@ -104,7 +91,7 @@ public class HVHistogramGrapher implements Runnable {
         File[] domcalFiles = inFile.listFiles(new FilenameFilter() {
 
                                   public boolean accept(File dir, String name) {
-                                      return (name.startsWith("domcal_") && name.endsWith(".xml"));
+                                      return name.startsWith("domcal_");
                                   }
                               });
 
@@ -139,25 +126,20 @@ public class HVHistogramGrapher implements Runnable {
         doc.addBr();
         sumDoc.add("Gain vs HV");
         sumDoc.addBr();
-
-        Connection jdbc = null;
-        try {
-            String driver = calProps.getProperty("icecube.daq.domcal.db.driver", "com.mysql.jdbc.Driver");
-            Class.forName(driver);
-            String url = calProps.getProperty("icecube.daq.domcal.db.url", "jdbc:mysql://localhost/fat");
-            String user = calProps.getProperty("icecube.daq.domcal.db.user", "dfl");
-            String passwd = calProps.getProperty("icecube.daq.domcal.db.passwd", "(D0Mus)");
-            jdbc = DriverManager.getConnection(url, user, passwd);
-        } catch (Exception e) {
-            System.out.println("Error establishing DOM name lookup");
-        }
+        
         for (Iterator it = histTable.keySet().iterator(); it.hasNext();) {
             String domId = (String)it.next();
             Hashtable hTable = (Hashtable)histTable.get(domId);
             StringTokenizer st = new StringTokenizer(domId, ".xml");
             String id = st.nextToken();
-            if (jdbc != null) {
+            if (calProps != null) {
                 try {
+                    String driver = calProps.getProperty("icecube.daq.domcal.db.driver", "com.mysql.jdbc.Driver");
+                    Class.forName(driver);
+                    String url = calProps.getProperty("icecube.daq.domcal.db.url", "jdbc:mysql://localhost/fat");
+                    String user = calProps.getProperty("icecube.daq.domcal.db.user", "dfl");
+                    String passwd = calProps.getProperty("icecube.daq.domcal.db.passwd", "(D0Mus)");
+                    Connection jdbc = DriverManager.getConnection(url, user, passwd);
                     Statement stmt = jdbc.createStatement();
                     String sql = "select * from doms where mbid='" + id + "';";
                     ResultSet s = stmt.executeQuery(sql);
@@ -225,18 +207,21 @@ public class HVHistogramGrapher implements Runnable {
     }
 
     private String graphHistogram(HVHistogram histo, String domId) throws IOException {
-        String outName = domId + histo.getVoltage() + ".png";
+        String outName = domId + histo.getVoltage() + ".jpeg";
         String outFile = outDir + (outDir.endsWith("/") ? "" : "/") + outName;
         String outHttp = htmlRoot + (htmlRoot.endsWith("/") ? "" : "/") + outName;
         BufferedImage bi = createImage(histo);
-        File outf = new File(outFile);
-        ImageIO.write(bi, "png", outf);
+        JPEGImageEncoder jout = JPEGCodec.createJPEGEncoder(new FileOutputStream(outFile));
+        JPEGEncodeParam ep = jout.getDefaultJPEGEncodeParam(bi);
+        ep.setQuality(2, false);
+        jout.setJPEGEncodeParam(ep);
+        jout.encode(bi);
         System.out.println(outFile);
         return outHttp;
     }
 
     private String graphHV(Hashtable histos, String domId) throws IOException {
-        String outName = domId + "_hv" + ".png";
+        String outName = domId + "_hv" + ".jpeg";
         String outFile = outDir + (outDir.endsWith("/") ? "" : "/") + outName;
         String outHttp = htmlRoot + (htmlRoot.endsWith("/") ? "" : "/") + outName;
         BufferedImage bi = createSummaryImage(histos);
@@ -267,15 +252,15 @@ public class HVHistogramGrapher implements Runnable {
         g.drawLine(50, 0, 50, 249);
 
         //draw X tick marks
-        int[] xTicks = {1100, 1300, 1500, 1700, 1900};
+        int[] xTicks = {1200, 1400, 1600, 1800, 2000};
         for (int i = 0; i < xTicks.length; i ++) {
             int x = getXPixel(xTicks[i]);
             g.drawLine(x, 247, x, 251);
         }
 
         //draw Y tick marks
-        int[] yTicks = {1000000, 10000000, 100000000, 1000000000};
-        String[] yTickStr = {"1e6", "1e7", "1e8", "1e9"};
+        int[] yTicks = {1000000, 3000000, 10000000, 30000000, 100000000};
+        String[] yTickStr = {"1e6", "3e6", "1e7", "3e7", "1e8"};
         for (int i = 0; i < yTicks.length; i++) {
             int y = getYPixel(yTicks[i]);
             g.drawLine(48, y, 52, y);
@@ -355,14 +340,14 @@ public class HVHistogramGrapher implements Runnable {
     private int getXPixel(int val) {
         double logVal = Math.log(val);
         double staticHVal = Math.log(1900);
-        double staticLVal = Math.log(1000);
+        double staticLVal = Math.log(1100);
 
         return 50 + (int)(200 * ((logVal - staticLVal)/(staticHVal - staticLVal)));
     }
 
     private int getYPixel(int val) {
         double logVal = Math.log(val);
-        double staticHVal = Math.log(1e9);
+        double staticHVal = Math.log(1e8);
         double staticLVal = Math.log(1e6);
 
         return 249 - (int)(220 * ((logVal - staticLVal)/(staticHVal - staticLVal)));
@@ -388,7 +373,7 @@ public class HVHistogramGrapher implements Runnable {
         g.setColor(Color.BLUE);
         //fill histogram
         for (int i = 0; i < 250; i++) {
-            double cnt = yData[i] / SCALE_FACTOR;    //scale cnt to pixel resolution by 4.0 factor -- allow ~1000/bin
+            float cnt = yData[i];
             if (cnt > 249) cnt = 249;
             else if (cnt < 0) cnt = 0;
             g.drawLine(50 + i, 249, 50 + i, 249 - (int)cnt);
@@ -404,8 +389,7 @@ public class HVHistogramGrapher implements Runnable {
         int fitPrevious = -1;
         for (int i = 0; i < 250; i++) {
             float x = xData[i];
-            int fitY = (int)(((fp[0]*Math.exp(-1*fp[1]*x))+(fp[2]*
-                                      Math.exp(-1*Math.pow((double)(x - fp[3]), 2)*fp[4])))/SCALE_FACTOR);
+            int fitY = (int)((fp[0]*Math.exp(-1*fp[1]*x))+(fp[2]*Math.exp(-1*Math.pow((double)(x - fp[3]), 2)*fp[4])));
             if (fitY < 1) fitY = 1;
             else if (fitY > 247) fitY = 247;
             g.drawLine(50 + i, 249-fitY-1, 50 + i, 249-fitY+1);
@@ -427,8 +411,7 @@ public class HVHistogramGrapher implements Runnable {
         //create Y labels
         int charHeight = g.getFontMetrics().getHeight();
         for (int i = 0; i < 5; i++) {
-            g.drawString("" + (int)(50*i*SCALE_FACTOR), 25 -
-                    (g.getFontMetrics().stringWidth("" + (int)(50*i*SCALE_FACTOR)))/2, 249 - 50*i + charHeight/2);
+            g.drawString("" + 50*i, 25 - (g.getFontMetrics().stringWidth("" + 50*i))/2, 249 - 50*i + charHeight/2);
         }
         //create X labels
         for (int i = 0; i < 5; i++) {
@@ -508,22 +491,47 @@ public class HVHistogramGrapher implements Runnable {
 
     }
 
-    private class FitException extends Exception {
+    private class LinearFit {
 
-        public static final int EVERTICAL_LINE = -1;
-        public static final int EDATA_LENGTH = -2;
-        public static final int EX_LENGTH_NOT_Y_LENGTH = -3;
+            private float slope;
+            private float yIntercept;
+            private float rSquared;
 
-        private int condition;
+            public LinearFit( float slope, float yIntercept, float rSquared ) {
+                this.slope = slope;
+                this.yIntercept = yIntercept;
+                this.rSquared = rSquared;
+            }
 
-        public FitException( int condition ) {
-            this.condition = condition;
+            public float getSlope() {
+                return slope;
+            }
+
+            public float getYIntercept() {
+                return yIntercept;
+            }
+
+            public float getRSquared() {
+                return rSquared;
+            }
         }
 
-        public int getCondition() {
-            return condition;
+        private class FitException extends Exception {
+
+            public static final int EVERTICAL_LINE = -1;
+            public static final int EDATA_LENGTH = -2;
+            public static final int EX_LENGTH_NOT_Y_LENGTH = -3;
+
+            private int condition;
+
+            public FitException( int condition ) {
+                this.condition = condition;
+            }
+
+            public int getCondition() {
+                return condition;
+            }
         }
-    }
 
 
     private static class HTMLDoc {
