@@ -2,17 +2,18 @@
  * domcal.h
  */
 
+#ifndef _DOMCAL_H_
+#define _DOMCAL_H_
 /* Print debugging information */
 #define DEBUG 1
 
-/* Version of calibration program -- Major version must
- * be incremented when changing structure of binary output
- */
-#define MAJOR_VERSION 5
-#define MINOR_VERSION 11
+/* Version of calibration program */
+#define MAJOR_VERSION 6
+#define MINOR_VERSION 2
+#define PATCH_VERSION 4
 
 /* Default number of bytes in binary output */
-#define DEFAULT_RECORD_LENGTH 9388
+#define DEFAULT_RECORD_LENGTH 9440
 
 /* Default ATWD DAC settings */
 #ifdef DOMCAL_REV5
@@ -21,16 +22,24 @@
 #define ATWD_RAMP_BIAS_DAC       350
 #define ATWD_ANALOG_REF_DAC     2250
 #define ATWD_PEDESTAL_DAC       2130
+#define FAST_ADC_REF             800
 #else
 #define ATWD_SAMPLING_SPEED_DAC 850
 #define ATWD_RAMP_TOP_DAC       2097
 #define ATWD_RAMP_BIAS_DAC      3000
 #define ATWD_ANALOG_REF_DAC     2048
 #define ATWD_PEDESTAL_DAC       1925
+#define FAST_ADC_REF            800
 #endif
 
 /* Oscillator frequency into ATWD channel 3, mux input 0, in MHz */
 #define DOM_CLOCK_FREQ          20.0
+
+/* FADC sampling frequency, in MHz */
+#define FADC_CLOCK_FREQ         40.0
+
+/* DOM front-end impedance in Ohms, with PMT attached */
+#define DOM_FE_IMPEDANCE        43.0
 
 /* Wait time after setting a DAC */
 #define DAC_SET_WAIT         1000000
@@ -39,10 +48,23 @@
 #define FAILED_BINARY_CONVERSION -1;
 #define FAILED_FLASH_WRITE -2;
 
+/* Initial discriminator DAC setting */
+#ifdef DOMCAL_REV5
+#define DISC_DAC_INIT   556
+#else
+#define DISC_DAC_INIT   505
+#endif
+
+
 /* Linear fit parameters */
 typedef struct {
     float slope, y_intercept, r_squared;
 } linear_fit;
+
+/* Quadratic fit parameters */
+typedef struct {
+    float c0, c1, c2, r_squared;
+} quadratic_fit;
 
 /* Store value and error together */
 typedef struct {
@@ -74,7 +96,10 @@ typedef struct {
     
     /* Date */
     short day, month, year;
-    
+
+    /* Time */
+    short hour, minute, second;
+
     /* DOM ID */
     char dom_id[13];
     
@@ -86,10 +111,17 @@ typedef struct {
     short adc_values[24];
    
     /* FADC calibration */
-    short fadc_values[2];
+    linear_fit  fadc_baseline;
+    value_error fadc_gain;
+    value_error fadc_delta_t;
 
     /* FE pulser calibration */
+    /* OBSOLETE as of v6.0 */
     linear_fit pulser_calib;
+
+    /* discriminator calibration */
+    linear_fit spe_disc_calib;
+    linear_fit mpe_disc_calib;
 
     /* ATWD gain calibration */
     linear_fit atwd0_gain_calib[3][128];
@@ -103,8 +135,8 @@ typedef struct {
     value_error amplifier_calib[3];
     
     /* ATWD sampling speed calibration */
-    linear_fit atwd0_freq_calib;
-    linear_fit atwd1_freq_calib;
+    quadratic_fit atwd0_freq_calib;
+    quadratic_fit atwd1_freq_calib;
 
     /* Valid bit for HV calibration */
     short hv_gain_valid;
@@ -127,7 +159,11 @@ typedef struct {
     /* Valid bit for PMT transit calibration */
     short transit_calib_valid;
 
+    /* Number of valid transit time points */
+    short transit_calib_points;
+
     /* Histograms */
     hv_histogram* histogram_data;
 
 } calib_data;
+#endif
