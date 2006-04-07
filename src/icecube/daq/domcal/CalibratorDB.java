@@ -44,7 +44,7 @@ public class CalibratorDB
         new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S");
 
     /** List of all tables containing calibration data. */
-    private static String[] ALL_TABLES = new String[] {
+    private static final String[] ALL_TABLES = new String[] {
         "DOMCal_ADC",
         "DOMCal_ATWD",
         "DOMCal_ATWDFreq",
@@ -211,7 +211,7 @@ public class CalibratorDB
      * @param date date value
      * @param time time value
      */
-    private static final Date getCombinedDate(Date date, Date time)
+    private static Date getCombinedDate(Date date, Date time)
     {
         Date combined;
         if (date == null) {
@@ -503,7 +503,7 @@ public class CalibratorDB
      * Load calibration data.
      *
      * @param cal calibration object to be filled
-     * @param id calibration ID 
+     * @param id calibration ID
      *
      * @throws DOMCalibrationException if an argument is invalid
      * @throws SQLException if there is a database problem
@@ -1262,7 +1262,7 @@ public class CalibratorDB
      *
      * @param stmt SQL statement
      * @param cal calibration object to be filled
-     * @param domcalId calibration ID 
+     * @param domcalId calibration ID
      *
      * @throws DOMCalibrationException if there is a problem with the data
      * @throws SQLException if there is a database problem
@@ -1324,8 +1324,8 @@ public class CalibratorDB
         try {
             dcProd = new DOMProduct(stmt, prodId);
         } catch (DOMProdTestException dpte) {
-            throw new DOMCalibrationException("Couldn't get DOM data: "
-                                              + dpte.getMessage());
+            throw new DOMCalibrationException("Couldn't get DOM data: " +
+                                              dpte.getMessage());
         }
 
         cal.setMain(domcalId, dcProd.getHardwareSerial(), dcProd, combined,

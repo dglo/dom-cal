@@ -753,7 +753,6 @@ public class CalibratorComparator
             if (verbose) {
                 System.err.println("Histogram#" + num + " voltage mismatch (" +
                                    v1 + " != " + h2.getVoltage() + ")");
-                                   
             }
             return (h2.getVoltage() - v1);
         }
@@ -764,7 +763,7 @@ public class CalibratorComparator
                 System.err.println("Histogram#" + num +
                                    " convergence mismatch (" +
                                    (convergent ? "" : "!") + "convergent != " +
-                                   (h2.isConvergent() ?"" : "!") +
+                                   (h2.isConvergent() ? "" : "!") +
                                    "convergent)");
             }
             return (convergent ? -1 : 1);
@@ -799,7 +798,7 @@ public class CalibratorComparator
                 System.err.println("Histogram#" + num +
                                    " isFilled mismatch (" +
                                    (isFilled ? "" : "!") + "isFilled != " +
-                                   (h2.isFilled() ?"" : "!") + "isFilled)");
+                                   (h2.isFilled() ? "" : "!") + "isFilled)");
             }
             return (isFilled ? -1 : 1);
         }
