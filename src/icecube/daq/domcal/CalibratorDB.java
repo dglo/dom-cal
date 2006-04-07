@@ -110,6 +110,33 @@ public class CalibratorDB
     }
 
     /**
+     * Combine date and time into a single entity.
+     *
+     * @param date date value
+     * @param time time value
+     */
+    private static final Date getCombinedDate(Date date, Date time)
+    {
+        Date combined;
+        if (date == null) {
+            combined = null;
+        } else if (time == null) {
+            combined = date;
+        } else {
+            Calendar calTime = Calendar.getInstance();
+            calTime.setTime(time);
+
+            long timeMS = calTime.get(Calendar.HOUR_OF_DAY) * 3600000 +
+                calTime.get(Calendar.MINUTE) * 60000 +
+                calTime.get(Calendar.SECOND) * 1000;
+
+            combined = new Date(date.getTime() + timeMS);
+        }
+
+        return combined;
+    }
+
+    /**
      * Get discriminator type ID.
      *
      * @param stmt SQL statement
@@ -1054,21 +1081,7 @@ public class CalibratorDB
             throw new DOMCalibrationException(errMsg);
         }
 
-        Date combined;
-        if (dcDate == null) {
-            combined = null;
-        } else if (dcTime == null) {
-            combined = dcDate;
-        } else {
-            Calendar calTime = Calendar.getInstance();
-            calTime.setTime(dcTime);
-
-            long timeMS = calTime.get(Calendar.HOUR_OF_DAY) * 3600000 +
-                calTime.get(Calendar.MINUTE) * 60000 +
-                calTime.get(Calendar.SECOND) * 1000;
-
-            combined = new Date(dcDate.getTime() + timeMS);
-        }
+        Date combined = getCombinedDate(dcDate, dcTime);
 
         cal.setMain(domcalId, mbSerial, dcProd, combined, dcTemp,
                     dcMajor, dcMinor, dcPatch);
