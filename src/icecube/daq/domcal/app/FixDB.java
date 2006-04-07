@@ -4,20 +4,219 @@ import icecube.daq.db.domprodtest.BasicDB;
 import icecube.daq.db.domprodtest.DOMProdTestException;
 import icecube.daq.db.domprodtest.DOMProdTestUtil;
 
+import icecube.daq.domcal.Calibrator;
+import icecube.daq.domcal.CalibratorComparator;
+import icecube.daq.domcal.CalibratorDB;
+import icecube.daq.domcal.DOMCalibrationException;
 import icecube.daq.domcal.HVHistogram;
 
 import java.io.IOException;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Time;
+
+import java.text.SimpleDateFormat;
 
 import java.util.ArrayList;
+import java.util.Iterator;
+
+import org.apache.log4j.BasicConfigurator;
 
 /**
- * Update database to latest DOMCal schema.
+ * Duplicate DOMCal data.
+ */
+class DupData
+{
+    /** SQL date format */
+    private static final SimpleDateFormat SQL_DATE_FORMAT =
+        new SimpleDateFormat("yyyy-MM-dd");
+    /** SQL time format */
+    private static final SimpleDateFormat SQL_TIME_FORMAT =
+        new SimpleDateFormat("HH:mm:ss");
+
+    /** number of duplicate rows */
+    private int cnt;
+    /** duplicated product ID */
+    private int prodId;
+    /** duplicated date */
+    private Date date;
+    /** duplicated time */
+    private Time time;
+    /** duplicated temperature */
+    private double temp;
+    /** duplicated major version */
+    private short major;
+    /** duplicated minor version */
+    private short minor;
+    /** duplicated patch version */
+    private short patch;
+
+    /**
+     * Duplicated DOM calibration data.
+     *
+     * @param cnt number of duplicate rows
+     * @param prodId product ID
+     * @param date date
+     * @param time time
+     * @param temp temperature
+     * @param major major version
+     * @param minor minor version
+     * @param patch patch version
+     */
+    DupData(int cnt, int prodId, Date date, Time time, double temp,
+            short major, short minor, short patch)
+    {
+        this.cnt = cnt;
+        this.prodId = prodId;
+        this.date = date;
+        this.time = time;
+        this.temp = temp;
+        this.major = major;
+        this.minor = minor;
+        this.patch = patch;
+    }
+
+    /**
+     * Delete duplicate calibration entries.
+     *
+     * @param calDB calibrator database connection
+     * @param stmt SQL statement
+     * @param verbose <tt>true</tt> if status messages should be printed
+     * @param testOnly <tt>true</tt> if no changes should be made to database
+     */
+    void deleteDups(CalibratorDB calDB, Statement stmt, boolean verbose,
+                    boolean testOnly)
+        throws DOMCalibrationException, SQLException
+    {
+        ArrayList list = load(calDB, stmt);
+
+        Calibrator cal = null;
+
+        Iterator iter = list.iterator();
+        while (iter.hasNext()) {
+            Calibrator tmpCal = (Calibrator) iter.next();
+
+            if (cal == null) {
+                cal = tmpCal;
+            } else {
+                int cmp = CalibratorComparator.compare(cal, tmpCal, verbose);
+                if (cmp == 0) {
+                    System.err.println("Delete earlier ID#" +
+                                       cal.getDOMCalId());
+                    calDB.delete(stmt, cal, testOnly);
+                    cal = tmpCal;
+                } else {
+                    if (cmp < 0) {
+                        calDB.delete(stmt, tmpCal, testOnly);
+                    } else {
+                        calDB.delete(stmt, cal, testOnly);
+                        cal = tmpCal;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Return a formatted temperature string.
+     *
+     * @param temp temperature
+     *
+     * @return formatted temperature
+     */
+    private static String formatTemperature(double temp)
+    {
+        final String dblStr =
+            Double.toString(temp + (temp < 0 ? -0.005 : 0.005));
+        final int dotIdx = dblStr.indexOf('.');
+        if (dblStr.length() <= dotIdx + 3) {
+            return dblStr;
+        }
+        return dblStr.substring(0, dotIdx + 3);
+    }
+
+    /**
+     * Load all instances of this duplicated data.
+     *
+     * @param calDB calibrator database connection
+     * @param stmt SQL statement
+     *
+     * @return list of duplicate rows
+     *
+     * @throws DOMCalibrationException if there is a data error
+     * @throws SQLException if there is a database problem
+     */
+    private ArrayList load(CalibratorDB calDB, Statement stmt)
+        throws DOMCalibrationException, SQLException
+    {
+        String dateStr;
+        String timeStr;
+        if (date == null) {
+            dateStr = null;
+            timeStr = null;
+        } else {
+            dateStr = SQL_DATE_FORMAT.format(date);
+            if (time == null) {
+                timeStr = null;
+            } else {
+                timeStr = SQL_TIME_FORMAT.format(time);
+            }
+        }
+
+        final String qStr =
+            "select domcal_id from DOMCalibration" +
+            " where prod_id=" + prodId +
+            (dateStr == null ? "" : " and date=" +
+             DOMProdTestUtil.quoteString(dateStr) +
+             (timeStr == null ? " and time is null" : " and time=" +
+              DOMProdTestUtil.quoteString(timeStr))) +
+            (Double.isNaN(temp) ? "" :
+             " and temperature>=" + formatTemperature((double) temp - 0.01) +
+             " and temperature<=" + formatTemperature((double) temp + 0.01)) +
+            (major < 0 ? "" : " and major_version=" + major +
+             (minor < 0 ? "" : " and minor_version=" + minor +
+              (patch < 0 ? "" : " and patch_version=" + patch))) +
+            " order by domcal_id";
+
+        ArrayList list = new ArrayList();
+
+        ResultSet rs = stmt.executeQuery(qStr);
+        while (true) {
+            if (!rs.next()) {
+                break;
+            }
+
+            final int domcalId = rs.getInt(1);
+
+            Calibrator cal = new Calibrator();
+            try {
+                calDB.load(cal, domcalId);
+                list.add(cal);
+            } catch (DOMCalibrationException dce) {
+                System.err.println("Couldn't load #" + domcalId);
+                dce.printStackTrace();
+            }
+
+        }
+
+        try {
+            rs.close();
+        } catch (SQLException se) {
+            // ignore errors on close
+        }
+
+        return list;
+    }
+}
+
+/**
+ * Update database to latest DOMCal schema
+ * and remove duplicate calibration data.
  */
 public class FixDB
 {
@@ -91,17 +290,22 @@ public class FixDB
     private boolean clearData;
     /** <tt>true</tt> if no changes should be made to database. */
     private boolean testOnly;
+    /** <tt>true</tt> if status messages should be printed. */
+    private boolean verbose;
 
     /**
      * Update database to latest DOMCal schema.
      *
      * @param args commandline arguments
      *
+     * @throws DOMCalibrationException if there is a data error
      * @throws DOMProdTestException if the database cannot be initialized
+     * @throws IOException if there is a communication problem
      * @throws SQLException if there is a problem with the database
      */
     FixDB(String[] args)
-        throws DOMProdTestException, IOException, SQLException
+        throws DOMProdTestException, DOMCalibrationException, IOException,
+               SQLException
     {
         processArgs(args);
 
@@ -131,6 +335,19 @@ public class FixDB
             addMissingParameterValues(conn);
         } finally {
             conn.close();
+        }
+
+
+        CalibratorDB calDB = new CalibratorDB();
+
+        try {
+            removeDups(calDB);
+        } finally {
+            try {
+                calDB.close();
+            } catch (SQLException se) {
+                // ignore errors on close
+            }
         }
     }
 
@@ -415,6 +632,27 @@ public class FixDB
     }
 
     /**
+     * Get version value.
+     *
+     * @param rs SQL result
+     * @param colNum column number
+     *
+     * @return -1 if database column is null
+     */
+    private static short getVersion(ResultSet rs, int colNum)
+    {
+        try {
+            short val = rs.getShort(colNum);
+            if (rs.wasNull()) {
+                return -1;
+            }
+            return val;
+        } catch (SQLException se) {
+            return -2;
+        }
+    }
+
+    /**
      * Does the database contain the old high-voltage gain table?
      *
      * @param conn database connection
@@ -491,6 +729,55 @@ public class FixDB
     }
 
     /**
+     * List duplicate calibration entries.
+     *
+     * @param stmt SQL statement
+     *
+     * @return list of duplicates
+     *
+     * @throws SQLException if there is a database problem
+     */
+    private static ArrayList listDups(Statement stmt)
+        throws SQLException
+    {
+        final String qStr = "select count(*) as cnt,prod_id,date,time" +
+            ",temperature,major_version,minor_version,patch_version" +
+            " from DOMCalibration group by prod_id,date,time,temperature" +
+            ",major_version,minor_version,patch_version";
+
+        ArrayList list = new ArrayList();
+
+        ResultSet rs = stmt.executeQuery(qStr);
+        while (true) {
+            if (!rs.next()) {
+                break;
+            }
+
+            final int cnt = rs.getInt(1);
+            final int prodId = rs.getInt(2);
+            final Date date = rs.getDate(3);
+            final Time time = rs.getTime(4);
+            final double temp = rs.getDouble(5);
+            final short major = getVersion(rs, 6);
+            final short minor = getVersion(rs, 7);
+            final short patch = getVersion(rs, 8);
+
+            if (cnt > 1) {
+                list.add(new DupData(cnt, prodId, date, time, temp, major,
+                                     minor, patch));
+            }
+        }
+
+        try {
+            rs.close();
+        } catch (SQLException se) {
+            // ignore errors on close
+        }
+
+        return list;
+    }
+
+    /**
      * Process command-line arguments.
      *
      * @param args command-line arguments
@@ -502,6 +789,8 @@ public class FixDB
             if (args[i].length() > 1 && args[i].charAt(0) == '-') {
                 if (args[i].charAt(1) == 't') {
                     testOnly = true;
+                } else if (args[i].charAt(1) == 'v') {
+                    verbose = true;
                 } else {
                     System.err.println("Unknown option \"" + args[i] + "\"");
                     usage = true;
@@ -516,8 +805,51 @@ public class FixDB
 
         if (usage) {
             System.err.println("Usage: " + getClass().getName() +
-                               " [clear]");
+                               " [clear]" +
+                               " [-t(estOnly)]" +
+                               " [-v(erbose)]");
             System.exit(1);
+        }
+    }
+
+    /**
+     * Remove duplicate calibration data.
+     *
+     * @param calDB calibrator database connection
+     *
+     * @throws DOMCalibrationException if there is a data error
+     * @throws SQLException if there is a database problem
+     */
+    private void removeDups(CalibratorDB calDB)
+        throws DOMCalibrationException, SQLException
+    {
+        Connection conn = calDB.getConnection();
+        Statement stmt = calDB.getStatement(conn);
+        if (stmt == null) {
+            throw new SQLException("Couldn't connect to database");
+        }
+
+        ArrayList list = listDups(stmt);
+        if (verbose) {
+            System.err.println("Saw " + list.size() + " dups");
+        }
+
+        Iterator iter = list.iterator();
+        while (iter.hasNext()) {
+            DupData dup = (DupData) iter.next();
+
+            dup.deleteDups(calDB, stmt, verbose, testOnly);
+        }
+
+        try {
+            stmt.close();
+        } catch (SQLException se) {
+            // ignore errors on close
+        }
+        try {
+            conn.close();
+        } catch (SQLException se) {
+            // ignore errors on close
         }
     }
 
@@ -526,13 +858,17 @@ public class FixDB
      *
      * @param args command-line arguments
      *
+     * @throws DOMCalibrationException if there is a data error
      * @throws DOMProdTestException if there is a problem with the data
      * @throws IOException if there is a communication problem
      * @throws SQLException if there is a database problem
      */
     public static final void main(String[] args)
-        throws DOMProdTestException, IOException, SQLException
+        throws DOMProdTestException, DOMCalibrationException, IOException,
+               SQLException
     {
+        BasicConfigurator.configure();
+
         new FixDB(args);
     }
 }
