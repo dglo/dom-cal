@@ -248,7 +248,11 @@ public class FixDB
                 "(" + newTables[i][1] + ")";
 
             try {
-                stmt.executeUpdate(tblCmd);
+                if (testOnly) {
+                    System.err.println(cmds[i]);
+                } else {
+                    stmt.executeUpdate(tblCmd);
+                }
             } finally {
                 try { stmt.close(); } catch (SQLException se) { }
             }
