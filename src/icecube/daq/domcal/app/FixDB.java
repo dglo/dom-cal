@@ -325,35 +325,18 @@ public class FixDB
     private boolean isOldGainHv(Connection conn)
         throws SQLException
     {
-        DatabaseMetaData meta = conn.getMetaData();
-
         String[] expCols = new String[] {
             "domcal_id",
             "slope",
             "intercept",
         };
 
-        boolean isOldTable = true;
-
-        ResultSet rs = meta.getColumns(conn.getCatalog(), null, "DOMCal_HvGain",
-                                       null);
-        while (isOldTable && rs.next()) {
-            final String colName = rs.getString("COLUMN_NAME");
-            final int pos = rs.getInt("ORDINAL_POSITION");
-
-            isOldTable &= (pos > 0 && pos <= expCols.length &&
-                           colName.equalsIgnoreCase(expCols[pos - 1]));
-        }
-        rs.close();
-
-        return isOldTable;
+        return isOldTable(conn, "DOMCal_HvGain", expCols);
     }
 
     private boolean isOldMainTable(Connection conn)
         throws SQLException
     {
-        DatabaseMetaData meta = conn.getMetaData();
-
         String[] expCols = new String[] {
             "domcal_id",
             "prod_id",
@@ -361,10 +344,19 @@ public class FixDB
             "temperature",
         };
 
+        return isOldTable(conn, "DOMCalibration", expCols);
+    }
+
+    private boolean isOldTable(Connection conn, String tblName,
+                               String[] expCols)
+        throws SQLException
+    {
+        DatabaseMetaData meta = conn.getMetaData();
+
         boolean isOldTable = true;
 
         ResultSet rs = meta.getColumns(conn.getCatalog(), null,
-                                       "DOMCalibration", null);
+                                       tblName, null);
         while (isOldTable && rs.next()) {
             final String colName = rs.getString("COLUMN_NAME");
             final int pos = rs.getInt("ORDINAL_POSITION");
