@@ -43,6 +43,29 @@ public class CalibratorDB
     private static SimpleDateFormat humanFormat =
         new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S");
 
+    /** List of all tables containing calibration data. */
+    private static String[] ALL_TABLES = new String[] {
+        "DOMCal_ADC",
+        "DOMCal_ATWD",
+        "DOMCal_ATWDFreq",
+        "DOMCal_ATWDFreqParam",
+        "DOMCal_ATWDParam",
+        "DOMCal_AmpGain",
+        "DOMCal_Baseline",
+        "DOMCal_ChargeData",
+        "DOMCal_ChargeMain",
+        "DOMCal_ChargeParam",
+        "DOMCal_DAC",
+        "DOMCal_Discriminator",
+        "DOMCal_FADC",
+        "DOMCal_HvGain",
+        "DOMCal_PmtTransit",
+        "DOMCal_Pulser",
+        "DOMCal_PulserParam",
+        // delete() expected DOMCalibration to be last entry in list
+        "DOMCalibration",
+    };
+
     /** List of discriminator types. */
     private static DiscriminatorType discrimType;
     /** List of model types. */
@@ -89,6 +112,79 @@ public class CalibratorDB
         discrimType = null;
         modelType = null;
         paramType = null;
+    }
+
+    /**
+     * Delete the calibration data from the database.
+     *
+     * @param cal calibration data
+     * @param testOnly <tt>true</tt> if SQL statements should be
+     *                 printed but not run
+     *
+     * @throws SQLException if there is a database problem
+     */
+    public void delete(Calibrator cal, boolean testOnly)
+        throws SQLException
+    {
+        Connection conn;
+        Statement stmt;
+
+        conn = getConnection();
+        stmt = getStatement(conn);
+
+        try {
+            delete(stmt, cal, testOnly);
+        } finally {
+            try {
+                stmt.close();
+            } catch (SQLException se) {
+                // ignore errors on close
+            }
+
+            try {
+                conn.close();
+            } catch (SQLException se) {
+                // ignore errors on close
+            }
+        }
+    }
+
+    /**
+     * Delete the calibration data from the database.
+     *
+     * @param stmt SQL statement
+     * @param cal calibration data
+     * @param testOnly <tt>true</tt> if SQL statements should be
+     *                 printed but not run
+     *
+     * @throws SQLException if there is a database problem
+     */
+    public void delete(Statement stmt, Calibrator cal, boolean testOnly)
+        throws SQLException
+    {
+        final String mainTable = "DOMCalibration";
+
+        SQLException delayedEx = null;
+        for (int i = 0; i < ALL_TABLES.length; i++) {
+            final String dStr = "delete from " + ALL_TABLES[i] +
+                " where domcal_id=" + cal.getDOMCalId();
+
+            if (testOnly) {
+                System.err.println(dStr);
+            } else {
+                int rows;
+                try {
+                    rows = stmt.executeUpdate(dStr);
+                } catch (SQLException se) {
+                    delayedEx = new SQLException(dStr + ": " +
+                                                 se.getMessage());
+                }
+            }
+        }
+
+        if (delayedEx != null) {
+            throw delayedEx;
+        }
     }
 
     /**
