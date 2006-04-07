@@ -257,6 +257,24 @@ public class CalibratorDB
     /**
      * Load calibration data.
      *
+     * @param domcalId DOMCalibration ID
+     *
+     * @return loaded data
+     *
+     * @throws DOMCalibrationException if an argument is invalid
+     * @throws SQLException if there is a database problem
+     */
+    public Calibrator load(int domcalId)
+        throws DOMCalibrationException, SQLException
+    {
+        Calibrator cal = new Calibrator();
+        load(cal, domcalId);
+        return cal;
+    }
+
+    /**
+     * Load calibration data.
+     *
      * @param mbSerial mainboard serial number of DOM being loaded
      * @param date date of data being loaded
      *                     (<tt>null</tt> if date should not be used)
@@ -382,6 +400,62 @@ public class CalibratorDB
             } catch (SQLException se) {
                 // ignore errors on close
             }
+        }
+    }
+
+    /**
+     * Load calibration data.
+     *
+     * @param cal calibration object to be filled
+     * @param id calibration ID 
+     *
+     * @throws DOMCalibrationException if an argument is invalid
+     * @throws SQLException if there is a database problem
+     */
+    public void load(Calibrator cal, int id)
+        throws DOMCalibrationException, SQLException
+    {
+        Connection conn;
+        Statement stmt;
+
+        conn = getConnection();
+        stmt = getStatement(conn);
+
+        DOMCalibrationException delayedEx = null;
+        try {
+            loadMain(stmt, cal, id);
+            loadADCs(stmt, cal);
+            loadDACs(stmt, cal);
+            loadPulser(stmt, cal);
+            try {
+                loadFADC(stmt, cal);
+            } catch (DOMCalibrationException dce) {
+                delayedEx = dce;
+            }
+            loadDiscrim(stmt, cal);
+            loadATWDs(stmt, cal);
+            loadAmpGain(stmt, cal);
+            loadATWDFreqs(stmt, cal);
+            loadBaselines(stmt, cal);
+            loadPmtTransit(stmt, cal);
+            loadHvGain(stmt, cal);
+            loadHvHisto(stmt, cal);
+        } finally {
+            try {
+                stmt.close();
+            } catch (SQLException se) {
+                // ignore errors on close
+            }
+
+            try {
+                conn.close();
+            } catch (SQLException se) {
+                // ignore errors on close
+            }
+        }
+
+        if (delayedEx != null) {
+            throw delayedEx;
         }
     }
 
@@ -1085,6 +1159,81 @@ public class CalibratorDB
 
         cal.setMain(domcalId, mbSerial, dcProd, combined, dcTemp,
                     dcMajor, dcMinor, dcPatch);
+    }
+
+    /**
+     * Load main calibration data.
+     *
+     * @param stmt SQL statement
+     * @param cal calibration object to be filled
+     * @param domcalId calibration ID 
+     *
+     * @throws DOMCalibrationException if there is a problem with the data
+     * @throws SQLException if there is a database problem
+     */
+    public void loadMain(Statement stmt, Calibrator cal, int domcalId)
+        throws DOMCalibrationException, SQLException
+    {
+        final String qStr =
+            "select prod_id,date,time,temperature" +
+            ",major_version,minor_version,patch_version" +
+            " from DOMCalibration" +
+            " where domcal_id=" + domcalId;
+
+        ResultSet rs = stmt.executeQuery(qStr);
+
+        boolean hasNext = rs.next();
+
+        final int prodId;
+        final Date dcDate;
+        final Date dcTime;
+        final double dcTemp;
+        final short dcMajor;
+        final short dcMinor;
+        final short dcPatch;
+
+        if (!hasNext) {
+            prodId = Integer.MIN_VALUE;
+            dcDate = null;
+            dcTime = null;
+            dcTemp = 0.0;
+            dcMajor = 0;
+            dcMinor = 0;
+            dcPatch = 0;
+        } else {
+            prodId = rs.getInt(1);
+            dcDate = rs.getDate(2);
+            dcTime = rs.getTime(3);
+            dcTemp = rs.getDouble(4);
+            dcMajor = rs.getShort(5);
+            dcMinor = rs.getShort(6);
+            dcPatch = rs.getShort(7);
+        }
+
+        try {
+            rs.close();
+        } catch (SQLException se) {
+            // ignore errors on close
+        }
+
+        if (!hasNext) {
+            final String errMsg = "No calibration information for DOM #" +
+                domcalId;
+            throw new DOMCalibrationException(errMsg);
+        }
+
+        Date combined = getCombinedDate(dcDate, dcTime);
+
+        DOMProduct dcProd;
+        try {
+            dcProd = new DOMProduct(stmt, prodId);
+        } catch (DOMProdTestException dpte) {
+            throw new DOMCalibrationException("Couldn't get DOM data: "
+                                              + dpte.getMessage());
+        }
+
+        cal.setMain(domcalId, dcProd.getHardwareSerial(), dcProd, combined,
+                    dcTemp, dcMajor, dcMinor, dcPatch);
     }
 
     /**
