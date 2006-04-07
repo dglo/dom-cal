@@ -232,7 +232,7 @@ public class Calibrator
     /**
      * Default constructor which sets up data arrays.
      */
-    Calibrator()
+    public Calibrator()
     {
         dacs        = new int[16];
         adcs        = new int[24];
