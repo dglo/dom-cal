@@ -74,7 +74,10 @@ public class FixDB
           "primary key(domcal_id,voltage)", },
     };
 
+    /** if <tt>true</tt>, clear all calibration data from database. */
     private boolean clearData;
+    /** <tt>true</tt> if no changes should be made to database. */
+    private boolean testOnly;
 
     /**
      * Update database to latest DOMCal schema.
@@ -206,7 +209,8 @@ public class FixDB
                     vals[0] = valList[i];
                     int id = DOMProdTestUtil.addId(stmt, tblName,
                                                    idCol, cols, vals,
-                                                   1, Integer.MAX_VALUE);
+                                                   1, Integer.MAX_VALUE,
+                                                   false, testOnly);
                 }
             }
 
@@ -282,7 +286,11 @@ public class FixDB
 
         try {
             for (int i = 0; i < cmds.length; i++) {
-                stmt.executeUpdate(cmds[i]);
+                if (testOnly) {
+                    System.err.println(cmds[i]);
+                } else {
+                    stmt.executeUpdate(cmds[i]);
+                }
             }
         } finally {
             try { stmt.close(); } catch (SQLException se) { }
@@ -310,7 +318,11 @@ public class FixDB
 
         try {
             for (int i = 0; i < cmds.length; i++) {
-                stmt.executeUpdate(cmds[i]);
+                if (testOnly) {
+                    System.err.println(cmds[i]);
+                } else {
+                    stmt.executeUpdate(cmds[i]);
+                }
             }
         } finally {
             try { stmt.close(); } catch (SQLException se) { }
@@ -339,7 +351,11 @@ public class FixDB
 
         try {
             for (int i = 0; i < cmds.length; i++) {
-                stmt.executeUpdate(cmds[i]);
+                if (testOnly) {
+                    System.err.println(cmds[i]);
+                } else {
+                    stmt.executeUpdate(cmds[i]);
+                }
             }
         } finally {
             try { stmt.close(); } catch (SQLException se) { }
@@ -410,7 +426,14 @@ public class FixDB
     {
         boolean usage = false;
         for (int i = 0; i < args.length; i++) {
-            if (args[i].equalsIgnoreCase("clear")) {
+            if (args[i].length() > 1 && args[i].charAt(0) == '-') {
+                if (args[i].charAt(1) == 't') {
+                    testOnly = true;
+                } else {
+                    System.err.println("Unknown option \"" + args[i] + "\"");
+                    usage = true;
+                }
+            } else if (args[i].equalsIgnoreCase("clear")) {
                 clearData = true;
             } else {
                 System.err.println("Unknown argument \"" + args[i] + "\"");
