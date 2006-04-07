@@ -17,7 +17,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 
 /**
- * Save a calibration XML file to the database.
+ * Update database to latest DOMCal schema.
  */
 public class FixDB
 {
@@ -75,7 +75,7 @@ public class FixDB
     };
 
     /**
-     * Save a calibration XML file to the database.
+     * Update database to latest DOMCal schema.
      *
      * @param args commandline arguments
      *
@@ -416,7 +416,7 @@ public class FixDB
     }
 
     /**
-     * Save one or more calibration XML files to the database.
+     * Update database to latest DOMCal schema.
      *
      * @param args command-line arguments
      */
