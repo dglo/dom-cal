@@ -958,6 +958,10 @@ public class Calibrator
      */
     public double getFadcIntercept()
     {
+        if (fadcBaselineFit == null) {
+            return Double.NaN;
+        }
+
         return ((Double) fadcBaselineFit.get("intercept")).doubleValue();
     }
 
@@ -966,6 +970,10 @@ public class Calibrator
      */
     public double getFadcRegression()
     {
+        if (fadcBaselineFit == null) {
+            return Double.NaN;
+        }
+
         return ((Double) fadcBaselineFit.get("r")).doubleValue();
     }
 
@@ -974,6 +982,10 @@ public class Calibrator
      */
     public double getFadcSlope()
     {
+        if (fadcBaselineFit == null) {
+            return Double.NaN;
+        }
+
         return ((Double) fadcBaselineFit.get("slope")).doubleValue();
     }
 
