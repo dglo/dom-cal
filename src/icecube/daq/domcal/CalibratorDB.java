@@ -765,10 +765,7 @@ public class CalibratorDB
         ResultSet rs = stmt.executeQuery(qStr);
 
         if (!rs.next()) {
-            final String errMsg = "No FADC data for DOM " + cal.getDOMId() +
-                ", date " + cal.getCalendar() +
-                ", temperature " + cal.getTemperature();
-            throw new DOMCalibrationException(errMsg);
+            return;
         }
 
         final float slope = (float) rs.getDouble(1);
