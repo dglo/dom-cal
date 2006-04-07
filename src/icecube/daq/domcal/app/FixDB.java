@@ -21,16 +21,19 @@ import java.util.ArrayList;
  */
 public class FixDB
 {
+    /** List of valid DOMCal_Model values. */
     private static final String[] modelVals = new String[] {
         "linear",
         "quadratic",
     };
 
+    /** List of valid DOMCal_DiscrimType values. */
     private static final String[] discrimVals = new String[] {
         "mpe",
         "spe",
     };
 
+    /** List of new tables and columns. */
     private static final String[][] newTables = new String[][] {
         { "DOMCal_PmtTransit",
           "domcal_id int not null," +
@@ -121,6 +124,13 @@ public class FixDB
         }
     }
 
+    /**
+     * Add missing DOMCal_DiscrimType values.
+     *
+     * @param conn database connection
+     *
+     * @throws SQLException if there is a database problem
+     */
     private void addMissingDiscrimValues(Connection conn)
         throws SQLException
     {
@@ -128,12 +138,26 @@ public class FixDB
                        discrimVals);
     }
 
+    /**
+     * Add missing DOMCal_Model values.
+     *
+     * @param conn database connection
+     *
+     * @throws SQLException if there is a database problem
+     */
     private void addMissingModelValues(Connection conn)
         throws SQLException
     {
         addMissingRows(conn, "DOMCal_Model", "dc_model_id", "name", modelVals);
     }
 
+    /**
+     * Add missing DOMCal_Param values.
+     *
+     * @param conn database connection
+     *
+     * @throws SQLException if there is a database problem
+     */
     private void addMissingParameterValues(Connection conn)
         throws SQLException
     {
@@ -161,6 +185,17 @@ public class FixDB
         addMissingRows(conn, "DOMCal_Param", "dc_param_id", "name", paramVals);
     }
 
+    /**
+     * Add missing values to the specified table.
+     *
+     * @param conn database connection
+     * @param tblName database table name
+     * @param idCol table ID column
+     * @param valCol table value column
+     * @param valList list of values to add
+     *
+     * @throws SQLException if there is a database problem
+     */
     private void addMissingRows(Connection conn, String tblName,
                                 String idCol, String valCol, String[] valList)
         throws SQLException
@@ -219,6 +254,13 @@ public class FixDB
         }
     }
 
+    /**
+     * Add missing database tables.
+     *
+     * @param conn database connection
+     *
+     * @throws SQLException if there is a database problem
+     */
     private void addMissingTables(Connection conn)
         throws SQLException
     {
@@ -247,6 +289,13 @@ public class FixDB
         executeSQL(conn, cmds);
     }
 
+    /**
+     * Delete all calibration data from the database.
+     *
+     * @param conn database connection
+     *
+     * @throws SQLException if there is a database problem
+     */
     private void clearData(Connection conn)
         throws SQLException
     {
@@ -270,6 +319,14 @@ public class FixDB
         executeSQL(conn, cmds);
     }
 
+    /**
+     * Execute list of SQL commands.
+     *
+     * @param conn database connection
+     * @param cmds list of SQL commands
+     *
+     * @throws SQLException if there is a database problem
+     */
     private void executeSQL(Connection conn, String[] cmds)
         throws SQLException
     {
@@ -295,6 +352,13 @@ public class FixDB
         }
     }
 
+    /**
+     * Update high-voltage gain table.
+     *
+     * @param conn database connection
+     *
+     * @throws SQLException if there is a database problem
+     */
     private void fixGainHv(Connection conn)
         throws SQLException
     {
@@ -310,6 +374,13 @@ public class FixDB
         clearData(conn);
     }
 
+    /**
+     * Update main calibration table.
+     *
+     * @param conn database connection
+     *
+     * @throws SQLException if there is a database problem
+     */
     private void fixMainTable(Connection conn)
         throws SQLException
     {
@@ -322,6 +393,15 @@ public class FixDB
         executeSQL(conn, cmds);
     }
 
+    /**
+     * Does the database contain the old high-voltage gain table?
+     *
+     * @param conn database connection
+     *
+     * @return <tt>true</tt> if database has old high-voltage gain table
+     *
+     * @throws SQLException if there is a database problem
+     */
     private boolean isOldGainHv(Connection conn)
         throws SQLException
     {
@@ -334,6 +414,15 @@ public class FixDB
         return isOldTable(conn, "DOMCal_HvGain", expCols);
     }
 
+    /**
+     * Does the database contain the old main calibration table?
+     *
+     * @param conn database connection
+     *
+     * @return <tt>true</tt> if database has old calibration table
+     *
+     * @throws SQLException if there is a database problem
+     */
     private boolean isOldMainTable(Connection conn)
         throws SQLException
     {
@@ -347,6 +436,17 @@ public class FixDB
         return isOldTable(conn, "DOMCalibration", expCols);
     }
 
+    /**
+     * Does the database contain the specified table?
+     *
+     * @param conn database connection
+     * @param tblName table name
+     * @param expCols expected columns
+     *
+     * @return <tt>true</tt> if database has specified table
+     *
+     * @throws SQLException if there is a database problem
+     */
     private boolean isOldTable(Connection conn, String tblName,
                                String[] expCols)
         throws SQLException
@@ -404,6 +504,10 @@ public class FixDB
      * Update database to latest DOMCal schema.
      *
      * @param args command-line arguments
+     *
+     * @throws DOMProdTestException if there is a problem with the data
+     * @throws IOException if there is a communication problem
+     * @throws SQLException if there is a database problem
      */
     public static final void main(String[] args)
         throws DOMProdTestException, IOException, SQLException
