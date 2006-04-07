@@ -224,6 +224,8 @@ public class FixDB
     {
         DatabaseMetaData meta = conn.getMetaData();
 
+        ArrayList list = new ArrayList();
+
         for (int i = 0; i < newTables.length; i++) {
             ResultSet rs = meta.getColumns(conn.getCatalog(), null,
                                            newTables[i][0], null);
@@ -235,42 +237,19 @@ public class FixDB
                 continue;
             }
 
-            Statement stmt;
-            try {
-                stmt = conn.createStatement();
-            } catch (SQLException se) {
-                System.err.println("Couldn't get initial statement: " +
-                                   se.getMessage());
-                return;
-            }
-
-            final String tblCmd = "create table " + newTables[i][0] +
-                "(" + newTables[i][1] + ")";
-
-            try {
-                if (testOnly) {
-                    System.err.println(cmds[i]);
-                } else {
-                    stmt.executeUpdate(tblCmd);
-                }
-            } finally {
-                try { stmt.close(); } catch (SQLException se) { }
-            }
+            list.add("create table " + newTables[i][0] + "(" +
+                     newTables[i][1] + ")");
         }
+
+        String[] cmds = new String[list.size()];
+        list.toArray(cmds);
+
+        executeSQL(conn, cmds);
     }
 
     private void clearData(Connection conn)
         throws SQLException
     {
-        Statement stmt;
-        try {
-            stmt = conn.createStatement();
-        } catch (SQLException se) {
-            System.err.println("Couldn't get initial statement: " +
-                               se.getMessage());
-            return;
-        }
-
         final String[] cmds = new String[] {
             "delete from DOMCal_ADC",
             "delete from DOMCal_ATWD",
@@ -288,6 +267,21 @@ public class FixDB
             "delete from DOMCalibration",
         };
 
+        executeSQL(conn, cmds);
+    }
+
+    private void executeSQL(Connection conn, String[] cmds)
+        throws SQLException
+    {
+        Statement stmt;
+        try {
+            stmt = conn.createStatement();
+        } catch (SQLException se) {
+            System.err.println("Couldn't get initial statement: " +
+                               se.getMessage());
+            return;
+        }
+
         try {
             for (int i = 0; i < cmds.length; i++) {
                 if (testOnly) {
@@ -304,15 +298,6 @@ public class FixDB
     private void fixGainHv(Connection conn)
         throws SQLException
     {
-        Statement stmt;
-        try {
-            stmt = conn.createStatement();
-        } catch (SQLException se) {
-            System.err.println("Couldn't get initial statement: " +
-                               se.getMessage());
-            return;
-        }
-
         final String[] cmds = new String[] {
             "drop table DOMCal_HvGain",
             "create table DOMCal_HvGain(domcal_id int not null," +
@@ -320,17 +305,7 @@ public class FixDB
             "regression double not null,primary key(domcal_id))",
         };
 
-        try {
-            for (int i = 0; i < cmds.length; i++) {
-                if (testOnly) {
-                    System.err.println(cmds[i]);
-                } else {
-                    stmt.executeUpdate(cmds[i]);
-                }
-            }
-        } finally {
-            try { stmt.close(); } catch (SQLException se) { }
-        }
+        executeSQL(conn, cmds);
 
         clearData(conn);
     }
@@ -338,32 +313,13 @@ public class FixDB
     private void fixMainTable(Connection conn)
         throws SQLException
     {
-        Statement stmt;
-        try {
-            stmt = conn.createStatement();
-        } catch (SQLException se) {
-            System.err.println("Couldn't get initial statement: " +
-                               se.getMessage());
-            return;
-        }
-
         final String[] cmds = new String[] {
             "alter table DOMCalibration add column time time after date," +
             "add major_version smallint, add minor_version smallint," +
             "add patch_version smallint",
         };
 
-        try {
-            for (int i = 0; i < cmds.length; i++) {
-                if (testOnly) {
-                    System.err.println(cmds[i]);
-                } else {
-                    stmt.executeUpdate(cmds[i]);
-                }
-            }
-        } finally {
-            try { stmt.close(); } catch (SQLException se) { }
-        }
+        executeSQL(conn, cmds);
     }
 
     private boolean isOldGainHv(Connection conn)
