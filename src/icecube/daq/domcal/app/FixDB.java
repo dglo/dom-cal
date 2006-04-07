@@ -11,8 +11,8 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
-import java.sql.Statement;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 import java.util.ArrayList;
 
@@ -22,59 +22,69 @@ import java.util.ArrayList;
 public class FixDB
 {
     /** List of valid DOMCal_Model values. */
-    private static final String[] modelVals = new String[] {
+    private static final String[] MODEL_VALUES = new String[] {
         "linear",
         "quadratic",
     };
 
     /** List of valid DOMCal_DiscrimType values. */
-    private static final String[] discrimVals = new String[] {
+    private static final String[] DISCRIM_VALUES = new String[] {
         "mpe",
         "spe",
     };
 
     /** List of new tables and columns. */
-    private static final String[][] newTables = new String[][] {
-        { "DOMCal_PmtTransit",
-          "domcal_id int not null," +
-          "dc_model_id int not null," +
-          "num_points int not null," +
-          "slope double not null," +
-          "intercept double not null," +
-          "regression double not null," +
-          "primary key(domcal_id)", },
-        { "DOMCal_FADC",
-          "domcal_id int not null," +
-          "slope double not null," +
-          "intercept double not null," +
-          "regression double not null," +
-          "gain double not null," +
-          "gain_error double not null," +
-          "delta_t double not null," +
-          "delta_t_error double not null," +
-          "primary key(domcal_id)", },
-        { "DOMCal_Discriminator",
-          "domcal_id int not null," +
-          "dc_discrim_id smallint not null," +
-          "dc_model_id smallint not null," +
-          "slope double not null," +
-          "intercept double not null," +
-          "regression double not null," +
-          "primary key(domcal_id,dc_discrim_id)", },
-        { "DOMCal_DiscrimType",
-          "dc_discrim_id smallint not null," +
-          "name varchar(8) not null," +
-          "primary key(dc_discrim_id)", },
-        { "DOMCal_Baseline",
-          "domcal_id int not null," +
-          "voltage smallint not null," +
-          "atwd0_chan0 double not null," +
-          "atwd0_chan1 double not null," +
-          "atwd0_chan2 double not null," +
-          "atwd1_chan0 double not null," +
-          "atwd1_chan1 double not null," +
-          "atwd1_chan2 double not null," +
-          "primary key(domcal_id,voltage)", },
+    private static final String[][] NEW_TABLES = new String[][] {
+        {
+            "DOMCal_PmtTransit",
+            "domcal_id int not null," +
+            "dc_model_id int not null," +
+            "num_points int not null," +
+            "slope double not null," +
+            "intercept double not null," +
+            "regression double not null," +
+            "primary key(domcal_id)",
+        },
+        {
+            "DOMCal_FADC",
+            "domcal_id int not null," +
+            "slope double not null," +
+            "intercept double not null," +
+            "regression double not null," +
+            "gain double not null," +
+            "gain_error double not null," +
+            "delta_t double not null," +
+            "delta_t_error double not null," +
+            "primary key(domcal_id)",
+        },
+        {
+            "DOMCal_Discriminator",
+            "domcal_id int not null," +
+            "dc_discrim_id smallint not null," +
+            "dc_model_id smallint not null," +
+            "slope double not null," +
+            "intercept double not null," +
+            "regression double not null," +
+            "primary key(domcal_id,dc_discrim_id)",
+        },
+        {
+            "DOMCal_DiscrimType",
+            "dc_discrim_id smallint not null," +
+            "name varchar(8) not null," +
+            "primary key(dc_discrim_id)",
+        },
+        {
+            "DOMCal_Baseline",
+            "domcal_id int not null," +
+            "voltage smallint not null," +
+            "atwd0_chan0 double not null," +
+            "atwd0_chan1 double not null," +
+            "atwd0_chan2 double not null," +
+            "atwd1_chan0 double not null," +
+            "atwd1_chan1 double not null," +
+            "atwd1_chan2 double not null," +
+            "primary key(domcal_id,voltage)",
+        },
     };
 
     /** if <tt>true</tt>, clear all calibration data from database. */
@@ -135,7 +145,7 @@ public class FixDB
         throws SQLException
     {
         addMissingRows(conn, "DOMCal_DiscrimType", "dc_discrim_id", "name",
-                       discrimVals);
+                       DISCRIM_VALUES);
     }
 
     /**
@@ -148,7 +158,8 @@ public class FixDB
     private void addMissingModelValues(Connection conn)
         throws SQLException
     {
-        addMissingRows(conn, "DOMCal_Model", "dc_model_id", "name", modelVals);
+        addMissingRows(conn, "DOMCal_Model", "dc_model_id", "name",
+                       MODEL_VALUES);
     }
 
     /**
@@ -236,7 +247,9 @@ public class FixDB
             }
             rs.close();
 
-            final String[] cols = new String[] { valCol };
+            final String[] cols = new String[] {
+                valCol,
+            };
             final Object[] vals = new Object[cols.length];
 
             for (int i = 0; i < found.length; i++) {
@@ -250,7 +263,11 @@ public class FixDB
             }
 
         } finally {
-            try { stmt.close(); } catch (SQLException se) { }
+            try {
+                stmt.close();
+            } catch (SQLException se) {
+                // ignore errors on close
+            }
         }
     }
 
@@ -268,9 +285,9 @@ public class FixDB
 
         ArrayList list = new ArrayList();
 
-        for (int i = 0; i < newTables.length; i++) {
+        for (int i = 0; i < NEW_TABLES.length; i++) {
             ResultSet rs = meta.getColumns(conn.getCatalog(), null,
-                                           newTables[i][0], null);
+                                           NEW_TABLES[i][0], null);
 
             final boolean found = rs.next();
             rs.close();
@@ -279,8 +296,8 @@ public class FixDB
                 continue;
             }
 
-            list.add("create table " + newTables[i][0] + "(" +
-                     newTables[i][1] + ")");
+            list.add("create table " + NEW_TABLES[i][0] + "(" +
+                     NEW_TABLES[i][1] + ")");
         }
 
         String[] cmds = new String[list.size()];
@@ -348,7 +365,11 @@ public class FixDB
                 }
             }
         } finally {
-            try { stmt.close(); } catch (SQLException se) { }
+            try {
+                stmt.close();
+            } catch (SQLException se) {
+                // ignore errors on close
+            }
         }
     }
 
