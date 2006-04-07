@@ -74,6 +74,8 @@ public class FixDB
           "primary key(domcal_id,voltage)", },
     };
 
+    private boolean clearData;
+
     /**
      * Update database to latest DOMCal schema.
      *
@@ -85,23 +87,7 @@ public class FixDB
     FixDB(String[] args)
         throws DOMProdTestException, IOException, SQLException
     {
-        boolean clearData = false;
-
-        boolean badParam = false;
-        for (int i = 0; i < args.length; i++) {
-            if (args[i].equalsIgnoreCase("clear")) {
-                clearData = true;
-            } else {
-                System.err.println("Unknown parameter \"" + args[i] + "\"");
-                badParam = true;
-            }
-        }
-
-        if (badParam) {
-            System.err.println("Usage: " + getClass().getName() +
-                               " [clear]");
-            System.exit(1);
-        }
+        processArgs(args);
 
         BasicDB server = new BasicDB();
 
@@ -413,6 +399,30 @@ public class FixDB
         rs.close();
 
         return isOldTable;
+    }
+
+    /**
+     * Process command-line arguments.
+     *
+     * @param args command-line arguments
+     */
+    private void processArgs(String[] args)
+    {
+        boolean usage = false;
+        for (int i = 0; i < args.length; i++) {
+            if (args[i].equalsIgnoreCase("clear")) {
+                clearData = true;
+            } else {
+                System.err.println("Unknown argument \"" + args[i] + "\"");
+                usage = true;
+            }
+        }
+
+        if (usage) {
+            System.err.println("Usage: " + getClass().getName() +
+                               " [clear]");
+            System.exit(1);
+        }
     }
 
     /**
