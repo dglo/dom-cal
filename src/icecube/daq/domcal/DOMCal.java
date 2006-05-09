@@ -19,20 +19,24 @@ import java.nio.ByteBuffer;
 import java.io.*;
 import java.util.*;
 import java.text.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
+import java.sql.ResultSet;
 
 public class DOMCal implements Runnable {
-    
+
     /* Timeout waiting for response, in seconds */
     public static final int TIMEOUT = 5400;
-   
+
     private static Logger logger = Logger.getLogger( DOMCal.class );
-    
+
     static {
         logger.setLevel(Level.ALL);
     }
 
     private static List threads = new LinkedList();
-    
+
     private String host;
     private int port;
     private String outDir;
@@ -60,6 +64,41 @@ public class DOMCal implements Runnable {
     }
 
     public void run() {
+
+        /* Determine toroid type */
+        int toroidType = -1;
+
+        /* Load properties -- determine database */
+        Properties calProps = null;
+        try {
+            File propFile = new File(System.getProperty("user.home") + "/.domcal.properties");
+            if (!propFile.exists()) propFile = new File("/usr/local/etc/domcal.properties");
+            if (propFile.exists()) {
+                calProps = new Properties();
+                calProps.load(new FileInputStream(propFile));
+            } else {
+                logger.warn("Unable to load DB properties file /usr/local/etc/domcal.properties");
+            }
+        } catch (Exception e) {
+            logger.warn("Unable to load DB properties file /usr/local/etc/domcal.properties");
+        }
+
+        /* Connect to domtest DB */
+        Connection jdbc = null;
+        if (calProps != null) {
+            try {
+            String driver = calProps.getProperty("icecube.daq.domcal.db.driver", "com.mysql.jdbc.Driver");
+            Class.forName(driver);
+            String url = calProps.getProperty("icecube.daq.domcal.db.url", "jdbc:mysql://localhost/fat");
+            String user = calProps.getProperty("icecube.daq.domcal.db.user", "dfl");
+            String passwd = calProps.getProperty("icecube.daq.domcal.db.passwd", "(D0Mus)");
+            jdbc = DriverManager.getConnection(url, user, passwd);
+            } catch (Exception e) {
+                logger.warn("Unable to establish DB connection!");
+            }
+        }
+
+        if (jdbc != null) logger.info("Database connection established");
 
         DOMCalCom com = new DOMCalCom(host, port);
         try {
@@ -92,6 +131,42 @@ public class DOMCal implements Runnable {
                 }
                 id = r.nextToken();
 
+                /* Determine toroid type from DB */
+                if (jdbc != null) {
+                    try {
+                        Statement stmt = jdbc.createStatement();
+                        String sql = "select * from doms where mbid='" + id + "';";
+                        ResultSet s = stmt.executeQuery(sql);
+                        s.first();
+                        /* Get domid */
+                        String domid = s.getString("domid");
+                        if (domid != null) {
+                            /* Get year digit */
+                            String yearStr = domid.substring(2,3);
+                            int yearInt = Integer.parseInt(yearStr);
+
+                            /* new toroids are in all doms produced >= 2006 */
+                            if (yearInt < 6) {
+                                toroidType = 0;
+                            } else {
+                                toroidType = 1;
+                            }
+                        }
+                    } catch (Exception e) {
+                        logger.error("Error determining toroid type");
+                    }
+                }
+
+                if (toroidType != -1) {
+                    String tstr = toroidType == 0 ? "old" : "new";
+                    logger.info("Toroid for DOM " + id + " is " + tstr + " type");
+                } else {
+                    logger.warn("Unable to determine toroid type -- assuming old");
+                    toroidType = 0;
+                }
+
+
+
                 /* Determine if domcal is present */
                 com.send( "s\" domcal\" find if ls endif\r" );
                 String ret = com.receive( "\r\n> " );
@@ -110,7 +185,7 @@ public class DOMCal implements Runnable {
                 SimpleDateFormat formatter = new SimpleDateFormat("HHmmss");
                 formatter.setTimeZone(TimeZone.getTimeZone("GMT"));
                 String timeStr = formatter.format(cal.getTime());
-                
+
                 com.receive( ": " );
                 com.send( "" + year + "\r" );
                 com.receive( ": " );
@@ -119,6 +194,8 @@ public class DOMCal implements Runnable {
                 com.send( "" + day + "\r" );
                 com.receive( ": " );
                 com.send( timeStr + "\r" );
+                com.receive( ": " );
+                com.send( "" + toroidType + "\r" );
                 com.receive( "\r\n" );
                 if ( calibrateHv ) {
                     com.send( "y" + "\r" );
@@ -198,7 +275,7 @@ public class DOMCal implements Runnable {
         }
 
         logger.debug( "Document saved" );
- 
+
         logger.debug("Saving calibration data to database");
         try {
             CalibratorDB.save(fn, logger);
@@ -304,7 +381,7 @@ public class DOMCal implements Runnable {
             usage();
             die( e );
         }
-        
+
     }
 
     private static void usage() {

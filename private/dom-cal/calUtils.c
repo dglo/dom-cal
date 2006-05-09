@@ -144,6 +144,20 @@ float biasDAC2V(int val) {
 }
 
 /*---------------------------------------------------------------------------*/
+/*
+ * getFEImpedance
+ *
+ * Returns FE impedance for given toroid type
+ * New == 1 == ?? Ohms
+ * Old == !1 == 43 Ohms
+ *
+ */
+float getFEImpedance(int toroid) {
+    return toroid ? 43.0 : 43.0;
+}
+
+
+/*---------------------------------------------------------------------------*/
 /* 
  * prescanATWD
  *

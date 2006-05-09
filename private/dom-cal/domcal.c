@@ -140,10 +140,18 @@ void get_date(calib_data *dom_calib) {
     }        
     printf("\r\n");
 
+    /* Get toroid type */
+    printf("Enter toroid type (0 == old, 1 == new): ");
+    fflush(stdout);
+    getstr(buf);
+    toroid = atoi(buf);
+    printf("\r\n");
+
     /* Store results */
     dom_calib->year = year;
     dom_calib->month = month;
     dom_calib->day = day;
+    dom_calib->toroid_type = toroid;
 
     /* Extract hour, minute, and second */
     char timeBit[3];
