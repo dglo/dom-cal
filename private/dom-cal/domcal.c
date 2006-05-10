@@ -71,7 +71,7 @@ static void getstr(char *str) {
  */
 void get_date(calib_data *dom_calib) {
 
-    short day, month, year;
+    short day, month, year, toroid;
     char timestr[7];
     char buf[100];
     int i;
@@ -151,7 +151,7 @@ void get_date(calib_data *dom_calib) {
     dom_calib->year = year;
     dom_calib->month = month;
     dom_calib->day = day;
-    dom_calib->toroid_type = toroid;
+    dom_calib->fe_impedance = getFEImpedance(toroid);
 
     /* Extract hour, minute, and second */
     char timeBit[3];
@@ -384,6 +384,9 @@ int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
         offset += get_bytes_from_short( adc[i], bin_data, offset );
     }
 
+    /* Write FE Impedance */
+    offset += get_bytes_from_float(cal->fe_impedance, bin_data, offset);
+
     /* Write FADC calibration data */
     offset += write_fit( &cal->fadc_baseline, bin_data, offset );
     offset += write_value_error( &cal->fadc_gain, bin_data, offset );
@@ -484,6 +487,8 @@ int save_results(calib_data dom_calib) {
         printf("ADC %d: %d\r\n", i, dom_calib.adc_values[i]);
 
     printf("Temp: %.1f\r\n", dom_calib.temp);
+
+    printf("FE Impedance: %.1f\r\n", dom_calib.fe_impedance);
 
     printf("SPE Disc: m=%.6g b=%.6g r^2=%.6g\r\n",
                    dom_calib.spe_disc_calib.slope,

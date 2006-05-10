@@ -9,11 +9,11 @@
 
 /* Version of calibration program */
 #define MAJOR_VERSION 6
-#define MINOR_VERSION 2
-#define PATCH_VERSION 4
+#define MINOR_VERSION 3
+#define PATCH_VERSION 0
 
 /* Default number of bytes in binary output */
-#define DEFAULT_RECORD_LENGTH 9440
+#define DEFAULT_RECORD_LENGTH 9444
 
 /* Default ATWD DAC settings */
 #ifdef DOMCAL_REV5
@@ -91,8 +91,8 @@ typedef struct {
 /* Calibration data structure */
 typedef struct {
 
-    /* Toroid type */
-    short toroid_type;
+    /* Front end impedance */
+    float fe_impedance;
     
     /* Date */
     short day, month, year;

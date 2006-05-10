@@ -207,7 +207,7 @@ int hv_gain_cal(calib_data *dom_calib) {
 
             /* Find the peak */
             peak_idx = 0;
-            volt_t min = 0.0;
+            volt_t min = 0;
             for (bin = GAIN_CAL_START_BIN; bin < cnt; bin++) {
 
                 if (bin == GAIN_CAL_START_BIN) {
@@ -227,10 +227,11 @@ int hv_gain_cal(calib_data *dom_calib) {
                                          peak_idx - INT_WIN_MIN : GAIN_CAL_START_BIN;
             int_max = (peak_idx + INT_WIN_MAX <= cnt-1) ? peak_idx + INT_WIN_MAX : cnt-1;
             vsum = 0;
+            
+            /* Switch to floating point */
 
             /* Do current integral -- work in front end load */
-            /* to avoid integer overflow */
-            for (bin = int_min; bin <= int_max; bin++) vsum += vdat[bin]/DOM_FE_IMPEDANCE;
+            for (bin = int_min; bin <= int_max; bin++) vsum += vdat[bin]/dom_calib->fe_impedance;
 
             /* True charge, in pC = 1/R_ohm * sum(V) * 1e12 / (freq_mhz * 1e6) */
             /* Need to now divide by amplification factor */
