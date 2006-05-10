@@ -94,6 +94,7 @@ public class DOMCal implements Runnable {
             String passwd = calProps.getProperty("icecube.daq.domcal.db.passwd", "(D0Mus)");
             jdbc = DriverManager.getConnection(url, user, passwd);
             } catch (Exception e) {
+                e.printStackTrace();
                 logger.warn("Unable to establish DB connection!");
             }
         }
@@ -146,11 +147,12 @@ public class DOMCal implements Runnable {
                             int yearInt = Integer.parseInt(yearStr);
 
                             /* new toroids are in all doms produced >= 2006 */
-                            if (yearInt < 6) {
-                                toroidType = 0;
-                            } else {
+                            if (yearInt >= 6 || domid.equals("UP5P0970")) {  //Always an exception.......
                                 toroidType = 1;
+                            } else {
+                                toroidType = 0;
                             }
+                            logger.debug("Toroid type for " + domid + " is " + toroidType);
                         }
                     } catch (Exception e) {
                         logger.error("Error determining toroid type");
@@ -296,7 +298,6 @@ public class DOMCal implements Runnable {
     }
 
     public static void main( String[] args ) {
-        BasicConfigurator.configure();
         String host = null;
         int port = -1;
         int nPorts = -1;

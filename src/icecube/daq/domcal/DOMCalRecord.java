@@ -37,6 +37,7 @@ public class DOMCalRecord {
     private float[] amplifierCalibrationError;
 
     private float temperature;
+    private float feImpedance;
 
     private short year;
     private short month;
@@ -54,8 +55,6 @@ public class DOMCalRecord {
     private LinearFit fadcFit;
     private float[] fadcGain;
     private float[] fadcDeltaT;
-
-    private short version;
 
     private boolean hvCalValid;
     private boolean transitCalValid;
@@ -116,6 +115,10 @@ public class DOMCalRecord {
 
     public float getTemperature() {
         return temperature;
+    }
+
+    public float getFEImpedance() {
+        return feImpedance;
     }
 
     public float getFadcGain() {
@@ -297,6 +300,8 @@ public class DOMCalRecord {
         for ( int i = 0; i < MAX_ADC; i++ ) {
             rec.adcValues[i] = bb.getShort();
         }
+
+        rec.feImpedance = bb.getFloat();
 
         rec.fadcFit = LinearFit.parseLinearFit(bb);
         rec.fadcGain = new float[2];

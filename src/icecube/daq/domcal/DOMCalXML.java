@@ -35,6 +35,7 @@ public class DOMCalXML {
         for ( int i = 0; i < 24; i++ ) {
             out.print("  <adc channel=\"" + i + "\">" + rec.getAdcValue( i ) + "</adc>\n");
         }
+        out.print("  <frontEndImpedance format=\"Ohms\">" + rec.getFEImpedance() + "</frontEndImpedance>\n");
         out.print("  <discriminator id=\"spe\">\n");
         format( rec.getSpeDiscriminatorCalibration(), out );
         out.print("  </discriminator>\n");
