@@ -406,10 +406,17 @@ int hv_gain_cal(calib_data *dom_calib) {
                         GAIN_CAL_MIN_R2, GAIN_CAL_MIN_R2_PTS, log_hv_bad, &bad_cnt);        
         
         /* Mark the discarded fits as bad -- and round correctly */
-        int idx;
+        int idx, spe_idx;
         for (idx = 0; idx < bad_cnt; idx++) {
-            hv_idx = (int)(((pow(10.0, log_hv_bad[idx]) - GAIN_CAL_HV_LOW) / GAIN_CAL_HV_INC) + 0.5);
-            dom_calib->histogram_data[hv_idx].convergent = 0;
+            for (spe_idx = 0; spe_idx < spe_cnt; spe_idx++) {
+                if (log_hv[spe_idx] == log_hv_bad[idx]) {
+                    dom_calib->histogram_data[spe_idx].convergent = 0;
+#ifdef DEBUG
+                    printf("Discarded fit %d at log10 voltage: %f\r\n",
+                                                  spe_idx, log_hv_bad[idx]);
+#endif                    
+                }
+            }
         }
         
     }
