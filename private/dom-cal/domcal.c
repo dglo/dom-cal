@@ -658,15 +658,18 @@ int main(void) {
      *  - HV gain calibration
      */
     /* FIX ME: return real error codes */
-    disc_cal(&dom_calib);
     atwd_cal(&dom_calib);
     baseline_cal(&dom_calib);
     atwd_freq_cal(&dom_calib);
     amp_cal(&dom_calib);
-    fadc_cal(&dom_calib);
     if (doHVCal) {
         hv_baseline_cal(&dom_calib);
         hv_amp_cal(&dom_calib);
+    }
+    /* Separate AMP cal from gain cal as much as possible for in-ice array */
+    disc_cal(&dom_calib);
+    fadc_cal(&dom_calib);
+    if (doHVCal) {
         transit_cal(&dom_calib);
         hv_gain_cal(&dom_calib);
     }

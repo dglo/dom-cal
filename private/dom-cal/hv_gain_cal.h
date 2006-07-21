@@ -3,7 +3,7 @@
  */
 
 /* Discriminator charge thresholds */
-#define GAIN_CAL_PC_LOW   0.08
+#define GAIN_CAL_PC_LOW   0.12
 #define GAIN_CAL_PC_MED   0.25
 #define GAIN_CAL_PC_HIGH  1.0
 
