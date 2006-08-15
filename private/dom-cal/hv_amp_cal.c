@@ -378,16 +378,7 @@ int hv_amp_cal(calib_data *dom_calib) {
                 DOM_HAL_DAC_ATWD1_TRIGGER_BIAS, origSampDAC);
     halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, old_led_value);
 
-    /* Disable HV */
-#if defined DOMCAL_REV2 || defined DOMCAL_REV3
-    halDisablePMT_HV();
-#else
-    halDisableBaseHV();
-    halPowerDownBase();
-#endif
-
-    /* Wait for HV to come down */
-    halUSleep(30000000);
+    /* Won't disable HV ATTM */
 
     /* FIX ME: return real error code */
     return 0;
