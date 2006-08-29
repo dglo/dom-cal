@@ -3,6 +3,7 @@
  *
  */
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 #include <string.h>
 
@@ -332,8 +333,8 @@ void refineLinearFit(float *x, float *y, int *vld_cnt, char *vld,
         vld[i] = 1;
 
     /* X / Y arrays with bad points removed */
-    float *x_refine = (float *)malloc(vld_cnt * sizeof(float));
-    float *y_refine = (float *)malloc(vld_cnt * sizeof(float));
+    float *x_refine = (float *)malloc(*vld_cnt * sizeof(float));
+    float *y_refine = (float *)malloc(*vld_cnt * sizeof(float));
     if (!(x_refine) || !(y_refine)) return;
 
     /* Iterate until the R2 is high enough or we've run out of points */
@@ -343,7 +344,6 @@ void refineLinearFit(float *x, float *y, int *vld_cnt, char *vld,
         int worst_idx = 0;
         float worst_residual = 0.0;
         float residual, y_calc;
-        int j;
         for (i = 0; i < *vld_cnt; i++) {
             y_calc = fit->slope * x[i] + fit->y_intercept;
             
@@ -362,6 +362,7 @@ void refineLinearFit(float *x, float *y, int *vld_cnt, char *vld,
 
         /* Discard that point */
         vld[worst_idx] = 0;
+        int j = 0;
         for (i = 0; i < *vld_cnt; i++) {
             if (vld[i]) {
                 x_refine[j] = x[i];

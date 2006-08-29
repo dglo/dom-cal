@@ -608,6 +608,7 @@ int main(void) {
     calib_data dom_calib;
     char buf[100];
     int doHVCal, iterHVGain;
+    doHVCal = iterHVGain = 0;
 
 #ifdef DEBUG
     printf("Welcome to domcal version %d.%d.%d\r\n", 
@@ -685,7 +686,7 @@ int main(void) {
         for (i = 0; i < 600; i++) halUSleep(1000000);
 
         transit_cal(&dom_calib);
-        hv_gain_cal(&dom_calib, iterHVgain);
+        hv_gain_cal(&dom_calib, iterHVGain);
     }
 
     /* Write calibration record to flash */

@@ -7,6 +7,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
@@ -120,15 +121,25 @@ int disc_cal(calib_data *dom_calib) {
 
     /* Refine each fit */
     int vld_cnt = DISC_CAL_CNT;
+    /* vld bits not needed here, really */
+    char *vld = (char *)malloc(vld_cnt * sizeof(char));
     refineLinearFit(spe_disc_data, pulser_spe_charge_data, 
-                   &vld_cnt, &(dom_calib->spe_disc_calib),
-                   DISC_CAL_MIN_R2, DISC_CAL_MIN_R2_PTS, NULL, NULL);
+                   &vld_cnt, vld, &(dom_calib->spe_disc_calib),
+                   DISC_CAL_MIN_R2, DISC_CAL_MIN_R2_PTS);
+#ifdef DEBUG
     if (vld_cnt != DISC_CAL_CNT) printf("Using only %d pts for fit\n", vld_cnt);
+#endif
+    free(vld);
+
     vld_cnt = DISC_CAL_CNT;
+    vld = (char *)malloc(vld_cnt * sizeof(char));
     refineLinearFit(mpe_disc_data, pulser_mpe_charge_data, 
-                   &vld_cnt, &(dom_calib->mpe_disc_calib),
-                   DISC_CAL_MIN_R2, DISC_CAL_MIN_R2_PTS, NULL, NULL);
+                   &vld_cnt, vld, &(dom_calib->mpe_disc_calib),
+                   DISC_CAL_MIN_R2, DISC_CAL_MIN_R2_PTS);
+#ifdef DEBUG
     if (vld_cnt != DISC_CAL_CNT) printf("Using only %d pts for fit\n", vld_cnt);
+#endif
+    free(vld);
 
     /* Restore DAC values */
     halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, old_pedestal_value);

@@ -529,8 +529,10 @@ int transit_cal(calib_data *dom_calib) {
         dom_calib->transit_calib_valid = 1;
 
         /* Remove outliers */
-        refineLinearFit(x, y, &vld_cnt, &(dom_calib->transit_calib), TRANSIT_CAL_MIN_R2, 
-                        TRANSIT_CAL_MIN_R2_PTS, NULL, NULL);
+        char *vld = (char *)malloc(vld_cnt * sizeof(char));
+        refineLinearFit(x, y, &vld_cnt, vld, &(dom_calib->transit_calib), 
+                        TRANSIT_CAL_MIN_R2, TRANSIT_CAL_MIN_R2_PTS);
+        free(vld);
 
         dom_calib->transit_calib_points = vld_cnt;
     }
