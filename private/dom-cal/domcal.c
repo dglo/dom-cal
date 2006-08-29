@@ -607,7 +607,7 @@ int main(void) {
     int err = 0;
     calib_data dom_calib;
     char buf[100];
-    int doHVCal;
+    int doHVCal, iterHVGain;
 
 #ifdef DEBUG
     printf("Welcome to domcal version %d.%d.%d\r\n", 
@@ -615,6 +615,7 @@ int main(void) {
 #endif
 
     /* Get the date and time from the user */
+    /* Toroid query is also in here right now */
     get_date(&dom_calib);
     
     /* Ask user if they want an HV calibration */
@@ -636,8 +637,19 @@ int main(void) {
     dom_calib.hv_baselines_valid = 0;
     dom_calib.transit_calib_valid = 0;
 
+    /* Query user about multi-iteration runs */
+    if (doHVCal) {
+        printf("Do you want to iterate the gain/HV calibration (y/n)? ");
+        fflush(stdout);
+        getstr(buf);
+        printf("\r\n");
+        iterHVGain = ((buf[0] == 'y') || (buf[0] == 'Y') ||
+                      (buf[0] == '\n' && ((buf[1] == 'y') || (buf[1] == 'Y'))));
+        iterHVGain = iterHVGain ? GAIN_CAL_MULTI_ITER : 1;
+    }
+
     /* Init # histos returned */
-    dom_calib.num_histos = doHVCal ? GAIN_CAL_HV_CNT : 0;
+    dom_calib.num_histos = doHVCal ? (GAIN_CAL_HV_CNT * iterHVGain) : 0;
 
     /* Initialize DOM state: DACs, HV setting, pulser, etc. */
     init_dom();
@@ -646,7 +658,7 @@ int main(void) {
     record_state(&dom_calib);
 
     /* Calibration modules:
-     *  - pulser calibration
+     *  - discriminator calibration
      *  - atwd calibration
      *  - baseline calibration
      *  - sampling speed calibration
@@ -654,10 +666,10 @@ int main(void) {
      *  - FADC calibration 
      *  - HV baseline calibration
      *  - HV amplifier calibration (using LED)
+     *  - ...wait...
      *  - transit time calibration
      *  - HV gain calibration
      */
-    /* FIX ME: return real error codes */
     disc_cal(&dom_calib);
     atwd_cal(&dom_calib);
     baseline_cal(&dom_calib);
@@ -673,7 +685,7 @@ int main(void) {
         for (i = 0; i < 600; i++) halUSleep(1000000);
 
         transit_cal(&dom_calib);
-        hv_gain_cal(&dom_calib);
+        hv_gain_cal(&dom_calib, iterHVgain);
     }
 
     /* Write calibration record to flash */

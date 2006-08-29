@@ -15,5 +15,6 @@ void linearFitFloat(float *x, float *y, int pts, linear_fit *fit);
 void quadraticFitFloat(float *x, float *y, int pts, quadratic_fit *fit);
 int checkHVBase();
 int getDiscDAC(float charge_threshold, calib_data dom_calib);
-void refineLinearFit(float *x, float *y, int *vld_cnt, linear_fit *fit,
-                     float minR2, int minPts, float *x_bad, int *bad_cnt);
+void refineLinearFit(float *x, float *y, int *vld_cnt, char *vld, 
+                     linear_fit *fit, float minR2, int minPts);
+

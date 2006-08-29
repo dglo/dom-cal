@@ -23,6 +23,10 @@
 #define GAIN_CAL_HV_INC          80
 #define GAIN_CAL_HV_CNT          12
 
+/* In the case of multiple iterations of HV/gain calibration, */
+/* iterate this many times */
+#define GAIN_CAL_MULTI_ITER       4
+
 /* Histogram info */
 #define GAIN_CAL_BINS           250
 
@@ -53,4 +57,4 @@
 #define GAIN_CAL_MIN_R2_PTS    4
 
 /* Prototypes */
-int hv_gain_cal(calib_data *dom_calib);
+int hv_gain_cal(calib_data *dom_calib, int iterHVGain);
