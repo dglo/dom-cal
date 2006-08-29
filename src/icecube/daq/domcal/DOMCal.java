@@ -46,14 +46,15 @@ public class DOMCal implements Runnable {
     private DOMCalRecord rec;
 
     public DOMCal( String host, int port, String outDir ) {
-        this(host, port, outDir, false, false);
+        this(host, port, outDir, false, false, false);
     }
 
     public DOMCal( String host, int port, String outDir, boolean calibrate ) {
-        this(host, port, outDir, calibrate, false);
+        this(host, port, outDir, calibrate, false, false);
     }
 
-    public DOMCal( String host, int port, String outDir, boolean calibrate, boolean calibrateHv, boolean iterateHv ) {
+    public DOMCal( String host, int port, String outDir, boolean calibrate, 
+                   boolean calibrateHv, boolean iterateHv ) {
         this.host = host;
         this.port = port;
         this.outDir = outDir;
