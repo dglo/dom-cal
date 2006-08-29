@@ -321,14 +321,20 @@ void quadraticFitFloat(float *x, float *y, int pts, quadratic_fit *fit) {
  * the number of points at which to stop if the R^2 target isn't reached.
  *
  * The vld array records which points were thrown out with a valid flag
- * for each of the original points.
+ * for each of the original points.  If the calling function doesn't
+ * need this, it can pass in NULL.
  *
  */
 void refineLinearFit(float *x, float *y, int *vld_cnt, char *vld, 
                      linear_fit *fit, float minR2, int minPts) {
 
     /* Initialize valid array */
-    int i;
+    int i, localVld;
+    localVld = 0;
+    if (vld == NULL) {
+        vld = (char *)malloc(*vld_cnt * sizeof(float));
+        localVld = 1;
+    }
     for (i = 0; i < *vld_cnt; i++) 
         vld[i] = 1;
 
@@ -380,4 +386,6 @@ void refineLinearFit(float *x, float *y, int *vld_cnt, char *vld,
 
     free(x_refine);
     free(y_refine);
+    if (localVld) 
+        free(vld);
 }
