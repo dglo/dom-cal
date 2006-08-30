@@ -328,19 +328,21 @@ void quadraticFitFloat(float *x, float *y, int pts, quadratic_fit *fit) {
 void refineLinearFit(float *x, float *y, int *vld_cnt, char *vld, 
                      linear_fit *fit, float minR2, int minPts) {
 
+    int orig_cnt = *vld_cnt;
+
     /* Initialize valid array */
     int i, localVld;
     localVld = 0;
     if (vld == NULL) {
-        vld = (char *)malloc(*vld_cnt * sizeof(float));
+        vld = (char *)malloc(orig_cnt * sizeof(float));
         localVld = 1;
     }
-    for (i = 0; i < *vld_cnt; i++) 
+    for (i = 0; i < orig_cnt; i++) 
         vld[i] = 1;
 
     /* X / Y arrays with bad points removed */
-    float *x_refine = (float *)malloc(*vld_cnt * sizeof(float));
-    float *y_refine = (float *)malloc(*vld_cnt * sizeof(float));
+    float *x_refine = (float *)malloc(orig_cnt * sizeof(float));
+    float *y_refine = (float *)malloc(orig_cnt * sizeof(float));
     if (!(x_refine) || !(y_refine)) return;
 
     /* Iterate until the R2 is high enough or we've run out of points */
@@ -350,15 +352,17 @@ void refineLinearFit(float *x, float *y, int *vld_cnt, char *vld,
         int worst_idx = 0;
         float worst_residual = 0.0;
         float residual, y_calc;
-        for (i = 0; i < *vld_cnt; i++) {
-            y_calc = fit->slope * x[i] + fit->y_intercept;
-            
-            residual = fabs(y_calc - y[i]);
-            
-            if (residual > worst_residual) {
-                worst_residual = residual;
-                worst_idx = i;
-            }                    
+        for (i = 0; i < orig_cnt; i++) {
+            if (vld[i]) {
+                y_calc = fit->slope * x[i] + fit->y_intercept;
+                
+                residual = fabs(y_calc - y[i]);
+                
+                if (residual > worst_residual) {
+                    worst_residual = residual;
+                    worst_idx = i;
+                }                    
+            }
         }
         
 #ifdef DEBUG
@@ -369,7 +373,7 @@ void refineLinearFit(float *x, float *y, int *vld_cnt, char *vld,
         /* Discard that point */
         vld[worst_idx] = 0;
         int j = 0;
-        for (i = 0; i < *vld_cnt; i++) {
+        for (i = 0; i < orig_cnt; i++) {
             if (vld[i]) {
                 x_refine[j] = x[i];
                 y_refine[j] = y[i];
