@@ -32,6 +32,8 @@ public class DOMCal implements Runnable {
     private static Logger logger = Logger.getLogger( DOMCal.class );
 
     static {
+        BasicConfigurator.resetConfiguration();
+        BasicConfigurator.configure();
         logger.setLevel(Level.ALL);
     }
 
