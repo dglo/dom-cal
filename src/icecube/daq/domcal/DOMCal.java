@@ -136,32 +136,31 @@ public class DOMCal implements Runnable {
                 id = r.nextToken();
 
                 /* Determine toroid type from DB */
-                /* TEMPORARILY DISABLE UNTIL NEW DATA FROM LBNL */
-                //                if (jdbc != null) {
-                //    try {
-                //        Statement stmt = jdbc.createStatement();
-                //        String sql = "select * from doms where mbid='" + id + "';";
-                //        ResultSet s = stmt.executeQuery(sql);
-                //        s.first();
-                //       /* Get domid */
-                //        String domid = s.getString("domid");
-                //        if (domid != null) {
-                //            /* Get year digit */
-                //            String yearStr = domid.substring(2,3);
-                //            int yearInt = Integer.parseInt(yearStr);
+                if (jdbc != null) {
+                    try {
+                        Statement stmt = jdbc.createStatement();
+                        String sql = "select * from doms where mbid='" + id + "';";
+                        ResultSet s = stmt.executeQuery(sql);
+                        s.first();
+                       /* Get domid */
+                        String domid = s.getString("domid");
+                        if (domid != null) {
+                            /* Get year digit */
+                            String yearStr = domid.substring(2,3);
+                            int yearInt = Integer.parseInt(yearStr);
 
-                //            /* new toroids are in all doms produced >= 2006 */
-                //            if (yearInt >= 6 || domid.equals("UP5P0970")) {  //Always an exception.......
-                //                toroidType = 1;
-                //            } else {
-                //                toroidType = 0;
-                //            }
-                //            logger.debug("Toroid type for " + domid + " is " + toroidType);
-                //        }
-                //    } catch (Exception e) {
-                //        logger.error("Error determining toroid type");
-                //    }
-                //}
+                            /* new toroids are in all doms produced >= 2006 */
+                            if (yearInt >= 6 || domid.equals("UP5P0970")) {  //Always an exception.......
+                                toroidType = 1;
+                            } else {
+                                toroidType = 0;
+                            }
+                            logger.debug("Toroid type for " + domid + " is " + toroidType);
+                        }
+                    } catch (Exception e) {
+                        logger.error("Error determining toroid type");
+                    }
+                }
 
                 if (toroidType != -1) {
                     String tstr = toroidType == 0 ? "old" : "new";
