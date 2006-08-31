@@ -56,8 +56,12 @@ int hv_gain_cal(calib_data *dom_calib, int iterHVGain) {
     /* Log(HV) settings, for regression */
     float *log_hv = malloc(iterHVGain*GAIN_CAL_HV_CNT*sizeof(float));
 
+    /* Valid indices for fit refinement */
+    int *vldIdx = malloc(iterHVGain*GAIN_CAL_HV_CNT*sizeof(int));
+
     /* Check mallocs! */
-    if ((!hist_y) || (!hist_x) || (!fit_params) || (!log_gain) || (!log_hv)) {
+    if ((!hist_y) || (!hist_x) || (!fit_params) || 
+        (!log_gain) || (!log_hv) || (!vldIdx)) {
 #ifdef DEBUG
         printf("ERROR: couldn't allocate memory for HV/gain fits!\r\n");
         return 1;
@@ -367,13 +371,17 @@ int hv_gain_cal(calib_data *dom_calib, int iterHVGain) {
                         log_gain[spe_cnt] = log10(fit_params[hv_idx][3] / Q_E) - 12.0;
                         
 #ifdef DEBUG
-                        printf("New gain point: log(V) %.6g log(gain) %.6g\r\n", log_hv[spe_cnt], log_gain[spe_cnt]);
+                        printf("New gain point: log(V) %.6g log(gain) %.6g\r\n", 
+                               log_hv[spe_cnt], log_gain[spe_cnt]);
 #endif         
                         /* note fit convergence */
-                        hv_hist_data[hv_idx].convergent = 1; 
-                        
+                        hv_hist_data[hv_idx].convergent = 1;                         
                         hv_hist_data[hv_idx].pv = pv_ratio;
                         
+                        /* Record index for later use */
+                        /* We might eventually toss this out */
+                        vldIdx[spe_cnt] = hv_idx;
+
                         spe_cnt++;
                         
                     }
@@ -414,15 +422,17 @@ int hv_gain_cal(calib_data *dom_calib, int iterHVGain) {
         dom_calib->hv_gain_valid = 1;
 
         /* Check for bad R^2 and refine fit if necessary */
+        int origPts = spe_cnt;
         char *vld = (char *)malloc(spe_cnt * sizeof(char));
         refineLinearFit(log_hv, log_gain, &spe_cnt, vld, &dom_calib->hv_gain_calib,
                         GAIN_CAL_MIN_R2, GAIN_CAL_MIN_R2_PTS);
         
         /* Mark the discarded fits as bad */
+        /* The indexing gets complicated because we recorded histograms for everything */
         int idx;
-        for (idx = 0; idx < spe_cnt; idx++) {
-            if (!vld[idx]) {
-                dom_calib->histogram_data[idx].convergent = 0;
+        for (idx = 0; idx < origPts; idx++) {
+            if (!vld[idx]) {                
+                dom_calib->histogram_data[vldIdx[idx]].convergent = 0;
 #ifdef DEBUG
                 printf("Discarded fit %d at log10 voltage: %f\r\n", idx, log_hv[idx]);
 #endif                                 
@@ -452,6 +462,7 @@ int hv_gain_cal(calib_data *dom_calib, int iterHVGain) {
     /* Free local mallocs */
     free(log_hv);
     free(log_gain);
+    free(vldIdx);
 
     /* FIX ME: return real error code */
     return 0;
