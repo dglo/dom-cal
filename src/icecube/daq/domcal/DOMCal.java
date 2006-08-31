@@ -27,7 +27,7 @@ import java.sql.ResultSet;
 public class DOMCal implements Runnable {
 
     /* Timeout waiting for response, in seconds */
-    public static final int TIMEOUT = 5400;
+    public static final int TIMEOUT = 7200;
 
     private static Logger logger = Logger.getLogger( DOMCal.class );
 
