@@ -682,6 +682,9 @@ int main(void) {
         hv_amp_cal(&dom_calib);
 
         /* WAIT ~10min for amp cal to finish on neighboring DOMs */
+#ifdef DEBUG
+        printf(" Waiting 10m for neighbors to settle...\r\n");
+#endif
         int i;
         for (i = 0; i < 600; i++) halUSleep(1000000);
 
