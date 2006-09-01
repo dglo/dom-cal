@@ -68,6 +68,7 @@ public class DOMCalRecord {
     private HVHistogram[] hvHistos;
 
     private Baseline baseline;
+    private short numHVBaselines;
     private Baseline[] hvBaselines;
 
     private DOMCalRecord() {
