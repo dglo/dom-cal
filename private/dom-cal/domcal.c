@@ -431,7 +431,8 @@ int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
         offset += write_fit(&cal->transit_calib, bin_data, offset);
     }
 
-    /* Write number of histos */
+    /* Write number of voltages (baselines) and number of histos */
+    offset += get_bytes_from_short(cal->num_baselines, bin_data, offset );
     offset += get_bytes_from_short(cal->num_histos, bin_data, offset );
 
     /* Write hv baselines valid */
@@ -439,7 +440,7 @@ int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
 
     /* Write baselines if necessary */
     if (cal->hv_baselines_valid) {
-        for (i = 0; i < cal->num_histos; i++) {
+        for (i = 0; i < cal->num_baselines; i++) {
             offset += write_hv_baseline(&cal->baseline_data[i], bin_data, offset);
         }
     }
@@ -565,10 +566,11 @@ int save_results(calib_data dom_calib) {
     r_size += dom_calib.num_histos * 4; //Noise rate
     r_size += dom_calib.num_histos * 2; //is_filled flag
     
+    r_size += 2; //number of hv baselines
     r_size += 2; //hv_baselines_valid
     if (dom_calib.hv_baselines_valid) {
-        r_size += dom_calib.num_histos * 2 * 3 * 4; //hv_baselines
-        r_size += dom_calib.num_histos * 2; //baseline voltages
+        r_size += dom_calib.num_baselines * 2 * 3 * 4; //hv_baselines
+        r_size += dom_calib.num_baselines * 2; //baseline voltages
     }
 
     r_size += 2; //transit_calib_valid
@@ -649,9 +651,10 @@ int main(void) {
         iterHVGain = iterHVGain ? GAIN_CAL_MULTI_ITER : 1;
     }
 
-    /* Init # histos returned */
-    dom_calib.num_histos = doHVCal ? (GAIN_CAL_HV_CNT * iterHVGain) : 0;
-
+    /* Init # histos returned and number of HV baselines */
+    dom_calib.num_histos    = doHVCal ? (GAIN_CAL_HV_CNT * iterHVGain) : 0;
+    dom_calib.num_baselines = doHVCal ?  GAIN_CAL_HV_CNT : 0;
+    
     /* Initialize DOM state: DACs, HV setting, pulser, etc. */
     init_dom();
     

@@ -153,6 +153,9 @@ typedef struct {
     /* Number of histograms returned */
     short num_histos;
 
+    /* Number of HV baselines recorded (number of HV points) */
+    short num_baselines;
+
     /* Valid bit for HV baseline calibration */
     short hv_baselines_valid;
 
