@@ -94,9 +94,11 @@ public class DOMCalXML {
 
         }
 
+        for (int i = 0; i < rec.getNumHVBaselines(); i++) {
+            if (rec.isHvBaselineCalValid()) formatBaseline(rec.getHVBaseline(i), out);
+        }
 
         for (int i = 0; i < rec.getNumHVHistograms(); i++) {
-            if (rec.isHvBaselineCalValid()) formatBaseline(rec.getHVBaseline(i), out);
             formatHisto(rec.getHVHistogram(i), out);
         }
 

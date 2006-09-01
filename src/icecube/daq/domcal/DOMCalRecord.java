@@ -231,11 +231,11 @@ public class DOMCalRecord {
     }
 
     public short getNumHVBaselines() {
-        return numHVHistograms;
+        return numHVBaselines;
     }
 
     public Baseline getHVBaseline(int iter) {
-        if (iter >= numHVHistograms || iter < 0) {
+        if (iter >= numHVBaselines || iter < 0) {
             throw new IndexOutOfBoundsException("" + iter);
         }
         return hvBaselines[iter];
@@ -351,6 +351,7 @@ public class DOMCalRecord {
             rec.transitTimeFit = LinearFit.parseLinearFit(bb);
         }
 
+        rec.numHVBaselines  = bb.getShort();
         rec.numHVHistograms = bb.getShort();
 
         short hvBaselinesValidShort = bb.getShort();
@@ -358,8 +359,8 @@ public class DOMCalRecord {
 
         rec.hvBaselines = null;
         if (rec.hvBaselineCalValid) {
-            rec.hvBaselines = new Baseline[rec.numHVHistograms];
-            for (int i = 0; i < rec.numHVHistograms; i++) rec.hvBaselines[i] = Baseline.parseHvBaseline(bb);
+            rec.hvBaselines = new Baseline[rec.numHVBaselines];
+            for (int i = 0; i < rec.numHVBaselines; i++) rec.hvBaselines[i] = Baseline.parseHvBaseline(bb);
         }
 
         short hvCalValidShort = bb.getShort();
