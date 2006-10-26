@@ -173,17 +173,17 @@ public class DOMCal implements Runnable {
                 }
 
 
-
                 /* Determine if domcal is present */
                 com.send( "s\" domcal\" find if ls endif\r" );
-                String ret = com.receive( "\r\n> " );
-                if ( ret.equals(  "s\" domcal\" find if ls endif\r\n> " ) ) {
+                String ret = com.receive( ">" );
+                if ( ret.equals(  "s\" domcal\" find if ls endif\r\n>" ) ) {
                     logger.error( "Failed domcal load....is domcal present?" );
                     return;
                 }
 
                 /* Start domcal */
                 com.send( "exec\r" );
+
                 Calendar cal = new GregorianCalendar(TimeZone.getTimeZone("GMT"));
                 int day = cal.get( Calendar.DAY_OF_MONTH );
                 int month = cal.get( Calendar.MONTH ) + 1;
