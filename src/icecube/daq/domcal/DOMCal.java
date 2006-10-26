@@ -121,7 +121,7 @@ public class DOMCal implements Runnable {
             try {
                 //fetch hwid
                 com.send("crlf domid type type\r");
-                String idraw = com.receive( "\r\n> " );
+                String idraw = com.receive( ">" );
                 StringTokenizer r = new StringTokenizer(idraw, " \r\n\t");
                 //Move past input string
                 for (int i = 0; i < 4; i++) {
@@ -228,7 +228,7 @@ public class DOMCal implements Runnable {
                 //Create raw output file
                 PrintWriter out = new PrintWriter(new FileWriter(outDir + "domcal_" + id + ".out", false), false);
                 String termDat = "";
-                for (String dat = com.receive(); !termDat.endsWith("\r\n> "); dat = com.receive()) {
+                for (String dat = com.receive(); !termDat.trim().endsWith("\r\n\r\n>"); dat = com.receive()) {
                     out.print(dat);
                     if (dat.length() > 5) termDat = dat;
                     else termDat += dat;
@@ -244,14 +244,16 @@ public class DOMCal implements Runnable {
                 die( e );
                 return;
             }
-        }
+        } // End calibration section
+
+        logger.debug( "Finished calibration" );
 
         byte[] binaryData = null;
 
         try {
             com.send( "s\" calib_data\" find if ls endif\r" );
-            String ret = com.receive( "\r\n> " );
-            if ( ret.equals(  "s\" calib_data\" find if ls endif\r\n> " ) ) {
+            String ret = com.receive( ">" );
+            if ( ret.equals(  "s\" calib_data\" find if ls endif\r\n>" ) ) {
                 logger.error( "Cannot find binary data on DOM" );
                 return;
             }
