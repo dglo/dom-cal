@@ -71,7 +71,7 @@ static void getstr(char *str) {
  */
 void get_date(calib_data *dom_calib) {
 
-    short day, month, year;
+    short day, month, year, toroid;
     char timestr[7];
     char buf[100];
     int i;
@@ -140,10 +140,18 @@ void get_date(calib_data *dom_calib) {
     }        
     printf("\r\n");
 
+    /* Get toroid type */
+    printf("Enter toroid type (0 == old, 1 == new): ");
+    fflush(stdout);
+    getstr(buf);
+    toroid = atoi(buf);
+    printf("\r\n");
+
     /* Store results */
     dom_calib->year = year;
     dom_calib->month = month;
     dom_calib->day = day;
+    dom_calib->fe_impedance = getFEImpedance(toroid);
 
     /* Extract hour, minute, and second */
     char timeBit[3];
@@ -376,6 +384,9 @@ int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
         offset += get_bytes_from_short( adc[i], bin_data, offset );
     }
 
+    /* Write FE Impedance */
+    offset += get_bytes_from_float(cal->fe_impedance, bin_data, offset);
+
     /* Write FADC calibration data */
     offset += write_fit( &cal->fadc_baseline, bin_data, offset );
     offset += write_value_error( &cal->fadc_gain, bin_data, offset );
@@ -420,7 +431,8 @@ int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
         offset += write_fit(&cal->transit_calib, bin_data, offset);
     }
 
-    /* Write number of histos */
+    /* Write number of voltages (baselines) and number of histos */
+    offset += get_bytes_from_short(cal->num_baselines, bin_data, offset );
     offset += get_bytes_from_short(cal->num_histos, bin_data, offset );
 
     /* Write hv baselines valid */
@@ -428,7 +440,7 @@ int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
 
     /* Write baselines if necessary */
     if (cal->hv_baselines_valid) {
-        for (i = 0; i < cal->num_histos; i++) {
+        for (i = 0; i < cal->num_baselines; i++) {
             offset += write_hv_baseline(&cal->baseline_data[i], bin_data, offset);
         }
     }
@@ -476,6 +488,8 @@ int save_results(calib_data dom_calib) {
         printf("ADC %d: %d\r\n", i, dom_calib.adc_values[i]);
 
     printf("Temp: %.1f\r\n", dom_calib.temp);
+
+    printf("FE Impedance: %.1f\r\n", dom_calib.fe_impedance);
 
     printf("SPE Disc: m=%.6g b=%.6g r^2=%.6g\r\n",
                    dom_calib.spe_disc_calib.slope,
@@ -552,10 +566,11 @@ int save_results(calib_data dom_calib) {
     r_size += dom_calib.num_histos * 4; //Noise rate
     r_size += dom_calib.num_histos * 2; //is_filled flag
     
+    r_size += 2; //number of hv baselines
     r_size += 2; //hv_baselines_valid
     if (dom_calib.hv_baselines_valid) {
-        r_size += dom_calib.num_histos * 2 * 3 * 4; //hv_baselines
-        r_size += dom_calib.num_histos * 2; //baseline voltages
+        r_size += dom_calib.num_baselines * 2 * 3 * 4; //hv_baselines
+        r_size += dom_calib.num_baselines * 2; //baseline voltages
     }
 
     r_size += 2; //transit_calib_valid
@@ -594,7 +609,8 @@ int main(void) {
     int err = 0;
     calib_data dom_calib;
     char buf[100];
-    int doHVCal;
+    int doHVCal, iterHVGain;
+    doHVCal = iterHVGain = 0;
 
 #ifdef DEBUG
     printf("Welcome to domcal version %d.%d.%d\r\n", 
@@ -602,6 +618,7 @@ int main(void) {
 #endif
 
     /* Get the date and time from the user */
+    /* Toroid query is also in here right now */
     get_date(&dom_calib);
     
     /* Ask user if they want an HV calibration */
@@ -623,9 +640,21 @@ int main(void) {
     dom_calib.hv_baselines_valid = 0;
     dom_calib.transit_calib_valid = 0;
 
-    /* Init # histos returned */
-    dom_calib.num_histos = doHVCal ? GAIN_CAL_HV_CNT : 0;
+    /* Query user about multi-iteration runs */
+    if (doHVCal) {
+        printf("Do you want to iterate the gain/HV calibration (y/n)? ");
+        fflush(stdout);
+        getstr(buf);
+        printf("\r\n");
+        iterHVGain = ((buf[0] == 'y') || (buf[0] == 'Y') ||
+                      (buf[0] == '\n' && ((buf[1] == 'y') || (buf[1] == 'Y'))));
+        iterHVGain = iterHVGain ? GAIN_CAL_MULTI_ITER : 1;
+    }
 
+    /* Init # histos returned and number of HV baselines */
+    dom_calib.num_histos    = doHVCal ? (GAIN_CAL_HV_CNT * iterHVGain) : 0;
+    dom_calib.num_baselines = doHVCal ?  GAIN_CAL_HV_CNT : 0;
+    
     /* Initialize DOM state: DACs, HV setting, pulser, etc. */
     init_dom();
     
@@ -633,7 +662,7 @@ int main(void) {
     record_state(&dom_calib);
 
     /* Calibration modules:
-     *  - pulser calibration
+     *  - discriminator calibration
      *  - atwd calibration
      *  - baseline calibration
      *  - sampling speed calibration
@@ -641,10 +670,10 @@ int main(void) {
      *  - FADC calibration 
      *  - HV baseline calibration
      *  - HV amplifier calibration (using LED)
+     *  - ...wait...
      *  - transit time calibration
      *  - HV gain calibration
      */
-    /* FIX ME: return real error codes */
     disc_cal(&dom_calib);
     atwd_cal(&dom_calib);
     baseline_cal(&dom_calib);
@@ -654,8 +683,16 @@ int main(void) {
     if (doHVCal) {
         hv_baseline_cal(&dom_calib);
         hv_amp_cal(&dom_calib);
+
+        /* WAIT ~10min for amp cal to finish on neighboring DOMs */
+#ifdef DEBUG
+        printf(" Waiting 10m for neighbors to settle...\r\n");
+#endif
+        int i;
+        for (i = 0; i < 600; i++) halUSleep(1000000);
+
         transit_cal(&dom_calib);
-        hv_gain_cal(&dom_calib);
+        hv_gain_cal(&dom_calib, iterHVGain);
     }
 
     /* Write calibration record to flash */

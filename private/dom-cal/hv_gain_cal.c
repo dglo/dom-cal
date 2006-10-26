@@ -5,7 +5,8 @@
  * to create charge histogram, and then fits to find peak and valley.
  * Then performs linear regression on log(HV) vs. log(gain).
  *
- * Iterates over a number of HV settings.
+ * Iterates over a number of HV settings.  Can also iterate multiple times
+ * and use a combined fit for more precision (such as IceTop low-gain DOMs).
  *
  */
 
@@ -25,7 +26,7 @@
 
 /*---------------------------------------------------------------------------*/
 
-int hv_gain_cal(calib_data *dom_calib) {
+int hv_gain_cal(calib_data *dom_calib, int iterHVGain) {
 
     const int cnt = 128;
     int trigger_mask;
@@ -41,25 +42,38 @@ int hv_gain_cal(calib_data *dom_calib) {
     float charges[GAIN_CAL_TRIG_CNT];
 
     /* Charge histograms for each HV */
-    float **hist_y = malloc(GAIN_CAL_HV_CNT*sizeof(float*));
+    float **hist_y = malloc(iterHVGain*GAIN_CAL_HV_CNT*sizeof(float*));
 
     /* Actual x-values for each histogram */
-    float **hist_x = malloc(GAIN_CAL_HV_CNT*sizeof(float*));
+    float **hist_x = malloc(iterHVGain*GAIN_CAL_HV_CNT*sizeof(float*));
 
     /* Fit parameters for each SPE spectrum */
-    float **fit_params = malloc(GAIN_CAL_HV_CNT*sizeof(float*));
+    float **fit_params = malloc(iterHVGain*GAIN_CAL_HV_CNT*sizeof(float*));
 
     /* Log(gain) values for each voltage with a good SPE fit */
-    float log_gain[GAIN_CAL_HV_CNT];
+    float *log_gain = malloc(iterHVGain*GAIN_CAL_HV_CNT*sizeof(float));
 
     /* Log(HV) settings, for regression */
-    float log_hv[GAIN_CAL_HV_CNT];
+    float *log_hv = malloc(iterHVGain*GAIN_CAL_HV_CNT*sizeof(float));
+
+    /* Valid indices for fit refinement */
+    int *vldIdx = malloc(iterHVGain*GAIN_CAL_HV_CNT*sizeof(int));
+
+    /* Check mallocs! */
+    if ((!hist_y) || (!hist_x) || (!fit_params) || 
+        (!log_gain) || (!log_hv) || (!vldIdx)) {
+#ifdef DEBUG
+        printf("ERROR: couldn't allocate memory for HV/gain fits!\r\n");
+        return 1;
+#endif
+    }
 
     /* Number of reasonable P/V histograms obtained */
     int spe_cnt = 0;
 
     /* Charge histogram data */
-    static hv_histogram hv_hist_data[GAIN_CAL_HV_CNT];
+    /* Conservatively allocate maximum here */
+    static hv_histogram hv_hist_data[GAIN_CAL_MULTI_ITER*GAIN_CAL_HV_CNT];
 
 #ifdef DEBUG
     printf("Performing HV gain calibration (using ATWD%d)...\r\n", atwd);
@@ -119,15 +133,18 @@ int hv_gain_cal(calib_data *dom_calib) {
     build_integer_calib(dom_calib, &int_calib);
 
     /* Loop over HV settings */
-    for (hv_idx = 0; hv_idx < GAIN_CAL_HV_CNT; hv_idx++) {
+    for (hv_idx = 0; hv_idx < GAIN_CAL_HV_CNT*iterHVGain; hv_idx++) {
         
         /* malloc current hv_idx */
         fit_params[hv_idx] = malloc(GAIN_CAL_BINS*sizeof(float));
         hist_x[hv_idx] = malloc(GAIN_CAL_BINS*sizeof(float));
         hist_y[hv_idx] = malloc(GAIN_CAL_BINS*sizeof(float));
 
+        /* Reduced HV index (which HV we are using, not incl. iterations) */
+        short hv_idx_r = hv_idx % GAIN_CAL_HV_CNT;
+
         /* Set high voltage and give it time to stabilize */
-        hv = (hv_idx * GAIN_CAL_HV_INC) + GAIN_CAL_HV_LOW;      
+        hv = (hv_idx_r * GAIN_CAL_HV_INC) + GAIN_CAL_HV_LOW;      
 
 #ifdef DEBUG
         printf(" Setting HV to %d V\r\n", hv);
@@ -141,9 +158,10 @@ int hv_gain_cal(calib_data *dom_calib) {
         hv_hist_data[hv_idx].pv = 0.0;
 
         /* Set discriminator */
+        /* Three different discriminator settings based on HV setting */
         int disc_dac;
-        if (hv_idx < 4) disc_dac = getDiscDAC(GAIN_CAL_PC_LOW, *dom_calib);
-        else if (hv_idx < 8) disc_dac = getDiscDAC(GAIN_CAL_PC_MED, *dom_calib);
+        if (hv_idx_r < 4) disc_dac = getDiscDAC(GAIN_CAL_PC_LOW, *dom_calib);
+        else if (hv_idx_r < 8) disc_dac = getDiscDAC(GAIN_CAL_PC_MED, *dom_calib);
         else disc_dac = getDiscDAC(GAIN_CAL_PC_HIGH, *dom_calib);
         halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, disc_dac);
 #ifdef DEBUG
@@ -187,8 +205,8 @@ int hv_gain_cal(calib_data *dom_calib) {
 
         volt_t baseline[2][3];
         for (i = 0; i < 3; i++) {
-            baseline[0][i] = to_volt_t(dom_calib->baseline_data[hv_idx].atwd0_hv_baseline[i]);
-            baseline[1][i] = to_volt_t(dom_calib->baseline_data[hv_idx].atwd1_hv_baseline[i]);
+            baseline[0][i] = to_volt_t(dom_calib->baseline_data[hv_idx_r].atwd0_hv_baseline[i]);
+            baseline[1][i] = to_volt_t(dom_calib->baseline_data[hv_idx_r].atwd1_hv_baseline[i]);
         }
 
         /* Number of points with negative charge */
@@ -207,7 +225,7 @@ int hv_gain_cal(calib_data *dom_calib) {
 
             /* Find the peak */
             peak_idx = 0;
-            volt_t min = 0.0;
+            volt_t min = 0;
             for (bin = GAIN_CAL_START_BIN; bin < cnt; bin++) {
 
                 if (bin == GAIN_CAL_START_BIN) {
@@ -227,10 +245,11 @@ int hv_gain_cal(calib_data *dom_calib) {
                                          peak_idx - INT_WIN_MIN : GAIN_CAL_START_BIN;
             int_max = (peak_idx + INT_WIN_MAX <= cnt-1) ? peak_idx + INT_WIN_MAX : cnt-1;
             vsum = 0;
+            
+            /* Switch to floating point */
 
             /* Do current integral -- work in front end load */
-            /* to avoid integer overflow */
-            for (bin = int_min; bin <= int_max; bin++) vsum += vdat[bin]/DOM_FE_IMPEDANCE;
+            for (bin = int_min; bin <= int_max; bin++) vsum += vdat[bin]/dom_calib->fe_impedance;
 
             /* True charge, in pC = 1/R_ohm * sum(V) * 1e12 / (freq_mhz * 1e6) */
             /* Need to now divide by amplification factor */
@@ -352,13 +371,17 @@ int hv_gain_cal(calib_data *dom_calib) {
                         log_gain[spe_cnt] = log10(fit_params[hv_idx][3] / Q_E) - 12.0;
                         
 #ifdef DEBUG
-                        printf("New gain point: log(V) %.6g log(gain) %.6g\r\n", log_hv[spe_cnt], log_gain[spe_cnt]);
+                        printf("New gain point: log(V) %.6g log(gain) %.6g\r\n", 
+                               log_hv[spe_cnt], log_gain[spe_cnt]);
 #endif         
                         /* note fit convergence */
-                        hv_hist_data[hv_idx].convergent = 1; 
-                        
+                        hv_hist_data[hv_idx].convergent = 1;                         
                         hv_hist_data[hv_idx].pv = pv_ratio;
                         
+                        /* Record index for later use */
+                        /* We might eventually toss this out */
+                        vldIdx[spe_cnt] = hv_idx;
+
                         spe_cnt++;
                         
                     }
@@ -391,25 +414,31 @@ int hv_gain_cal(calib_data *dom_calib) {
     /* Add histos to calib struct */
     dom_calib->histogram_data = hv_hist_data;
 
-    if (spe_cnt >= 2) {
+    /* Make sure we have enough points, and that they are at different HV */
+    if ((spe_cnt >= 2) && (log_hv[0] != log_hv[1])) {
 
         /* Fit log(hv) vs. log(gain) */
         linearFitFloat(log_hv, log_gain, spe_cnt, &(dom_calib->hv_gain_calib)); 
         dom_calib->hv_gain_valid = 1;
 
-        float *log_hv_bad = (float *)malloc(spe_cnt * sizeof(float));
-        int bad_cnt = 0;
-
-        /* Check for bad R^2 */
-        refineLinearFit(log_hv, log_gain, &spe_cnt, &dom_calib->hv_gain_calib,
-                        GAIN_CAL_MIN_R2, GAIN_CAL_MIN_R2_PTS, log_hv_bad, &bad_cnt);        
+        /* Check for bad R^2 and refine fit if necessary */
+        int origPts = spe_cnt;
+        char *vld = (char *)malloc(spe_cnt * sizeof(char));
+        refineLinearFit(log_hv, log_gain, &spe_cnt, vld, &dom_calib->hv_gain_calib,
+                        GAIN_CAL_MIN_R2, GAIN_CAL_MIN_R2_PTS);
         
-        /* Mark the discarded fits as bad -- and round correctly */
+        /* Mark the discarded fits as bad */
+        /* The indexing gets complicated because we recorded histograms for everything */
         int idx;
-        for (idx = 0; idx < bad_cnt; idx++) {
-            hv_idx = (int)(((pow(10.0, log_hv_bad[idx]) - GAIN_CAL_HV_LOW) / GAIN_CAL_HV_INC) + 0.5);
-            dom_calib->histogram_data[hv_idx].convergent = 0;
+        for (idx = 0; idx < origPts; idx++) {
+            if (!vld[idx]) {                
+                dom_calib->histogram_data[vldIdx[idx]].convergent = 0;
+#ifdef DEBUG
+                printf("Discarded fit %d at log10 voltage: %f\r\n", idx, log_hv[idx]);
+#endif                                 
+            }
         }
+        free(vld);
         
     }
     else {
@@ -429,6 +458,11 @@ int hv_gain_cal(calib_data *dom_calib) {
 
     /* Put the DACs back to original state */
     halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, origDiscDAC);
+
+    /* Free local mallocs */
+    free(log_hv);
+    free(log_gain);
+    free(vldIdx);
 
     /* FIX ME: return real error code */
     return 0;
