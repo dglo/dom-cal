@@ -7,7 +7,6 @@
  */
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
@@ -96,15 +95,13 @@ int disc_cal(calib_data *dom_calib) {
         if (pulser_loop(&pulser_dac, 0)) return -1;
 
         /* Convert pulser amplitude to charge */
-        pulser_spe_charge_data[i] = pulserDAC2Q(pulser_dac,
-                                          dom_calib->fe_impedance);
+        pulser_spe_charge_data[i] = pulserDAC2Q(pulser_dac);
 
         /* Do same for MPE disc */
         if (pulser_loop(&pulser_dac, 1)) return -1;
 
         /* Convert pulser amplitude to charge */
-        pulser_mpe_charge_data[i] = pulserDAC2Q(pulser_dac,
-                                          dom_calib->fe_impedance);
+        pulser_mpe_charge_data[i] = pulserDAC2Q(pulser_dac);
 
         #ifdef DEBUG
         printf("Got disc point: SPE DAC: %f SPE Q: %f MPE DAC: %f MPE Q: %f\r\n",
@@ -122,19 +119,14 @@ int disc_cal(calib_data *dom_calib) {
     /* Refine each fit */
     int vld_cnt = DISC_CAL_CNT;
     refineLinearFit(spe_disc_data, pulser_spe_charge_data, 
-                   &vld_cnt, NULL, &(dom_calib->spe_disc_calib),
-                   DISC_CAL_MIN_R2, DISC_CAL_MIN_R2_PTS);
-#ifdef DEBUG
+                   &vld_cnt, &(dom_calib->spe_disc_calib),
+                   DISC_CAL_MIN_R2, DISC_CAL_MIN_R2_PTS, NULL, NULL);
     if (vld_cnt != DISC_CAL_CNT) printf("Using only %d pts for fit\n", vld_cnt);
-#endif
-
     vld_cnt = DISC_CAL_CNT;
     refineLinearFit(mpe_disc_data, pulser_mpe_charge_data, 
-                   &vld_cnt, NULL, &(dom_calib->mpe_disc_calib),
-                   DISC_CAL_MIN_R2, DISC_CAL_MIN_R2_PTS);
-#ifdef DEBUG
+                   &vld_cnt, &(dom_calib->mpe_disc_calib),
+                   DISC_CAL_MIN_R2, DISC_CAL_MIN_R2_PTS, NULL, NULL);
     if (vld_cnt != DISC_CAL_CNT) printf("Using only %d pts for fit\n", vld_cnt);
-#endif
 
     /* Restore DAC values */
     halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, old_pedestal_value);

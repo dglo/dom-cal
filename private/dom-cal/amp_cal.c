@@ -173,11 +173,10 @@ int amp_cal(calib_data *dom_calib) {
     float gains[3][AMP_CAL_TRIG_CNT];
     for (ch = 0; ch < 3; ch++) {
         /* Pulser charge is golden reference! */
-        float pulser_q = pulserDAC2Q(pulser_settings[ch], dom_calib->fe_impedance);        
+        float pulser_q = pulserDAC2Q(pulser_settings[ch]);        
 
         for (trig = 0; trig < AMP_CAL_TRIG_CNT; trig++)
-            gains[ch][trig] = charges[ch][trig] / (freq * 
-                                        dom_calib->fe_impedance * 1e-6 * pulser_q);
+            gains[ch][trig] = charges[ch][trig] / (freq * DOM_FE_IMPEDANCE * 1e-6 * pulser_q);
 
         /* Find gain and error */
         meanVarFloat(gains[ch], AMP_CAL_TRIG_CNT, &mean, &var);

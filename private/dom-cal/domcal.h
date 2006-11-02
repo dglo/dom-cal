@@ -9,11 +9,11 @@
 
 /* Version of calibration program */
 #define MAJOR_VERSION 6
-#define MINOR_VERSION 3
-#define PATCH_VERSION 0
+#define MINOR_VERSION 2
+#define PATCH_VERSION 4
 
 /* Default number of bytes in binary output */
-#define DEFAULT_RECORD_LENGTH 9444
+#define DEFAULT_RECORD_LENGTH 9440
 
 /* Default ATWD DAC settings */
 #ifdef DOMCAL_REV5
@@ -37,6 +37,9 @@
 
 /* FADC sampling frequency, in MHz */
 #define FADC_CLOCK_FREQ         40.0
+
+/* DOM front-end impedance in Ohms, with PMT attached */
+#define DOM_FE_IMPEDANCE        43.0
 
 /* Wait time after setting a DAC */
 #define DAC_SET_WAIT         1000000
@@ -90,9 +93,6 @@ typedef struct {
 
 /* Calibration data structure */
 typedef struct {
-
-    /* Front end impedance */
-    float fe_impedance;
     
     /* Date */
     short day, month, year;
@@ -152,9 +152,6 @@ typedef struct {
 
     /* Number of histograms returned */
     short num_histos;
-
-    /* Number of HV baselines recorded (number of HV points) */
-    short num_baselines;
 
     /* Valid bit for HV baseline calibration */
     short hv_baselines_valid;

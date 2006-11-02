@@ -44,6 +44,9 @@ public class SaveToDB
             throw new IOException("File \"" + f + "\" does not exist");
         }
 
+        // configure log4j
+        BasicConfigurator.configure();
+
         CalibratorDB.save(fileName, logger);
     }
 
@@ -58,10 +61,6 @@ public class SaveToDB
 
         boolean usage = false;
         boolean failed = false;
-
-        // configure log4j
-        BasicConfigurator.configure();
-
         for (int i = 0; i < args.length; i++) {
             if (args[i].length() >= 1 && args[i].charAt(0) == '-') {
                 if (args[i].charAt(1) == 'v') {

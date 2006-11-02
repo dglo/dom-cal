@@ -3,7 +3,7 @@
  */
 
 /* Discriminator charge thresholds */
-#define GAIN_CAL_PC_LOW   0.12
+#define GAIN_CAL_PC_LOW   0.08
 #define GAIN_CAL_PC_MED   0.25
 #define GAIN_CAL_PC_HIGH  1.0
 
@@ -22,10 +22,6 @@
 #define GAIN_CAL_HV_LOW        1020
 #define GAIN_CAL_HV_INC          80
 #define GAIN_CAL_HV_CNT          12
-
-/* In the case of multiple iterations of HV/gain calibration, */
-/* iterate this many times */
-#define GAIN_CAL_MULTI_ITER       4
 
 /* Histogram info */
 #define GAIN_CAL_BINS           250
@@ -57,4 +53,4 @@
 #define GAIN_CAL_MIN_R2_PTS    4
 
 /* Prototypes */
-int hv_gain_cal(calib_data *dom_calib, int iterHVGain);
+int hv_gain_cal(calib_data *dom_calib);

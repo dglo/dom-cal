@@ -43,29 +43,6 @@ public class CalibratorDB
     private static SimpleDateFormat humanFormat =
         new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S");
 
-    /** List of all tables containing calibration data. */
-    private static final String[] ALL_TABLES = new String[] {
-        "DOMCal_ADC",
-        "DOMCal_ATWD",
-        "DOMCal_ATWDFreq",
-        "DOMCal_ATWDFreqParam",
-        "DOMCal_ATWDParam",
-        "DOMCal_AmpGain",
-        "DOMCal_Baseline",
-        "DOMCal_ChargeData",
-        "DOMCal_ChargeMain",
-        "DOMCal_ChargeParam",
-        "DOMCal_DAC",
-        "DOMCal_Discriminator",
-        "DOMCal_FADC",
-        "DOMCal_HvGain",
-        "DOMCal_PmtTransit",
-        "DOMCal_Pulser",
-        "DOMCal_PulserParam",
-        // delete() expected DOMCalibration to be last entry in list
-        "DOMCalibration",
-    };
-
     /** List of discriminator types. */
     private static DiscriminatorType discrimType;
     /** List of model types. */
@@ -115,79 +92,6 @@ public class CalibratorDB
     }
 
     /**
-     * Delete the calibration data from the database.
-     *
-     * @param cal calibration data
-     * @param testOnly <tt>true</tt> if SQL statements should be
-     *                 printed but not run
-     *
-     * @throws SQLException if there is a database problem
-     */
-    public void delete(Calibrator cal, boolean testOnly)
-        throws SQLException
-    {
-        Connection conn;
-        Statement stmt;
-
-        conn = getConnection();
-        stmt = getStatement(conn);
-
-        try {
-            delete(stmt, cal, testOnly);
-        } finally {
-            try {
-                stmt.close();
-            } catch (SQLException se) {
-                // ignore errors on close
-            }
-
-            try {
-                conn.close();
-            } catch (SQLException se) {
-                // ignore errors on close
-            }
-        }
-    }
-
-    /**
-     * Delete the calibration data from the database.
-     *
-     * @param stmt SQL statement
-     * @param cal calibration data
-     * @param testOnly <tt>true</tt> if SQL statements should be
-     *                 printed but not run
-     *
-     * @throws SQLException if there is a database problem
-     */
-    public void delete(Statement stmt, Calibrator cal, boolean testOnly)
-        throws SQLException
-    {
-        final String mainTable = "DOMCalibration";
-
-        SQLException delayedEx = null;
-        for (int i = 0; i < ALL_TABLES.length; i++) {
-            final String dStr = "delete from " + ALL_TABLES[i] +
-                " where domcal_id=" + cal.getDOMCalId();
-
-            if (testOnly) {
-                System.err.println(dStr);
-            } else {
-                int rows;
-                try {
-                    rows = stmt.executeUpdate(dStr);
-                } catch (SQLException se) {
-                    delayedEx = new SQLException(dStr + ": " +
-                                                 se.getMessage());
-                }
-            }
-        }
-
-        if (delayedEx != null) {
-            throw delayedEx;
-        }
-    }
-
-    /**
      * Return a formatted temperature string.
      *
      * @param temp temperature
@@ -203,33 +107,6 @@ public class CalibratorDB
             return dblStr;
         }
         return dblStr.substring(0, dotIdx + 3);
-    }
-
-    /**
-     * Combine date and time into a single entity.
-     *
-     * @param date date value
-     * @param time time value
-     */
-    private static Date getCombinedDate(Date date, Date time)
-    {
-        Date combined;
-        if (date == null) {
-            combined = null;
-        } else if (time == null) {
-            combined = date;
-        } else {
-            Calendar calTime = Calendar.getInstance();
-            calTime.setTime(time);
-
-            long timeMS = calTime.get(Calendar.HOUR_OF_DAY) * 3600000 +
-                calTime.get(Calendar.MINUTE) * 60000 +
-                calTime.get(Calendar.SECOND) * 1000;
-
-            combined = new Date(date.getTime() + timeMS);
-        }
-
-        return combined;
     }
 
     /**
@@ -348,24 +225,6 @@ public class CalibratorDB
         }
 
         return prodId;
-    }
-
-    /**
-     * Load calibration data.
-     *
-     * @param domcalId DOMCalibration ID
-     *
-     * @return loaded data
-     *
-     * @throws DOMCalibrationException if an argument is invalid
-     * @throws SQLException if there is a database problem
-     */
-    public Calibrator load(int domcalId)
-        throws DOMCalibrationException, SQLException
-    {
-        Calibrator cal = new Calibrator();
-        load(cal, domcalId);
-        return cal;
     }
 
     /**
@@ -496,62 +355,6 @@ public class CalibratorDB
             } catch (SQLException se) {
                 // ignore errors on close
             }
-        }
-    }
-
-    /**
-     * Load calibration data.
-     *
-     * @param cal calibration object to be filled
-     * @param id calibration ID
-     *
-     * @throws DOMCalibrationException if an argument is invalid
-     * @throws SQLException if there is a database problem
-     */
-    public void load(Calibrator cal, int id)
-        throws DOMCalibrationException, SQLException
-    {
-        Connection conn;
-        Statement stmt;
-
-        conn = getConnection();
-        stmt = getStatement(conn);
-
-        DOMCalibrationException delayedEx = null;
-        try {
-            loadMain(stmt, cal, id);
-            loadADCs(stmt, cal);
-            loadDACs(stmt, cal);
-            loadPulser(stmt, cal);
-            try {
-                loadFADC(stmt, cal);
-            } catch (DOMCalibrationException dce) {
-                delayedEx = dce;
-            }
-            loadDiscrim(stmt, cal);
-            loadATWDs(stmt, cal);
-            loadAmpGain(stmt, cal);
-            loadATWDFreqs(stmt, cal);
-            loadBaselines(stmt, cal);
-            loadPmtTransit(stmt, cal);
-            loadHvGain(stmt, cal);
-            loadHvHisto(stmt, cal);
-        } finally {
-            try {
-                stmt.close();
-            } catch (SQLException se) {
-                // ignore errors on close
-            }
-
-            try {
-                conn.close();
-            } catch (SQLException se) {
-                // ignore errors on close
-            }
-        }
-
-        if (delayedEx != null) {
-            throw delayedEx;
         }
     }
 
@@ -962,7 +765,10 @@ public class CalibratorDB
         ResultSet rs = stmt.executeQuery(qStr);
 
         if (!rs.next()) {
-            return;
+            final String errMsg = "No FADC data for DOM " + cal.getDOMId() +
+                ", date " + cal.getCalendar() +
+                ", temperature " + cal.getTemperature();
+            throw new DOMCalibrationException(errMsg);
         }
 
         final float slope = (float) rs.getDouble(1);
@@ -1251,85 +1057,24 @@ public class CalibratorDB
             throw new DOMCalibrationException(errMsg);
         }
 
-        Date combined = getCombinedDate(dcDate, dcTime);
+        Date combined;
+        if (dcDate == null) {
+            combined = null;
+        } else if (dcTime == null) {
+            combined = dcDate;
+        } else {
+            Calendar calTime = Calendar.getInstance();
+            calTime.setTime(dcTime);
+
+            long timeMS = calTime.get(Calendar.HOUR_OF_DAY) * 3600000 +
+                calTime.get(Calendar.MINUTE) * 60000 +
+                calTime.get(Calendar.SECOND) * 1000;
+
+            combined = new Date(dcDate.getTime() + timeMS);
+        }
 
         cal.setMain(domcalId, mbSerial, dcProd, combined, dcTemp,
                     dcMajor, dcMinor, dcPatch);
-    }
-
-    /**
-     * Load main calibration data.
-     *
-     * @param stmt SQL statement
-     * @param cal calibration object to be filled
-     * @param domcalId calibration ID
-     *
-     * @throws DOMCalibrationException if there is a problem with the data
-     * @throws SQLException if there is a database problem
-     */
-    public void loadMain(Statement stmt, Calibrator cal, int domcalId)
-        throws DOMCalibrationException, SQLException
-    {
-        final String qStr =
-            "select prod_id,date,time,temperature" +
-            ",major_version,minor_version,patch_version" +
-            " from DOMCalibration" +
-            " where domcal_id=" + domcalId;
-
-        ResultSet rs = stmt.executeQuery(qStr);
-
-        boolean hasNext = rs.next();
-
-        final int prodId;
-        final Date dcDate;
-        final Date dcTime;
-        final double dcTemp;
-        final short dcMajor;
-        final short dcMinor;
-        final short dcPatch;
-
-        if (!hasNext) {
-            prodId = Integer.MIN_VALUE;
-            dcDate = null;
-            dcTime = null;
-            dcTemp = 0.0;
-            dcMajor = 0;
-            dcMinor = 0;
-            dcPatch = 0;
-        } else {
-            prodId = rs.getInt(1);
-            dcDate = rs.getDate(2);
-            dcTime = rs.getTime(3);
-            dcTemp = rs.getDouble(4);
-            dcMajor = rs.getShort(5);
-            dcMinor = rs.getShort(6);
-            dcPatch = rs.getShort(7);
-        }
-
-        try {
-            rs.close();
-        } catch (SQLException se) {
-            // ignore errors on close
-        }
-
-        if (!hasNext) {
-            final String errMsg = "No calibration information for DOM #" +
-                domcalId;
-            throw new DOMCalibrationException(errMsg);
-        }
-
-        Date combined = getCombinedDate(dcDate, dcTime);
-
-        DOMProduct dcProd;
-        try {
-            dcProd = new DOMProduct(stmt, prodId);
-        } catch (DOMProdTestException dpte) {
-            throw new DOMCalibrationException("Couldn't get DOM data: " +
-                                              dpte.getMessage());
-        }
-
-        cal.setMain(domcalId, dcProd.getHardwareSerial(), dcProd, combined,
-                    dcTemp, dcMajor, dcMinor, dcPatch);
     }
 
     /**

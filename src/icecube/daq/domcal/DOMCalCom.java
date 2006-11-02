@@ -84,7 +84,7 @@ public class DOMCalCom extends SocketSerialCom {
             /* Sync I/O */
             send("ls\r\n");
             receive("ls\r\n");
-            receive(">");
+            receive("\r\n> ");
             return;
         }
 
@@ -92,7 +92,7 @@ public class DOMCalCom extends SocketSerialCom {
         else if (promptChar == '#') {
 
             send("r\r\n");
-            receive(">");
+            receive("\r\n> ");
 
             /* Now in iceboot */
             return;

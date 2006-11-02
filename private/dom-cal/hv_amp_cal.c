@@ -378,7 +378,7 @@ int hv_amp_cal(calib_data *dom_calib) {
                 DOM_HAL_DAC_ATWD1_TRIGGER_BIAS, origSampDAC);
     halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, old_led_value);
 
-    /* Won't disable HV ATTM */
+    /* Won't turn off the HV for now...*/
 
     /* FIX ME: return real error code */
     return 0;
