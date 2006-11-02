@@ -179,6 +179,7 @@ void init_dom(void) {
 #if defined DOMCAL_REV2 || defined DOMCAL_REV3
     halDisablePMT_HV();
 #else
+    halDisableBaseHV();
     halPowerDownBase();
 #endif
     halUSleep(250000);
