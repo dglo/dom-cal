@@ -232,7 +232,7 @@ public class Calibrator
     /**
      * Default constructor which sets up data arrays.
      */
-    Calibrator()
+    public Calibrator()
     {
         dacs        = new int[16];
         adcs        = new int[24];
@@ -958,6 +958,10 @@ public class Calibrator
      */
     public double getFadcIntercept()
     {
+        if (fadcBaselineFit == null) {
+            return Double.NaN;
+        }
+
         return ((Double) fadcBaselineFit.get("intercept")).doubleValue();
     }
 
@@ -966,6 +970,10 @@ public class Calibrator
      */
     public double getFadcRegression()
     {
+        if (fadcBaselineFit == null) {
+            return Double.NaN;
+        }
+
         return ((Double) fadcBaselineFit.get("r")).doubleValue();
     }
 
@@ -974,6 +982,10 @@ public class Calibrator
      */
     public double getFadcSlope()
     {
+        if (fadcBaselineFit == null) {
+            return Double.NaN;
+        }
+
         return ((Double) fadcBaselineFit.get("slope")).doubleValue();
     }
 

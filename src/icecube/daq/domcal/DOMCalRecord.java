@@ -37,6 +37,7 @@ public class DOMCalRecord {
     private float[] amplifierCalibrationError;
 
     private float temperature;
+    private float feImpedance;
 
     private short year;
     private short month;
@@ -55,8 +56,6 @@ public class DOMCalRecord {
     private float[] fadcGain;
     private float[] fadcDeltaT;
 
-    private short version;
-
     private boolean hvCalValid;
     private boolean transitCalValid;
     private short numTransitPts;
@@ -69,6 +68,7 @@ public class DOMCalRecord {
     private HVHistogram[] hvHistos;
 
     private Baseline baseline;
+    private short numHVBaselines;
     private Baseline[] hvBaselines;
 
     private DOMCalRecord() {
@@ -116,6 +116,10 @@ public class DOMCalRecord {
 
     public float getTemperature() {
         return temperature;
+    }
+
+    public float getFEImpedance() {
+        return feImpedance;
     }
 
     public float getFadcGain() {
@@ -228,11 +232,11 @@ public class DOMCalRecord {
     }
 
     public short getNumHVBaselines() {
-        return numHVHistograms;
+        return numHVBaselines;
     }
 
     public Baseline getHVBaseline(int iter) {
-        if (iter >= numHVHistograms || iter < 0) {
+        if (iter >= numHVBaselines || iter < 0) {
             throw new IndexOutOfBoundsException("" + iter);
         }
         return hvBaselines[iter];
@@ -298,6 +302,8 @@ public class DOMCalRecord {
             rec.adcValues[i] = bb.getShort();
         }
 
+        rec.feImpedance = bb.getFloat();
+
         rec.fadcFit = LinearFit.parseLinearFit(bb);
         rec.fadcGain = new float[2];
         for ( int i = 0; i < 2; i++ ) {
@@ -346,6 +352,7 @@ public class DOMCalRecord {
             rec.transitTimeFit = LinearFit.parseLinearFit(bb);
         }
 
+        rec.numHVBaselines  = bb.getShort();
         rec.numHVHistograms = bb.getShort();
 
         short hvBaselinesValidShort = bb.getShort();
@@ -353,8 +360,8 @@ public class DOMCalRecord {
 
         rec.hvBaselines = null;
         if (rec.hvBaselineCalValid) {
-            rec.hvBaselines = new Baseline[rec.numHVHistograms];
-            for (int i = 0; i < rec.numHVHistograms; i++) rec.hvBaselines[i] = Baseline.parseHvBaseline(bb);
+            rec.hvBaselines = new Baseline[rec.numHVBaselines];
+            for (int i = 0; i < rec.numHVBaselines; i++) rec.hvBaselines[i] = Baseline.parseHvBaseline(bb);
         }
 
         short hvCalValidShort = bb.getShort();

@@ -13,6 +13,7 @@
 package icecube.daq.domcal;
 
 import java.io.PrintWriter;
+import java.text.NumberFormat;
 
 public class DOMCalXML {
 
@@ -21,7 +22,11 @@ public class DOMCalXML {
         String version = rec.getMajorVersion()+"."+rec.getMinorVersion()+"."+rec.getPatchVersion();
         out.print( "<domcal version=\"" + version + "\">\n" );
 	    out.print("  <date>" + rec.getDay() + "-" + rec.getMonth() + "-" + rec.getYear() + "</date>\n" );
-	    out.print("  <time>" + rec.getHour() + ":" + rec.getMinute() + ":" + rec.getSecond() + "</time>\n" );
+        NumberFormat nf = NumberFormat.getInstance();
+        nf.setMinimumIntegerDigits(2);        
+	    out.print("  <time>" + nf.format(rec.getHour()) + ":");
+        out.print(nf.format(rec.getMinute()) + ":");
+        out.print(nf.format(rec.getSecond()) + "</time>\n" );
         out.print("  <domid>" + rec.getDomId() + "</domid>\n" );
         out.print("  <temperature format=\"Kelvin\">" + rec.getTemperature() + "</temperature>\n");
         for ( int i = 0; i < 16; i++ ) {
@@ -30,6 +35,7 @@ public class DOMCalXML {
         for ( int i = 0; i < 24; i++ ) {
             out.print("  <adc channel=\"" + i + "\">" + rec.getAdcValue( i ) + "</adc>\n");
         }
+        out.print("  <frontEndImpedance format=\"Ohms\">" + rec.getFEImpedance() + "</frontEndImpedance>\n");
         out.print("  <discriminator id=\"spe\">\n");
         format( rec.getSpeDiscriminatorCalibration(), out );
         out.print("  </discriminator>\n");
@@ -88,9 +94,11 @@ public class DOMCalXML {
 
         }
 
+        for (int i = 0; i < rec.getNumHVBaselines(); i++) {
+            if (rec.isHvBaselineCalValid()) formatBaseline(rec.getHVBaseline(i), out);
+        }
 
         for (int i = 0; i < rec.getNumHVHistograms(); i++) {
-            if (rec.isHvBaselineCalValid()) formatBaseline(rec.getHVBaseline(i), out);
             formatHisto(rec.getHVHistogram(i), out);
         }
 

@@ -19,36 +19,44 @@ import java.nio.ByteBuffer;
 import java.io.*;
 import java.util.*;
 import java.text.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
+import java.sql.ResultSet;
 
 public class DOMCal implements Runnable {
-    
+
     /* Timeout waiting for response, in seconds */
-    public static final int TIMEOUT = 5400;
-   
+    public static final int TIMEOUT = 7200;
+
     private static Logger logger = Logger.getLogger( DOMCal.class );
-    
+
     static {
+        BasicConfigurator.resetConfiguration();
+        BasicConfigurator.configure();
         logger.setLevel(Level.ALL);
     }
 
     private static List threads = new LinkedList();
-    
+
     private String host;
     private int port;
     private String outDir;
     private boolean calibrate;
     private boolean calibrateHv;
+    private boolean iterateHv;
     private DOMCalRecord rec;
 
     public DOMCal( String host, int port, String outDir ) {
-        this(host, port, outDir, false, false);
+        this(host, port, outDir, false, false, false);
     }
 
     public DOMCal( String host, int port, String outDir, boolean calibrate ) {
-        this(host, port, outDir, calibrate, false);
+        this(host, port, outDir, calibrate, false, false);
     }
 
-    public DOMCal( String host, int port, String outDir, boolean calibrate, boolean calibrateHv ) {
+    public DOMCal( String host, int port, String outDir, boolean calibrate, 
+                   boolean calibrateHv, boolean iterateHv ) {
         this.host = host;
         this.port = port;
         this.outDir = outDir;
@@ -57,9 +65,46 @@ public class DOMCal implements Runnable {
         }
         this.calibrate = calibrate;
         this.calibrateHv = calibrateHv;
+        this.iterateHv = iterateHv;
     }
 
     public void run() {
+
+        /* Determine toroid type */
+        int toroidType = -1;
+
+        /* Load properties -- determine database */
+        Properties calProps = null;
+        try {
+            File propFile = new File(System.getProperty("user.home") + "/.domcal.properties");
+            if (!propFile.exists()) propFile = new File("/usr/local/etc/domcal.properties");
+            if (propFile.exists()) {
+                calProps = new Properties();
+                calProps.load(new FileInputStream(propFile));
+            } else {
+                logger.warn("Unable to load DB properties file /usr/local/etc/domcal.properties");
+            }
+        } catch (Exception e) {
+            logger.warn("Unable to load DB properties file /usr/local/etc/domcal.properties");
+        }
+
+        /* Connect to domtest DB */
+        Connection jdbc = null;
+        if (calProps != null) {
+            try {
+            String driver = calProps.getProperty("icecube.daq.domcal.db.driver", "com.mysql.jdbc.Driver");
+            Class.forName(driver);
+            String url = calProps.getProperty("icecube.daq.domcal.db.url", "jdbc:mysql://localhost/fat");
+            String user = calProps.getProperty("icecube.daq.domcal.db.user", "dfl");
+            String passwd = calProps.getProperty("icecube.daq.domcal.db.passwd", "(D0Mus)");
+            jdbc = DriverManager.getConnection(url, user, passwd);
+            } catch (Exception e) {
+                e.printStackTrace();
+                logger.warn("Unable to establish DB connection!");
+            }
+        }
+
+        if (jdbc != null) logger.info("Database connection established");
 
         DOMCalCom com = new DOMCalCom(host, port);
         try {
@@ -76,7 +121,7 @@ public class DOMCal implements Runnable {
             try {
                 //fetch hwid
                 com.send("crlf domid type type\r");
-                String idraw = com.receive( "\r\n> " );
+                String idraw = com.receive( ">" );
                 StringTokenizer r = new StringTokenizer(idraw, " \r\n\t");
                 //Move past input string
                 for (int i = 0; i < 4; i++) {
@@ -92,16 +137,53 @@ public class DOMCal implements Runnable {
                 }
                 id = r.nextToken();
 
+                /* Determine toroid type from DB */
+                if (jdbc != null) {
+                    try {
+                        Statement stmt = jdbc.createStatement();
+                        String sql = "select * from doms where mbid='" + id + "';";
+                        ResultSet s = stmt.executeQuery(sql);
+                        s.first();
+                       /* Get domid */
+                        String domid = s.getString("domid");
+                        if (domid != null) {
+                            /* Get year digit */
+                            String yearStr = domid.substring(2,3);
+                            int yearInt = Integer.parseInt(yearStr);
+
+                            /* new toroids are in all doms produced >= 2006 */
+                            if (yearInt >= 6 || domid.equals("UP5P0970")) {  //Always an exception.......
+                                toroidType = 1;
+                            } else {
+                                toroidType = 0;
+                            }
+                            logger.debug("Toroid type for " + domid + " is " + toroidType);
+                        }
+                    } catch (Exception e) {
+                        logger.error("Error determining toroid type");
+                    }
+                }
+
+                if (toroidType != -1) {
+                    String tstr = toroidType == 0 ? "old" : "new";
+                    logger.info("Toroid for DOM " + id + " is " + tstr + " type");
+                } else {
+                    logger.warn("Unable to determine toroid type -- assuming old");
+                    toroidType = 0;
+                }
+
+
                 /* Determine if domcal is present */
                 com.send( "s\" domcal\" find if ls endif\r" );
-                String ret = com.receive( "\r\n> " );
-                if ( ret.equals(  "s\" domcal\" find if ls endif\r\n> " ) ) {
+                String ret = com.receive( ">" );
+                if ( ret.equals(  "s\" domcal\" find if ls endif\r\n>" ) ) {
                     logger.error( "Failed domcal load....is domcal present?" );
                     return;
                 }
 
                 /* Start domcal */
                 com.send( "exec\r" );
+
                 Calendar cal = new GregorianCalendar(TimeZone.getTimeZone("GMT"));
                 int day = cal.get( Calendar.DAY_OF_MONTH );
                 int month = cal.get( Calendar.MONTH ) + 1;
@@ -110,7 +192,7 @@ public class DOMCal implements Runnable {
                 SimpleDateFormat formatter = new SimpleDateFormat("HHmmss");
                 formatter.setTimeZone(TimeZone.getTimeZone("GMT"));
                 String timeStr = formatter.format(cal.getTime());
-                
+
                 com.receive( ": " );
                 com.send( "" + year + "\r" );
                 com.receive( ": " );
@@ -119,10 +201,19 @@ public class DOMCal implements Runnable {
                 com.send( "" + day + "\r" );
                 com.receive( ": " );
                 com.send( timeStr + "\r" );
+                com.receive( ": " );
+                com.send( "" + toroidType + "\r" );
                 com.receive( "\r\n" );
                 if ( calibrateHv ) {
                     com.send( "y" + "\r" );
                 } else {
+                    com.send( "n" + "\r" );
+                }
+                com.receive( "\r\n" );
+                if ( iterateHv ) {
+                    com.send( "y" + "\r" );
+                }
+                else {
                     com.send( "n" + "\r" );
                 }
             } catch ( IOException e ) {
@@ -137,7 +228,7 @@ public class DOMCal implements Runnable {
                 //Create raw output file
                 PrintWriter out = new PrintWriter(new FileWriter(outDir + "domcal_" + id + ".out", false), false);
                 String termDat = "";
-                for (String dat = com.receive(); !termDat.endsWith("\r\n> "); dat = com.receive()) {
+                for (String dat = com.receive(); !termDat.trim().endsWith("\r\n\r\n>"); dat = com.receive()) {
                     out.print(dat);
                     if (dat.length() > 5) termDat = dat;
                     else termDat += dat;
@@ -153,14 +244,16 @@ public class DOMCal implements Runnable {
                 die( e );
                 return;
             }
-        }
+        } // End calibration section
+
+        logger.debug( "Finished calibration" );
 
         byte[] binaryData = null;
 
         try {
             com.send( "s\" calib_data\" find if ls endif\r" );
-            String ret = com.receive( "\r\n> " );
-            if ( ret.equals(  "s\" calib_data\" find if ls endif\r\n> " ) ) {
+            String ret = com.receive( ">" );
+            if ( ret.equals(  "s\" calib_data\" find if ls endif\r\n>" ) ) {
                 logger.error( "Cannot find binary data on DOM" );
                 return;
             }
@@ -198,7 +291,7 @@ public class DOMCal implements Runnable {
         }
 
         logger.debug( "Document saved" );
- 
+
         logger.debug("Saving calibration data to database");
         try {
             CalibratorDB.save(fn, logger);
@@ -219,7 +312,6 @@ public class DOMCal implements Runnable {
     }
 
     public static void main( String[] args ) {
-        BasicConfigurator.configure();
         String host = null;
         int port = -1;
         int nPorts = -1;
@@ -263,7 +355,7 @@ public class DOMCal implements Runnable {
                 host = args[0];
                 port = Integer.parseInt( args[1] );
                 outDir = args[2];
-                Thread t = new Thread( new DOMCal( host, port, outDir, true, true ) );
+                Thread t = new Thread( new DOMCal( host, port, outDir, true, true, false ) );
                 threads.add( t );
                 t.start();
             } else if ( args.length == 8 ) {
@@ -272,7 +364,24 @@ public class DOMCal implements Runnable {
                 nPorts = Integer.parseInt( args[2] );
                 outDir = args[3];
                 for ( int i = 0; i < nPorts; i++ ) {
-                    Thread t = new Thread( new DOMCal( host, port + i, outDir, true, true ), "" + ( port + i ) );
+                    Thread t = new Thread( new DOMCal( host, port + i, outDir, true, true, false ), "" + ( port + i ) );
+                    threads.add( t );
+                    t.start();
+                }
+            } else if ( args.length == 9 ) {
+                host = args[0];
+                port = Integer.parseInt( args[1] );
+                outDir = args[2];
+                Thread t = new Thread( new DOMCal( host, port, outDir, true, true, true ) );
+                threads.add( t );
+                t.start();
+            } else if ( args.length == 10 ) {
+                host = args[0];
+                port = Integer.parseInt( args[1] );
+                nPorts = Integer.parseInt( args[2] );
+                outDir = args[3];
+                for ( int i = 0; i < nPorts; i++ ) {
+                    Thread t = new Thread( new DOMCal( host, port + i, outDir, true, true, true), "" + ( port + i ) );
                     threads.add( t );
                     t.start();
                 }
@@ -304,7 +413,7 @@ public class DOMCal implements Runnable {
             usage();
             die( e );
         }
-        
+
     }
 
     private static void usage() {
@@ -312,11 +421,15 @@ public class DOMCal implements Runnable {
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir} calibrate dom" );
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir} " +
                                                                                     "calibrate dom calibrate hv" );
+        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir} " +
+                                                                                    "calibrate dom calibrate hv iterate hv" );
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {num ports} {output dir}" );
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {num ports}" +
                                                                       "{output dir} calibrate dom" );
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {num ports}" +
                                                                       "{output dir} calibrate dom calibrate hv" );
+        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {num ports}" +
+                                                                      "{output dir} calibrate dom calibrate hv iterate hv" );
         logger.info( "host -- hostname of domhub/terminal server to connect" );
         logger.info( "port -- remote port to connect on 'host'" );
         logger.info( "num ports -- number of sequential ports to connect above 'port' on 'host'" );
@@ -324,6 +437,7 @@ public class DOMCal implements Runnable {
         logger.info( "'calibrate dom' -- flag to initiate DOM calibration" );
         logger.info( "'calibrate hv' -- flag to initiate DOM calibration -- " +
                                                   "can only be used when calibrate dom is specified" );
+        logger.info( "'iterate hv' -- flag to iterate HV/gain calibration" );
     }
 
     private static void die( Object o ) {
