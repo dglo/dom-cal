@@ -220,8 +220,8 @@ while ($filename = shift @ARGV) {
         $delta_g = 0.0;
         $delta_hv = 0.0;
     } else {
-        $delta_g = abs((10**(log($hv_old)/log(10) * $hv_slope + $hv_intercept) - 1e7)/1e7);
-        $delta_hv = abs($hv_old - $v_10_7);
+        $delta_g = (10**(log($hv_old)/log(10) * $hv_slope + $hv_intercept) - 1e7)/1e7;
+        $delta_hv = $hv_old - $v_10_7;
     }
     $delta_g = int($delta_g*1000)/1000;
 
@@ -243,7 +243,7 @@ while ($filename = shift @ARGV) {
         $DOM_BAD = 1;
         print("DOM $mbid ($location $name) has hv out of range ($v_10_7)\n");
     }
-    if ($DOM_BAD == 0 && $delta_g > $MAX_DELTA_GAIN && $hvattempt > 0) {
+    if ($DOM_BAD == 0 && abs($delta_g) > $MAX_DELTA_GAIN && $hvattempt > 0) {
         $DOM_BAD = 1;
         print("DOM $mbid ($location $name) has a significant gain shift $delta_g x 100%\n");
     }
