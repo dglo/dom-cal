@@ -22,6 +22,7 @@
 
 #include "domcal.h"
 #include "calUtils.h"
+#include "write_xml.h"
 
 /* Include calibration module headers here */
 #include "atwd_cal.h"
@@ -34,6 +35,7 @@
 #include "hv_amp_cal.h"
 #include "transit_cal.h"
 #include "discriminator_cal.h"
+#include "daq_baseline_cal.h"
 
 /*---------------------------------------------------------------------------*/
 /* 
@@ -78,8 +80,8 @@ void get_date(calib_data *dom_calib) {
 
     /* Get year */
     year = month = 0;
-    while ((year < 2006) || (year > 2050)) {
-        printf("Enter year (2006-...): ");
+    while ((year < 2007) || (year > 2050)) {
+        printf("Enter year (2007-...): ");
         fflush(stdout);    
         getstr(buf);
         year = atoi(buf);
@@ -235,379 +237,10 @@ void record_state(calib_data *dom_calib) {
     dom_calib->temp = temp2K(halReadTemp());
 }
 
-/* Routine to write a 4 byte memory image of a float into
- * an array of bytes at the specified offset
- */
-int get_bytes_from_float( float f, char *c, int offset ) {
-    int i;
-    for ( i = 0; i < sizeof( float ); i++ ) {
-        c[offset + i] = *( ( char* )&f + i );
-    }
-    return sizeof( float );
-}
-
-
-/* Routine to write a 4 byte memory image of a int into
- * an array of bytes at the specified offset
- */
-int get_bytes_from_int( int d, char *c, int offset ) {
-    int i;
-    for ( i = 0; i < sizeof( int ); i++ ) {
-        c[offset + i] = *( ( char* )&d + i );
-    }
-    return sizeof( int );
-}
-
-/* Routine to write a 2 byte memory image of a short into
- * an array of bytes at the specified offset
- */
-int get_bytes_from_short( short s, char *c, int offset ) {
-    int i;
-    for ( i = 0; i < sizeof( short ); i++ ) {
-        c[offset + i] = *( ( char* )&s + i );
-    }
-    return sizeof( short );
-}
-
-/* Writes a linear fit to binary format given byte array and pos */
-int write_fit( linear_fit *fit, char *bin_data, int offset ) {
-    int bytes_written = get_bytes_from_float( fit->slope, bin_data, offset );
-    bytes_written += 
-              get_bytes_from_float( fit->y_intercept, bin_data, offset + 4 );
-    bytes_written += 
-                get_bytes_from_float( fit->r_squared, bin_data, offset + 8 );
-    return bytes_written;
-}
-
-/* Writes a quadratic fit to binary format given byte array and pos */
-int write_quadratic_fit( quadratic_fit *fit, char *bin_data, int offset ) {
-    int bytes_written = get_bytes_from_float( fit->c0, bin_data, offset );
-    bytes_written += get_bytes_from_float( fit->c1, bin_data, offset + 4 );
-    bytes_written += get_bytes_from_float( fit->c2, bin_data, offset + 8 );
-    bytes_written += get_bytes_from_float( fit->r_squared, bin_data, offset + 12 );
-    return bytes_written;
-}
-
-/* Writes a value_error struct to binary format given byte array and pos */
-
-int write_value_error( value_error *val_er, char *bin_data, int offset ) {
-    int bytes_written = get_bytes_from_float( val_er->value, bin_data, offset );
-    bytes_written += get_bytes_from_float( val_er->error, bin_data, offset + 4 );
-    return bytes_written;
-}
-
-int write_baseline(float *baseline, char *bin_data, int offset) {
-    int bytes_written = get_bytes_from_float(baseline[0], bin_data, offset);
-    bytes_written += get_bytes_from_float(baseline[1], bin_data, offset + bytes_written);
-    bytes_written += get_bytes_from_float(baseline[2], bin_data, offset + bytes_written);
-    return bytes_written;
-}
-
-int write_hv_baseline(hv_baselines *hv_baseline, char *bin_data, int offset ) {
-    int bytes_written = get_bytes_from_short(hv_baseline->voltage, bin_data, offset);
-    bytes_written += write_baseline(hv_baseline->atwd0_hv_baseline, bin_data, offset + bytes_written);
-    bytes_written += write_baseline(hv_baseline->atwd1_hv_baseline, bin_data, offset + bytes_written);
-    return bytes_written;
-}
-
-/* Writes a histogram to binary format */
-int write_histogram(hv_histogram *hist, char *bin_data, int offset) {
-    int bytes_written = get_bytes_from_short(hist->voltage, bin_data, offset);
-    bytes_written += get_bytes_from_float(hist->noise_rate, bin_data, offset + bytes_written);
-    short filled = hist->is_filled;
-    bytes_written += get_bytes_from_short(filled, bin_data, offset + bytes_written);
-    bytes_written += get_bytes_from_short(filled ? hist->convergent : 0, bin_data, offset + bytes_written);
-    int i;
-    for (i = 0; i < 5; i++) {
-        bytes_written += get_bytes_from_float(filled ? hist->fit[i] : 0.0, bin_data, offset + bytes_written);
-    }
-    bytes_written += get_bytes_from_short(hist->bin_count, bin_data, offset + bytes_written);
-    for (i = 0; i < hist->bin_count; i++) {
-        bytes_written += get_bytes_from_float(filled ? hist->x_data[i] : 0.0, bin_data, offset + bytes_written);
-        bytes_written += get_bytes_from_float(filled ? hist->y_data[i] : 0.0, bin_data, offset + bytes_written);
-    }
-    bytes_written += get_bytes_from_float(filled ? hist->pv : 0.0, bin_data, offset + bytes_written);
-    return bytes_written;
-} 
-
-/* Writes a dom_calib struct to binary format given byte array and pos */
-
-int write_dom_calib( calib_data *cal, char *bin_data, short size ) {
-
-    int offset = 0;
-    int i;
-
-    /* Write version */
-    offset += get_bytes_from_short(MAJOR_VERSION, bin_data, offset );
-    offset += get_bytes_from_short(MINOR_VERSION, bin_data, offset );
-    offset += get_bytes_from_short(PATCH_VERSION, bin_data, offset );
-
-    /* Write record length */
-    offset += get_bytes_from_short( size, bin_data, offset );
-
-    /* Write date */
-    offset += get_bytes_from_short( cal->day, bin_data, offset );  
-    offset += get_bytes_from_short( cal->month, bin_data, offset );
-    offset += get_bytes_from_short( cal->year, bin_data, offset );
-    
-    /* Write time */
-    offset += get_bytes_from_short( cal->hour, bin_data, offset );  
-    offset += get_bytes_from_short( cal->minute, bin_data, offset );
-    offset += get_bytes_from_short( cal->second, bin_data, offset );
-
-    /* Write DOM ID, as true hex value (not ASCII) */
-    char *id = cal->dom_id;
-    char id_lo[9] = "beefcafe";
-    char id_hi[5] = "dead";
-    unsigned int val_lo, val_hi;
-
-    strncpy(id_hi, id, 4);
-    strncpy(id_lo, &(id[4]), 8);
-
-    val_lo = (unsigned int) strtoul(id_lo, NULL, 16);
-    val_hi = (unsigned int) strtoul(id_hi, NULL, 16);
-
-    offset += get_bytes_from_int( val_hi, bin_data, offset);
-    offset += get_bytes_from_int( val_lo, bin_data, offset);
-
-    /* Write Kelvin temperature */
-    offset += get_bytes_from_float( cal->temp, bin_data, offset );
-
-    /* Write initial DAC values -- before calibration */
-    short *dac = cal->dac_values;
-    for ( i = 0; i < 16; i++ ) {
-        offset += get_bytes_from_short( dac[i], bin_data, offset );
-    }
-
-    /* Write initial ADC values -- before calibration */
-    short *adc = cal->adc_values;
-    for ( i = 0; i < 24; i++ ) {
-        offset += get_bytes_from_short( adc[i], bin_data, offset );
-    }
-
-    /* Write FE Impedance */
-    offset += get_bytes_from_float(cal->fe_impedance, bin_data, offset);
-
-    /* Write FADC calibration data */
-    offset += write_fit( &cal->fadc_baseline, bin_data, offset );
-    offset += write_value_error( &cal->fadc_gain, bin_data, offset );
-    offset += write_value_error( &cal->fadc_delta_t, bin_data, offset );
-
-    /* Write discriminator calibration data */
-    offset += write_fit( &cal->spe_disc_calib, bin_data, offset );
-    offset += write_fit( &cal->mpe_disc_calib, bin_data, offset );
-
-    /* Write ATWD gain calibration */
-    int j;
-    for ( i = 0; i < 3; i++ ) {
-        for ( j = 0; j < 128; j++ ) {
-            offset += write_fit( &( cal->atwd0_gain_calib[i][j] ), bin_data, offset );
-        }
-    }
-    for ( i = 0; i < 3; i++ ) {
-        for ( j = 0; j < 128; j++ ) {
-            offset += write_fit( &( cal->atwd1_gain_calib[i][j] ), bin_data, offset );
-        }
-    }
-
-    /* Write FE amplifier calibration */
-    for ( i = 0; i < 3; i++ ) {
-        offset += write_value_error( &cal->amplifier_calib[i], bin_data, offset );
-    }
-
-    /* Write ATWD sampling speed calibration */
-    offset += write_quadratic_fit( &cal->atwd0_freq_calib, bin_data, offset );
-    offset += write_quadratic_fit( &cal->atwd1_freq_calib, bin_data, offset );
-
-    /* Write baseline data */
-    offset += write_baseline(cal->atwd0_baseline, bin_data, offset);
-    offset += write_baseline(cal->atwd1_baseline, bin_data, offset);
-
-    /* Write transit cal isValid */
-    offset += get_bytes_from_short( cal->transit_calib_valid, bin_data, offset );
-
-    /* Write transit time data if necessary */
-    if (cal->transit_calib_valid) {
-        offset += get_bytes_from_short( cal->transit_calib_points, bin_data, offset );
-        offset += write_fit(&cal->transit_calib, bin_data, offset);
-    }
-
-    /* Write number of voltages (baselines) and number of histos */
-    offset += get_bytes_from_short(cal->num_baselines, bin_data, offset );
-    offset += get_bytes_from_short(cal->num_histos, bin_data, offset );
-
-    /* Write hv baselines valid */
-    offset += get_bytes_from_short( cal->hv_baselines_valid, bin_data, offset );
-
-    /* Write baselines if necessary */
-    if (cal->hv_baselines_valid) {
-        for (i = 0; i < cal->num_baselines; i++) {
-            offset += write_hv_baseline(&cal->baseline_data[i], bin_data, offset);
-        }
-    }
-
-    /* Write HV gain cal isValid */
-    offset += get_bytes_from_short( cal->hv_gain_valid, bin_data, offset );
-
-    /* Write each histo and baseline */
-    for (i = 0; i < cal->num_histos; i++) {
-        offset += write_histogram(&cal->histogram_data[i], bin_data, offset);
-    }
-
-    /* Write HV gain cal data if necessary */
-    if ( cal->hv_gain_valid ) {
-        
-        /* Write HV gain fit */
-        offset += write_fit( &cal->hv_gain_calib, bin_data, offset );
-
-    }
-
-    return offset;
-}
-
-/*---------------------------------------------------------------------------*/
-/*
- * save_results
- *
- * Save calibration results to the flash filesystem.
- *
- */
-
-int save_results(calib_data dom_calib) {
-
-    int i, ch, bin;
-    int err = 0;
-
-    /* FIX ME: For now, just print everything out */
-#ifdef DEBUG
-    printf("ID: %s\r\n", dom_calib.dom_id);
-
-    for (i = 0; i < 16; i++)
-        printf("DAC %d: %d\r\n", i, dom_calib.dac_values[i]);
-
-    for (i = 0; i < 24; i++)
-        printf("ADC %d: %d\r\n", i, dom_calib.adc_values[i]);
-
-    printf("Temp: %.1f\r\n", dom_calib.temp);
-
-    printf("FE Impedance: %.1f\r\n", dom_calib.fe_impedance);
-
-    printf("SPE Disc: m=%.6g b=%.6g r^2=%.6g\r\n",
-                   dom_calib.spe_disc_calib.slope,
-                   dom_calib.spe_disc_calib.y_intercept,
-                   dom_calib.spe_disc_calib.r_squared);
-
-    printf("MPE Disc: m=%.6g b=%.6g r^2=%.6g\r\n",
-                   dom_calib.mpe_disc_calib.slope,
-                   dom_calib.mpe_disc_calib.y_intercept,
-                   dom_calib.mpe_disc_calib.r_squared);
-
-    for(ch = 0; ch < 3; ch++)
-        for(bin = 0; bin < 128; bin++)
-            printf("ATWD0 Ch %d Bin %d Fit: m=%.6g b=%.6g r^2=%.6g\r\n",
-                   ch, bin, dom_calib.atwd0_gain_calib[ch][bin].slope,
-                   dom_calib.atwd0_gain_calib[ch][bin].y_intercept,
-                   dom_calib.atwd0_gain_calib[ch][bin].r_squared);
-
-    for(ch = 0; ch < 3; ch++)
-        for(bin = 0; bin < 128; bin++)
-            printf("ATWD1 Ch %d Bin %d Fit: m=%.6g b=%.6g r^2=%.6g\r\n",
-                   ch, bin, dom_calib.atwd1_gain_calib[ch][bin].slope,
-                   dom_calib.atwd1_gain_calib[ch][bin].y_intercept,
-                   dom_calib.atwd1_gain_calib[ch][bin].r_squared);
-
-    for(ch = 0; ch < 3; ch++)
-        printf("Channel %d gain=%.6g error=%.6g\r\n", ch,
-               dom_calib.amplifier_calib[ch].value,
-               dom_calib.amplifier_calib[ch].error);
-
-    printf("ATWD0 Frequency: c0=%.6g c1=%.6g c2=%.6g r^2=%.6g\r\n",
-                   dom_calib.atwd0_freq_calib.c0,
-                   dom_calib.atwd0_freq_calib.c1,
-                   dom_calib.atwd0_freq_calib.c2,
-                   dom_calib.atwd0_freq_calib.r_squared);
-
-    printf("ATWD1 Frequency: c0=%.6g c1=%.6g c2=%.6g r^2=%.6g\r\n",
-                   dom_calib.atwd1_freq_calib.c0,
-                   dom_calib.atwd1_freq_calib.c1,
-                   dom_calib.atwd1_freq_calib.c2,
-                   dom_calib.atwd1_freq_calib.r_squared);
-
-    printf("FADC calibration: baseline fit m=%.6g b=%.6g r^2=%.6g\r\n",
-           dom_calib.fadc_baseline.slope,
-           dom_calib.fadc_baseline.y_intercept,
-           dom_calib.fadc_baseline.r_squared);
-
-    printf("FADC calibration: gain (V/tick)=%.6g error=%.6g\r\n",
-           dom_calib.fadc_gain.value, dom_calib.fadc_gain.error);
-
-    printf("FADC calibration: delta_t (ns)=%.6g error=%.6g\r\n",
-           dom_calib.fadc_delta_t.value, dom_calib.fadc_delta_t.error);
-
-    if (dom_calib.hv_gain_valid) {
-        printf("HV Gain: m=%.6g b=%.6g r^2=%.6g\r\n",
-               dom_calib.hv_gain_calib.slope,
-               dom_calib.hv_gain_calib.y_intercept,
-               dom_calib.hv_gain_calib.r_squared);
-    }
-
-#endif
-
-    /* Calculate record length */
-    int r_size = DEFAULT_RECORD_LENGTH;
-    if ( dom_calib.hv_gain_valid )
-        r_size += 12; //log-log fit
-
-    r_size += dom_calib.num_histos * GAIN_CAL_BINS * 8; //histos
-    r_size += dom_calib.num_histos * 20; //fits;
-    r_size += dom_calib.num_histos * 2; //voltages;
-    r_size += dom_calib.num_histos * 2; //bin counts;
-    r_size += dom_calib.num_histos * 2; //convergent bits
-    r_size += dom_calib.num_histos * 4; //PV data
-    r_size += dom_calib.num_histos * 4; //Noise rate
-    r_size += dom_calib.num_histos * 2; //is_filled flag
-    
-    r_size += 2; //number of hv baselines
-    r_size += 2; //hv_baselines_valid
-    if (dom_calib.hv_baselines_valid) {
-        r_size += dom_calib.num_baselines * 2 * 3 * 4; //hv_baselines
-        r_size += dom_calib.num_baselines * 2; //baseline voltages
-    }
-
-    r_size += 2; //transit_calib_valid
-    if (dom_calib.transit_calib_valid) {
-        /* Number of points and linear fit */
-        r_size +=  2;
-        r_size += 12;
-    }
-
-    r_size += 2 * 3 * 4; //baselines
-
-    char binary_data[r_size];
-
-    /* Convert DOM calibration data to binary format */
-    int b_write = write_dom_calib( &dom_calib, binary_data, r_size );
-#ifdef DEBUG
-    printf( "Writing %d bytes to flash....", b_write );
-#endif
-    if ( !( b_write == r_size ) ) {
-        err = FAILED_BINARY_CONVERSION;
-    }
-
-    /* Write to flash */
-    const char name[11] = "calib_data";
-    if ( fisCreate( name, binary_data, r_size ) != 0 ) {
-        err = FAILED_FLASH_WRITE;
-    }
-
-    return err;
-}
-
 /*---------------------------------------------------------------------------*/
 
 int main(void) {
     
-    int err = 0;
     calib_data dom_calib;
     char buf[100];
     int doHVCal, iterHVGain;
@@ -639,6 +272,7 @@ int main(void) {
     }
     dom_calib.hv_gain_valid = 0;
     dom_calib.hv_baselines_valid = 0;
+    dom_calib.daq_baselines_valid = 0;
     dom_calib.transit_calib_valid = 0;
 
     /* Query user about multi-iteration runs */
@@ -674,6 +308,7 @@ int main(void) {
      *  - ...wait...
      *  - transit time calibration
      *  - HV gain calibration
+     *  - DAQ baseline calibration
      */
     disc_cal(&dom_calib);
     atwd_cal(&dom_calib);
@@ -693,28 +328,22 @@ int main(void) {
         for (i = 0; i < 600; i++) halUSleep(1000000);
 
         transit_cal(&dom_calib);
-        hv_gain_cal(&dom_calib, iterHVGain);
+        hv_gain_cal(&dom_calib, iterHVGain);        
+        /* Must be last -- switches out FPGA design */
+        daq_baseline_cal(&dom_calib);
     }
 
-    /* Write calibration record to flash */
-    int save_ret = save_results( dom_calib );
-    if ( !save_ret ) {
-#ifdef DEBUG       
-        printf( "done.\r\n" );
-#endif
-    } else {
-#ifdef DEBUG       
-        printf( "FAILED (error %d)\r\n", save_ret );
-#endif
-        err = save_ret;
-    }    
-
 #ifdef DEBUG
-    if (!err) 
-        printf("Calibration completed successfully.  Rebooting...\r\n");
+    printf("Writing XML calibration file...\r\n");
 #endif
-   
+
+    /* Write calibration record to STDOUT */
+    write_xml(&dom_calib);
+
     /* Reboot the DOM */
+#ifdef DEBUG       
+    printf("Rebooting...\r\n");
+#endif   
     halUSleep( 250000 );
     halBoardReboot();
     
