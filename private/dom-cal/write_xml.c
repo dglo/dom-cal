@@ -113,16 +113,15 @@ void write_xml(calib_data *dom_calib) {
 
     /* Domapp FPGA baseline calibration */
     if (dom_calib->daq_baselines_valid) {
-        printf("  <daq_baseline voltage=\"0\">\r\n");
+        printf("  <daq_baseline>\r\n");
         for ( atwd = 0; atwd < 2; atwd++) {
-            for ( ch = 0; ch < 3; ch++) {
-                if (atwd == 0) {
-                    printf("    <base atwd=\"%d\" channel=\"%d\" value=\"%g\"/>\r\n", 
-                           atwd, ch, dom_calib->atwd0_daq_baseline[ch]);
-                }
-                else {
-                    printf("    <base atwd=\"%d\" channel=\"%d\" value=\"%g\"/>\r\n", 
-                           atwd, ch, dom_calib->atwd1_daq_baseline[ch]);
+            for ( ch = 0; ch < 3; ch++){
+                for (bin = 0; bin < 128; bin++) {
+                    printf("   <waveform atwd=\"%d\" channel=\"%d\" bin=\"%d\">", atwd, ch, bin);
+                    if (atwd == 0)
+                        printf("%g</waveform>\r\n", dom_calib->atwd0_daq_baseline_wf[ch][bin]);
+                    else
+                        printf("%g</waveform>\r\n", dom_calib->atwd1_daq_baseline_wf[ch][bin]);
                 }
             }
         }

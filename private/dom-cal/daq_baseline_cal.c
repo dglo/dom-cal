@@ -30,9 +30,6 @@ int daq_baseline_cal(calib_data *dom_calib) {
     int atwd, ch, bin;
     int npeds0, npeds1;
 
-    /* Baseline arrays */
-    float baseline_avg[2][4][128];
-
 #ifdef DEBUG
     printf("Performing DAQ baseline calibration...\r\n");
 #endif
@@ -72,11 +69,12 @@ int daq_baseline_cal(calib_data *dom_calib) {
     /* The following is adapted from domapp's pedestalRun()             */
 
     /* Zero the running baseline sum */
-    for (atwd = 0; atwd<2; atwd++)
-        for(ch=0; ch<3; ch++)
-            for(bin=0; bin<cnt; bin++) 
-                baseline_avg[atwd][ch][bin] = 0;
-
+    for(ch=0; ch<3; ch++) {
+        for(bin=0; bin<cnt; bin++) {
+            dom_calib->atwd0_daq_baseline_wf[ch][bin] = 0;
+            dom_calib->atwd1_daq_baseline_wf[ch][bin] = 0;
+        }
+    }
     /* dsc_hal_disable_LC_completely(); */
     hal_FPGA_DOMAPP_disable_daq();
 
@@ -214,9 +212,15 @@ int daq_baseline_cal(calib_data *dom_calib) {
                 
                 /* Variance is OK */
                 if (var < DAQ_BASELINE_MAX_VAR) {
-                    for(ch=0; ch<3; ch++)
-                        for(bin=0; bin<cnt; bin++)
-                            baseline_avg[atwd][ch][bin] += baseline[atwd][ch][bin];
+                    for(ch=0; ch<3; ch++) {
+                        for(bin=0; bin<cnt; bin++) {
+                            if (atwd == 0)
+                                dom_calib->atwd0_daq_baseline_wf[ch][bin] += baseline[atwd][ch][bin];
+                            else
+                                dom_calib->atwd1_daq_baseline_wf[ch][bin] += baseline[atwd][ch][bin];
+                        }
+                    }
+
                     if(atwd==0) npeds0++; else npeds1++;
                 }
             }
@@ -235,9 +239,12 @@ int daq_baseline_cal(calib_data *dom_calib) {
         }
 
         /* Normalize the sums */
-        for(ch=0; ch<4; ch++) {            
+        for(ch=0; ch<3; ch++) {            
             for(bin=0; bin<cnt; bin++) {
-                baseline_avg[atwd][ch][bin] /= (float)npeds;
+                if (atwd == 0)
+                    dom_calib->atwd0_daq_baseline_wf[ch][bin] /= (float)npeds;
+                else
+                    dom_calib->atwd1_daq_baseline_wf[ch][bin] /= (float)npeds;
             }
         }   
     } /* loop over atwds */
@@ -250,29 +257,22 @@ int daq_baseline_cal(calib_data *dom_calib) {
 
     /*------------------------------------------------------------------*/
 
-    /* DEBUG print out entire average waveforms */
-    /* 
-       for (atwd = 0; atwd<2; atwd++)
-        for(ch=0; ch<3; ch++)
-            for(bin=0; bin<cnt; bin++) 
-                printf("%d %d %d %.6f\r\n", atwd, ch, bin, baseline_avg[atwd][ch][bin]);
-    */
-
     /* Calculate averages */
     float base[2][3];
     float var;
 
-    /* Just get the mean and store results */
+    /* Mark calibration valid */
     dom_calib->daq_baselines_valid = 1;
+
+    /* This is all extraneous */
     for (atwd = 0; atwd<2; atwd++)
         /* Don't use first 3 samples -- "nook" in baseline is not understood */
         /* OK, really, it was an FPGA problem that's supposedly gone, but I'm still paranoid */
-        for(ch=0; ch<3; ch++) {            
-            meanVarFloat(baseline_avg[atwd][ch]+3, cnt-3, &(base[atwd][ch]), &var);
+        for(ch=0; ch<3; ch++) {
             if (atwd == 0)
-                dom_calib->atwd0_daq_baseline[ch] = base[atwd][ch];
+                meanVarFloat(dom_calib->atwd0_daq_baseline_wf[ch]+3, cnt-3, &(base[atwd][ch]), &var);
             else
-                dom_calib->atwd1_daq_baseline[ch] = base[atwd][ch];
+                meanVarFloat(dom_calib->atwd1_daq_baseline_wf[ch]+3, cnt-3, &(base[atwd][ch]), &var);
                 
             float origbase = (atwd == 0) ?  
                 dom_calib->atwd0_baseline[ch] :

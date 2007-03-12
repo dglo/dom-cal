@@ -131,16 +131,16 @@ typedef struct {
     quadratic_fit atwd0_freq_calib;
     quadratic_fit atwd1_freq_calib;
 
+    /* DAQ baseline waveforms (domapp FPGA) */
+    short daq_baselines_valid;
+    float atwd0_daq_baseline_wf[3][128];
+    float atwd1_daq_baseline_wf[3][128];
+
     /* Valid bit for HV calibration */
     short hv_gain_valid;
 
     /* HV baselines */
     hv_baselines* baseline_data;
-
-    /* ATWD baseline calibration (domapp FPGA) */
-    short daq_baselines_valid;
-    float atwd0_daq_baseline[3];
-    float atwd1_daq_baseline[3];
 
     /* Log(HV) vs. Log(gain) HV calibration fit */
     linear_fit hv_gain_calib;
