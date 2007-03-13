@@ -256,10 +256,6 @@ int hv_gain_cal(calib_data *dom_calib, int iterHVGain) {
             charges[trig] =  (to_v(vsum) * 1e6 / freq) /
                                           int_calib.amplifier_calib[ch].value;
 
-#ifdef DEBUG
-            if (trig%1000 == 0) printf("Got trigger %d\n", trig);      
-#endif
-
         } /* End trigger loop */
 
         /* Check histogram trigger count -- < GAIN_CAL_TRIG_CNT ==> error, skip voltage */
@@ -319,9 +315,6 @@ int hv_gain_cal(calib_data *dom_calib, int iterHVGain) {
         printf("Negative charge points discarded: %d\r\n", bad_trig); 
         printf("Histogram points out of range: under %d, over %d\r\n", 
                hist_under, hist_over);
-        printf("Histogram:\r\n");
-        for(hbin=0; hbin < GAIN_CAL_BINS; hbin++) 
-            printf("%d %g %g\r\n", hbin, hist_x[hv_idx][hbin], hist_y[hv_idx][hbin]);
 #endif
 
         /* Fit histograms */
