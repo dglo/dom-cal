@@ -501,6 +501,14 @@ int transit_cal(calib_data *dom_calib) {
                 printf("Sigma too high; invalidating this HV point.\r\n");
 #endif
             }
+
+            /* Check that transit time is positive */
+            if (transit_data[hv_idx] <= 0) {
+#ifdef DEBUG
+                printf("Transit time is negative(!); invalidating this HV point.\r\n");
+#endif
+                hv_tt_valid[hv_idx] = 0;
+            }
         } /* End if no fail */
        
     } /* End HV loop */
