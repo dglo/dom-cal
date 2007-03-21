@@ -8,12 +8,9 @@
 #define DEBUG 1
 
 /* Version of calibration program */
-#define MAJOR_VERSION 6
-#define MINOR_VERSION 3
+#define MAJOR_VERSION 7
+#define MINOR_VERSION 0
 #define PATCH_VERSION 0
-
-/* Default number of bytes in binary output */
-#define DEFAULT_RECORD_LENGTH 9444
 
 /* Default ATWD DAC settings */
 #ifdef DOMCAL_REV5
@@ -40,10 +37,6 @@
 
 /* Wait time after setting a DAC */
 #define DAC_SET_WAIT         1000000
-
-/* Error codes */
-#define FAILED_BINARY_CONVERSION -1;
-#define FAILED_FLASH_WRITE -2;
 
 /* Initial discriminator DAC setting */
 #ifdef DOMCAL_REV5
@@ -137,6 +130,11 @@ typedef struct {
     /* ATWD sampling speed calibration */
     quadratic_fit atwd0_freq_calib;
     quadratic_fit atwd1_freq_calib;
+
+    /* DAQ baseline waveforms (domapp FPGA) */
+    short daq_baselines_valid;
+    float atwd0_daq_baseline_wf[3][128];
+    float atwd1_daq_baseline_wf[3][128];
 
     /* Valid bit for HV calibration */
     short hv_gain_valid;

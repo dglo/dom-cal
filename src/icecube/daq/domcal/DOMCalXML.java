@@ -79,7 +79,6 @@ public class DOMCalXML {
 
         formatBaseline(rec.getBaseline(), out);
 
-
         if (rec.isTransitCalValid()) {
             out.print("  <pmtTransitTime num_pts=\"" + rec.getNumTransitCalPts() + "\">\n");
             format(rec.getTransitTimeFit(), out);

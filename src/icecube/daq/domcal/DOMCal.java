@@ -3,7 +3,9 @@
  Class:  	DOMCal
 
  @author 	Jim Braun
- @author     jbraun@amanda.wisc.edu
+ @author     jbraun@icecube.wisc.edu
+ @author 	John Kelley
+ @author     jkelley@icecube.wisc.edu
 
  ICECUBE Project
  University of Wisconsin - Madison
@@ -45,11 +47,6 @@ public class DOMCal implements Runnable {
     private boolean calibrate;
     private boolean calibrateHv;
     private boolean iterateHv;
-    private DOMCalRecord rec;
-
-    public DOMCal( String host, int port, String outDir ) {
-        this(host, port, outDir, false, false, false);
-    }
 
     public DOMCal( String host, int port, String outDir, boolean calibrate ) {
         this(host, port, outDir, calibrate, false, false);
@@ -114,6 +111,8 @@ public class DOMCal implements Runnable {
             return;
         }
 
+        // Start the calibration!
+        String xmlFilename = null;
         if ( calibrate ) {
 
             String id = null;
@@ -225,20 +224,57 @@ public class DOMCal implements Runnable {
             logger.debug( "Waiting for calibration to finish" );
 
             try {
-                //Create raw output file
+                //Create raw output file and XML file
                 PrintWriter out = new PrintWriter(new FileWriter(outDir + "domcal_" + id + ".out", false), false);
+                xmlFilename = outDir + "domcal_" + id + ".xml";
+                PrintWriter xml = new PrintWriter(new FileWriter(xmlFilename, false ), false );
+                // Watch for XML data -- dump everything else to output file
+                boolean done = false;
+                boolean inXml = false;
+                boolean xmlFinishing = false;
                 String termDat = "";
-                for (String dat = com.receive(); !termDat.trim().endsWith("\r\n\r\n>"); dat = com.receive()) {
-                    out.print(dat);
-                    if (dat.length() > 5) termDat = dat;
-                    else termDat += dat;
-                    if (termDat.length() > 10) termDat = termDat.substring(termDat.length() - 8);
+                while (!done) {
+                    termDat += com.receive();
+                    int lineIdx = termDat.lastIndexOf("\n");
+                    if (lineIdx >= 0) {
+                        String lineChunk = termDat.substring(0, lineIdx+1);
+                        termDat = termDat.substring(lineIdx+1);
+                        // Process line-by-line
+                        while (lineChunk.length() > 0) {                            
+                            String line = lineChunk.substring(0, lineChunk.indexOf("\n")+1);
+                            lineChunk = lineChunk.substring(lineChunk.indexOf("\n")+1);
+
+                            // Stop printing XML file after seeing closing tag
+                            inXml = inXml && !xmlFinishing;
+
+                            if (line.indexOf("<domcal") >= 0) {
+                                inXml = true;
+                            }
+                            else if (line.indexOf("</domcal>") >= 0) {
+                                xmlFinishing = true;
+                            }
+                            else if (line.indexOf("Rebooting") >= 0) {
+                                done = true;
+                            }
+                            // Print to XML file or log file
+                            if (inXml) {
+                                xml.print(line);
+                                xml.flush();
+                            }
+                            else {
+                                out.print(line);
+                                out.flush();
+                            }
+                        }
+                    }
                     try {
                         Thread.sleep(100);
                     } catch (InterruptedException e) {
                     }
-                    out.flush();
-                }
+                }            
+                out.close();
+                xml.close();
+
             } catch ( IOException e ) {
                 logger.error( "IO Error occurred during calibration routine" );
                 die( e );
@@ -248,53 +284,11 @@ public class DOMCal implements Runnable {
 
         logger.debug( "Finished calibration" );
 
-        byte[] binaryData = null;
-
-        try {
-            com.send( "s\" calib_data\" find if ls endif\r" );
-            String ret = com.receive( ">" );
-            if ( ret.equals(  "s\" calib_data\" find if ls endif\r\n>" ) ) {
-                logger.error( "Cannot find binary data on DOM" );
-                return;
-            }
-            com.send( "zd\r" );
-            com.receive( "\r\n" );
-            binaryData = com.zRead();
-        } catch ( IOException e ) {
-            logger.error( "IO Error downloading calibration from DOM" );
-            die( e );
-            return;
-        }
-
-        try {
-            rec = DOMCalRecord.parseDomCalRecord( ByteBuffer.wrap( binaryData ) );
-        } catch ( Exception e ) {
-            logger.error( "Error parsing test output" );
-            e.printStackTrace();
-            die( e );
-            return;
-        }
-        String domId = rec.getDomId();
-
-        logger.debug( "Saving output to " + outDir );
-        String fn = outDir + "domcal_" + domId + ".xml";
-
-        try {
-            PrintWriter out = new PrintWriter(new FileWriter(fn, false ), false );
-            DOMCalXML.format( rec, out );
-            out.flush();
-            out.close();
-        } catch ( IOException e ) {
-            logger.error( "IO error writing file" );
-            die( e );
-            return;
-        }
-
-        logger.debug( "Document saved" );
+        logger.debug( "Documents saved" );
 
         logger.debug("Saving calibration data to database");
         try {
-            CalibratorDB.save(fn, logger);
+            CalibratorDB.save(xmlFilename, logger);
         } catch (Exception ex) {
             logger.debug("Failed!", ex);
             return;
@@ -303,38 +297,13 @@ public class DOMCal implements Runnable {
 
     }
 
-    /**
-     * Get the calibration
-     * @return DOMCalRecord object.
-     */
-    public DOMCalRecord getCalibration() {
-        return rec;
-    }
-
     public static void main( String[] args ) {
         String host = null;
         int port = -1;
         int nPorts = -1;
         String outDir = null;
         try {
-            if ( args.length == 3 ) {
-                host = args[0];
-                port = Integer.parseInt( args[1] );
-                outDir = args[2];
-                Thread t = new Thread( new DOMCal( host, port, outDir ) );
-                threads.add( t );
-                t.start();
-            } else if ( args.length == 4 ) {
-                host = args[0];
-                port = Integer.parseInt( args[1] );
-                nPorts = Integer.parseInt( args[2] );
-                outDir = args[3];
-                for ( int i = 0; i < nPorts; i++ ) {
-                    Thread t = new Thread( new DOMCal( host, port + i, outDir ), "" + ( port + i ) );
-                    threads.add( t );
-                    t.start();
-                }
-            } else if ( args.length == 5 ) {
+            if ( args.length == 5 ) {
                 host = args[0];
                 port = Integer.parseInt( args[1] );
                 outDir = args[2];
@@ -417,13 +386,11 @@ public class DOMCal implements Runnable {
     }
 
     private static void usage() {
-        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir}" );
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir} calibrate dom" );
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir} " +
                                                                                     "calibrate dom calibrate hv" );
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir} " +
                                                                                     "calibrate dom calibrate hv iterate hv" );
-        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {num ports} {output dir}" );
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {num ports}" +
                                                                       "{output dir} calibrate dom" );
         logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {num ports}" +

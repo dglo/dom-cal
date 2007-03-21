@@ -15,6 +15,8 @@ package icecube.daq.domcal;
 import icecube.daq.domhub.common.messaging.SocketSerialCom;
 
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -63,6 +65,11 @@ public class DOMCalCom extends SocketSerialCom {
         return new String(out);
     }
 
+    public BufferedReader getBufferedReader() throws IOException {
+        /* Get buffered input */
+        return new BufferedReader(new InputStreamReader(getInputStream()), 4092);
+    }
+
     public void connect() throws IOException {
 
         super.connect("socket");
@@ -85,6 +92,7 @@ public class DOMCalCom extends SocketSerialCom {
             send("ls\r\n");
             receive("ls\r\n");
             receive(">");
+
             return;
         }
 
@@ -93,8 +101,8 @@ public class DOMCalCom extends SocketSerialCom {
 
             send("r\r\n");
             receive(">");
-
             /* Now in iceboot */
+
             return;
         }
 
