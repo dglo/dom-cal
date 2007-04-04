@@ -179,9 +179,6 @@ int hv_gain_cal(calib_data *dom_calib, int iterHVGain) {
         for (n_idx = 0; n_idx < NOISE_CNT; n_idx++) {
             halUSleep(250000);
             int rate = hal_FPGA_TEST_get_spe_rate() * 10;
-#ifdef DEBUG
-            printf("Noise iteration %d: noise rate: %d\r\n", n_idx, rate);
-#endif
             noise_sum += rate;
         }
 
