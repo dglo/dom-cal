@@ -113,6 +113,7 @@ public class DOMCal implements Runnable {
 
         // Start the calibration!
         String xmlFilename = null;
+        String xmlFilenameFinal = null;
         if ( calibrate ) {
 
             String id = null;
@@ -226,12 +227,12 @@ public class DOMCal implements Runnable {
             try {
                 //Create raw output file and XML file
                 PrintWriter out = new PrintWriter(new FileWriter(outDir + "domcal_" + id + ".out", false), false);
-                xmlFilename = outDir + "domcal_" + id + ".xml";
+                xmlFilename = outDir + "domcal_" + id + ".xml.running";
                 PrintWriter xml = new PrintWriter(new FileWriter(xmlFilename, false ), false );
                 // Watch for XML data -- dump everything else to output file
                 boolean done = false;
                 boolean inXml = false;
-                boolean xmlFinishing = false;
+                boolean xmlFinished = false;
                 String termDat = "";
                 while (!done) {
                     termDat += com.receive();
@@ -245,13 +246,13 @@ public class DOMCal implements Runnable {
                             lineChunk = lineChunk.substring(lineChunk.indexOf("\n")+1);
 
                             // Stop printing XML file after seeing closing tag
-                            inXml = inXml && !xmlFinishing;
+                            inXml = inXml && !xmlFinished;
 
                             if (line.indexOf("<domcal") >= 0) {
                                 inXml = true;
                             }
                             else if (line.indexOf("</domcal>") >= 0) {
-                                xmlFinishing = true;
+                                xmlFinished = true;
                             }
                             else if (line.indexOf("Rebooting") >= 0) {
                                 done = true;
@@ -275,6 +276,14 @@ public class DOMCal implements Runnable {
                 out.close();
                 xml.close();
 
+                // Rename output file indicating XML file is ready
+                if (xmlFinished) {
+                    xmlFilenameFinal = outDir + "domcal_" + id + ".xml";
+                    File file = new File(xmlFilename);
+                    File fileFinal = new File(xmlFilenameFinal);  
+                    file.renameTo(fileFinal);
+                }
+                
             } catch ( IOException e ) {
                 logger.error( "IO Error occurred during calibration routine" );
                 die( e );
@@ -288,7 +297,7 @@ public class DOMCal implements Runnable {
 
         logger.debug("Saving calibration data to database");
         try {
-            CalibratorDB.save(xmlFilename, logger);
+            CalibratorDB.save(xmlFilenameFinal, logger);
         } catch (Exception ex) {
             logger.debug("Failed!", ex);
             return;
