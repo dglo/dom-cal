@@ -143,23 +143,25 @@ void write_xml(calib_data *dom_calib) {
     }
 
     /* Baseline measurements at various HV settings */
-    for (i = 0; i < dom_calib->num_baselines; i++) {
-        hv_baselines *base = &(dom_calib->baseline_data[i]);
-        printf("  <baseline voltage=\"%d\">\r\n", base->voltage);
-        for ( atwd = 0; atwd < 2; atwd++) {
-            for ( ch = 0; ch < 3; ch++) {
-                if (atwd == 0) {
-                    printf("    <base atwd=\"%d\" channel=\"%d\" value=\"%g\"/>\r\n", 
-                           atwd, ch, base->atwd0_hv_baseline[ch]);
-                }
-                else {
-                    printf("    <base atwd=\"%d\" channel=\"%d\" value=\"%g\"/>\r\n", 
-                           atwd, ch, base->atwd1_hv_baseline[ch]);
+    if (dom_calib->hv_baselines_valid) {
+        for (i = 0; i < dom_calib->num_baselines; i++) {
+            hv_baselines *base = &(dom_calib->baseline_data[i]);
+            printf("  <baseline voltage=\"%d\">\r\n", base->voltage);
+            for ( atwd = 0; atwd < 2; atwd++) {
+                for ( ch = 0; ch < 3; ch++) {
+                    if (atwd == 0) {
+                        printf("    <base atwd=\"%d\" channel=\"%d\" value=\"%g\"/>\r\n", 
+                               atwd, ch, base->atwd0_hv_baseline[ch]);
+                    }
+                    else {
+                        printf("    <base atwd=\"%d\" channel=\"%d\" value=\"%g\"/>\r\n", 
+                               atwd, ch, base->atwd1_hv_baseline[ch]);
+                    }
                 }
             }
+            printf("  </baseline>\r\n");
         }
-        printf("  </baseline>\r\n");
-    }    
+    }
 
     /* HV histograms at various voltages, including fit parameters */
     for (i = 0; i < dom_calib->num_histos; i++)
@@ -202,18 +204,21 @@ void write_histogram(hv_histogram histo) {
 
     int i;
 
-    printf("  <histo voltage=\"%d\" convergent=\"%d\" pv=\"%.2f\" noiseRate=\"%g\" isFilled=\"%d\">\r\n", 
-           histo.voltage, histo.convergent, histo.pv, histo.noise_rate, histo.is_filled);    
-    printf("    <param name=\"exponential amplitude\">%g</param>\r\n", histo.fit[0]);
-    printf("    <param name=\"exponential width\">%g</param>\r\n", histo.fit[1]);
-    printf("    <param name=\"gaussian amplitude\">%g</param>\r\n", histo.fit[2]);
-    printf("    <param name=\"gaussian mean\">%g</param>\r\n", histo.fit[3]);
-    printf("    <param name=\"gaussian width\">%g</param>\r\n", histo.fit[4]);
-    printf("    <histogram bins=\"%d\">\r\n", GAIN_CAL_BINS);
-    for (i = 0; i < GAIN_CAL_BINS; i++) {
-        printf("      <bin num=\"%d\" charge=\"%.4f\" count=\"%d\"></bin>\r\n", 
-               i, histo.x_data[i], (int)histo.y_data[i]);
+    /* Don't write anything if histogram is not filled */
+    if (histo.is_filled) {
+        printf("  <histo voltage=\"%d\" convergent=\"%d\" pv=\"%.2f\" noiseRate=\"%g\" isFilled=\"%d\">\r\n", 
+               histo.voltage, histo.convergent, histo.pv, histo.noise_rate, histo.is_filled);    
+        printf("    <param name=\"exponential amplitude\">%g</param>\r\n", histo.fit[0]);
+        printf("    <param name=\"exponential width\">%g</param>\r\n", histo.fit[1]);
+        printf("    <param name=\"gaussian amplitude\">%g</param>\r\n", histo.fit[2]);
+        printf("    <param name=\"gaussian mean\">%g</param>\r\n", histo.fit[3]);
+        printf("    <param name=\"gaussian width\">%g</param>\r\n", histo.fit[4]);
+        printf("    <histogram bins=\"%d\">\r\n", GAIN_CAL_BINS);
+        for (i = 0; i < GAIN_CAL_BINS; i++) {
+            printf("      <bin num=\"%d\" charge=\"%.4f\" count=\"%d\"></bin>\r\n", 
+                   i, histo.x_data[i], (int)histo.y_data[i]);
+        }
+        printf("    </histogram>\r\n");
+        printf("  </histo>\r\n");
     }
-    printf("    </histogram>\r\n");
-    printf("  </histo>\r\n");
 }
