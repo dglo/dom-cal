@@ -221,4 +221,7 @@ void write_histogram(hv_histogram histo) {
         printf("    </histogram>\r\n");
         printf("  </histo>\r\n");
     }
+
+    /* Add a little delay as to not overwhelm the surface */
+    halUSleep(250000);
 }
