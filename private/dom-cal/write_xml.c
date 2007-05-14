@@ -8,6 +8,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "hal/DOM_MB_hal.h"
+#include "hal/DOM_MB_fpga.h"
+
 #include "domcal.h"
 #include "hv_gain_cal.h"
 #include "write_xml.h"
