@@ -333,17 +333,27 @@ int main(void) {
         daq_baseline_cal(&dom_calib);
     }
 
+    /* Write calibration record to STDOUT */
+    int done = 0;
+    while (!done) {
+
 #ifdef DEBUG
     printf("Writing XML calibration file...\r\n");
 #endif
-
-    /* Write calibration record to STDOUT */
-    write_xml(&dom_calib);
+        unsigned int crc = write_xml(&dom_calib);
+        printf("XML CRC32 = 0x%08x\r\n", crc);
+        printf("Retransmit XML (y/n)?\r\n");
+        fflush(stdout);        
+        getstr(buf);        
+        printf("\r\n");
+        done = ((buf[0] == 'n') || (buf[0] == 'N') ||
+                (buf[0] == '\n' && ((buf[1] == 'n') || (buf[1] == 'N'))));        
+    }
 
     /* Reboot the DOM */
-#ifdef DEBUG       
+    printf("\r\n");
     printf("Rebooting...\r\n");
-#endif   
+
     halUSleep( 250000 );
     halBoardReboot();
     
