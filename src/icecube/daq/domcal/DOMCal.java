@@ -29,7 +29,7 @@ import java.sql.ResultSet;
 public class DOMCal implements Runnable {
 
     /* Timeout waiting for response, in seconds */
-    public static final int TIMEOUT = 7200;
+    public static final int TIMEOUT = 9000;
 
     private static Logger logger = Logger.getLogger( DOMCal.class );
 
@@ -114,6 +114,7 @@ public class DOMCal implements Runnable {
         // Start the calibration!
         String xmlFilename = null;
         String xmlFilenameFinal = null;
+        boolean xmlFinished = false;            
         if ( calibrate ) {
 
             String id = null;
@@ -204,16 +205,19 @@ public class DOMCal implements Runnable {
                 com.receive( ": " );
                 com.send( "" + toroidType + "\r" );
                 com.receive( "\r\n" );
+                // DOM asks if we want to calibrate the HV
                 if ( calibrateHv ) {
                     com.send( "y" + "\r" );
+                    com.receive( "\r\n" );
+                    // DOM asks if we want to iterate the HV calibration
+                    if ( iterateHv ) {
+                        com.send( "y" + "\r" );
+                    }
+                    else {
+                        com.send( "n" + "\r" );
+                    }
+                    
                 } else {
-                    com.send( "n" + "\r" );
-                }
-                com.receive( "\r\n" );
-                if ( iterateHv ) {
-                    com.send( "y" + "\r" );
-                }
-                else {
                     com.send( "n" + "\r" );
                 }
             } catch ( IOException e ) {
@@ -223,7 +227,6 @@ public class DOMCal implements Runnable {
             }
 
             logger.debug( "Waiting for calibration to finish" );
-
             try {
                 //Create raw output file and XML file
                 PrintWriter out = new PrintWriter(new FileWriter(outDir + "domcal_" + id + ".out", false), false);
@@ -232,8 +235,11 @@ public class DOMCal implements Runnable {
                 // Watch for XML data -- dump everything else to output file
                 boolean done = false;
                 boolean inXml = false;
-                boolean xmlFinished = false;
                 String termDat = "";
+                int retxCnt = 0;
+                // CRC check for XML data 
+                CRC32_IEEE crc = new CRC32_IEEE();
+                int crc_dom = 0;
                 while (!done) {
                     termDat += com.receive();
                     int lineIdx = termDat.lastIndexOf("\n");
@@ -248,12 +254,56 @@ public class DOMCal implements Runnable {
                             // Stop printing XML file after seeing closing tag
                             inXml = inXml && !xmlFinished;
 
+                            // XML starting tag
                             if (line.indexOf("<domcal") >= 0) {
                                 inXml = true;
                             }
+                            // XML closing tag
                             else if (line.indexOf("</domcal>") >= 0) {
                                 xmlFinished = true;
                             }
+                            // DOM reporting XML CRC value
+                            else if (line.indexOf("XML CRC32") >= 0) {
+                                int hexIdx = line.indexOf("0x")+2;
+                                long temp;
+                                temp = Long.parseLong(line.substring(hexIdx, hexIdx+8), 16); 
+                                crc_dom = (int)temp;
+                            }
+                            // DOM asking if we want a retx
+                            else if (line.indexOf("Retransmit XML (y/n)?") >= 0) {
+                                // Check CRC values
+                                if ((crc_dom == 0) || (crc.getValue() == 0) || (crc.getValue() != crc_dom)) {
+
+                                    if (retxCnt < 4) {
+                                        logger.debug( "WARNING! XML CRC mismatch; requesting retransmission" );
+                                        //logger.debug( "DOM CRC: " + Integer.toHexString(crc_dom) );
+                                        //logger.debug( "Client CRC: " + Integer.toHexString(crc.getValue()) );
+
+                                        // Close file and start over again
+                                        xml.close();
+                                        xml = new PrintWriter(new FileWriter(xmlFilename, false ), false );
+                                        inXml = false;
+                                        xmlFinished = false;   
+
+                                        // Reset the CRC value
+                                        crc.reset();
+
+                                        // Start the retransmission
+                                        com.send( "y" + "\r\n" );
+                                        retxCnt = retxCnt+1;
+                                    }
+                                    else {
+                                        logger.debug( "Too many CRC mismatches; giving up!" );
+                                        com.send( "n" + "\r\n" );
+                                        xmlFinished = false;
+                                    }
+                                }
+                                else {
+                                    logger.debug( "XML CRC matched" );
+                                    com.send( "n" + "\r\n" );
+                                }              
+                            }
+                            // DOM is finished and is rebooting
                             else if (line.indexOf("Rebooting") >= 0) {
                                 done = true;
                             }
@@ -261,6 +311,7 @@ public class DOMCal implements Runnable {
                             if (inXml) {
                                 xml.print(line);
                                 xml.flush();
+                                crc.update(line.getBytes());
                             }
                             else {
                                 out.print(line);
@@ -271,6 +322,7 @@ public class DOMCal implements Runnable {
                     try {
                         Thread.sleep(10);
                     } catch (InterruptedException e) {
+                        logger.debug( "Calibration interrupted!" );
                     }
                 }            
                 out.close();
@@ -295,14 +347,19 @@ public class DOMCal implements Runnable {
 
         logger.debug( "Documents saved" );
 
-        logger.debug("Saving calibration data to database");
-        try {
-            CalibratorDB.save(xmlFilenameFinal, logger);
-        } catch (Exception ex) {
-            logger.debug("Failed!", ex);
-            return;
+        if (xmlFinished) {
+            logger.debug("Saving calibration data to database");
+            try {
+                CalibratorDB.save(xmlFilenameFinal, logger);
+            } catch (Exception ex) {
+                logger.debug("Failed!", ex);
+                return;
+            }
+            logger.debug("SUCCESS");
         }
-        logger.debug("SUCCESS");
+        else {
+            logger.debug( "XML file did not complete cleanly -- not saving to database" );
+        }
 
     }
 

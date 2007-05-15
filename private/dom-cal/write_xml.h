@@ -2,8 +2,10 @@
  * write_xml prototypes
  */
 
-void write_xml(calib_data *dom_calib);
-void write_linear_fit(linear_fit fit);
-void write_quadratic_fit(quadratic_fit fit);
-void write_histogram(hv_histogram histo);
-
+unsigned int write_xml(calib_data *dom_calib);
+void write_linear_fit(unsigned int *pCrc, linear_fit fit);
+void write_quadratic_fit(unsigned int *pCrc, quadratic_fit fit);
+void write_histogram(unsigned int *pCrc, hv_histogram histo);
+void crc_printstr(unsigned int *pCrc, char *str);
+void crc32(unsigned int *pCrc, unsigned char *b, int n);
+void crc32Once(unsigned int *pCrc, unsigned char cval);
