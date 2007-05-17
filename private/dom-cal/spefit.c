@@ -303,6 +303,13 @@ int spe_fit(float *xdata, float *ydata, int pts,
         /* or when chi-squared has decreased, but only by a small amount */
         /* Decrease can be small absolutely or as a percentage */
 
+        /* FIX ME DEBUG */
+        /* print current parameters */
+        printf("Parameter values, iteration %d:\r\n", iter);
+        printf("Chisq: %.6g\r\n", chisq);
+        for (i = 0; i < SPE_FIT_PARAMS; i++)
+            printf(" a[%d] = %g\n", i, fit_params[i]);
+
         iter++;
         del_chisq = old_chisq - chisq;
         converged = (del_chisq > 0) && ((del_chisq < SPE_FIT_CHISQ_ABS_DONE) ||

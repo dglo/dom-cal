@@ -257,6 +257,13 @@ int hv_amp_cal(calib_data *dom_calib) {
 
             /* OK -- we have a reasonable muon pulse */
 
+            /* FIX ME DEBUG */
+            if (trig%10 == 0) {
+                long long dt = hal_FPGA_TEST_get_local_clock() - clk;
+                int time = dt / 40000;
+                printf("Got trigger %d loop iteration %d time %dms\n", trig, iter, time);
+            }
+
             float current_v[2];
             float peak_v[2];
             int peak_bin[2];

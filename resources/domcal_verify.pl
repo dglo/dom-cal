@@ -18,8 +18,8 @@ $LIMIT_TT_LOW = 131.8;
 $LIMIT_TT_HIGH = 149.4;
 
 # Amplifier Gain Limits
-@LIMIT_AMP_LOW = (-19.75, -2.2, -0.26);
-@LIMIT_AMP_HIGH = (-14.3, -1.5, -0.13);
+@LIMIT_AMP_LOW = (-18.0, -2.0, -0.23);
+@LIMIT_AMP_HIGH = (-14.3, -1.53, -0.13);
 
 # Minimum Valid Points for TT, HV Calibration
 $MIN_HV_PTS = 4;
@@ -52,10 +52,10 @@ use Mysql;
 $SYSTEM = `hostname | sed \'s/\\\./ /g\' | awk \'{print \$2}\'`;
 chomp($SYSTEM);
 my $DB_HOST;
-if ($SYSTEM eq "sps64") {
-    $DB_HOST = "sps64-testdaq01";
-} elsif ($SYSTEM eq "spts64") {
-    $DB_HOST = "spts64-testdaq01";
+if ($SYSTEM eq "sps") {
+    $DB_HOST = "sps-dbs";
+} elsif ($SYSTEM eq "spts") {
+    $DB_HOST = "spts-dbs";
 } else {
     #No database mirror available outside of sps and spts
     print("No access to sps-spts database.  Quitting.\n");
@@ -127,8 +127,8 @@ while ($filename = shift @ARGV) {
         elsif ($line =~ /<\/amplifier>/) {
             $ampfound = 0;
         }
-        elsif ($line =~ /<histo voltage="(\d+)" convergent="([0-9a-z]+)" pv="([-0-9.]+)" noiseRate="([-0-9.]+)"/) {
-            if ($2 eq "1") {
+        elsif ($line =~ /<histo voltage="(\d+)" convergent="([a-z]+)" pv="([-0-9.]+)" noiseRate="([-0-9.]+)"/) {
+            if ($2 eq "true") {
                 $hv_numpts++;
             }
             if ($1 == 1900) {
@@ -144,7 +144,7 @@ while ($filename = shift @ARGV) {
                 $hv_slope = $1;
             }
         }
-        elsif ($line =~ /<gain error="([-0-9.Ee]+)">([-0-9.]+)</) {
+        elsif ($line =~ /<gain error="([-0-9.E]+)">([-0-9.]+)</) {
             if ($ampfound == 1) {
                 $ampgain[$ampchannel] = $2;
             }
@@ -203,24 +203,8 @@ while ($filename = shift @ARGV) {
     $dbh->disconnect();
 
     if ($slope eq 0.0) {
-      print("No historic DOM-Cal record found for DOM $mbid ($location $name) in database!\n");
-      if ($hv_slope != 0.0) {
-        print("Setting the current calibration as historic for DOM $mbid ($location $name) in database!\n");
-        $dbh = DBI->connect("dbi:mysql:$DB:$DB_HOST","tester", "SouthPoleUser");
-        $stmt = "update domtune set historic_gain_slope=\"$hv_slope\" where mbid=\"$mbid\"";
-        print("$stmt\n");
-        $myt=$dbh->prepare($stmt);
-        $myt->execute();
-        $myt->finish();
-        $myt=$dbh->prepare($stmt);
-        $myt->execute();
-        $myt->finish();
-        $slope = $hv_slope;
-        $intercept = $hv_intercept;
-        $dbh->disconnect();
-      } 
+        print("No historic DOM-Cal record found for DOM $mbid ($location $name) in database!\n");
     }
-
 
     # Calculate previous 10**7 HV
     my $hv_old;
@@ -232,12 +216,12 @@ while ($filename = shift @ARGV) {
 
     # Calculate change in gain, HV
     my $delta_g, $delta_hv;
-    if ($slope eq 0.0 || $hv_numpts < 2 || $hv_old == 0.) {
+    if ($slope eq 0.0 || $hv_numpts < 2) {
         $delta_g = 0.0;
         $delta_hv = 0.0;
     } else {
-        $delta_g = (10**(log($hv_old)/log(10) * $hv_slope + $hv_intercept) - 1e7)/1e7;
-        $delta_hv = $hv_old - $v_10_7;
+        $delta_g = abs((10**(log($hv_old)/log(10) * $hv_slope + $hv_intercept) - 1e7)/1e7);
+        $delta_hv = abs($hv_old - $v_10_7);
     }
     $delta_g = int($delta_g*1000)/1000;
 
@@ -259,7 +243,7 @@ while ($filename = shift @ARGV) {
         $DOM_BAD = 1;
         print("DOM $mbid ($location $name) has hv out of range ($v_10_7)\n");
     }
-    if ($DOM_BAD == 0 && abs($delta_g) > $MAX_DELTA_GAIN && $hvattempt > 0) {
+    if ($DOM_BAD == 0 && $delta_g > $MAX_DELTA_GAIN && $hvattempt > 0) {
         $DOM_BAD = 1;
         print("DOM $mbid ($location $name) has a significant gain shift $delta_g x 100%\n");
     }
