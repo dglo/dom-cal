@@ -266,6 +266,7 @@ public class DOMCal implements Runnable {
                             else if (line.indexOf("XML CRC32") >= 0) {
                                 int hexIdx = line.indexOf("0x")+2;
                                 long temp;
+                                // String parsing of large int hex values is buggy
                                 temp = Long.parseLong(line.substring(hexIdx, hexIdx+8), 16); 
                                 crc_dom = (int)temp;
                             }
