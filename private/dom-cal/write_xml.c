@@ -17,7 +17,7 @@
 
 /*--------------------------------------------------------------------*/
 
-unsigned int write_xml(calib_data *dom_calib) {
+unsigned int write_xml(calib_data *dom_calib, int retx) {
     
     unsigned int crc = 0;
     int i, atwd, ch, bin;
@@ -45,10 +45,12 @@ unsigned int write_xml(calib_data *dom_calib) {
     for (i = 0; i < 16; i++ ) {
         sprintf(linebuf, "  <dac channel=\"%d\">%d</dac>\r\n", i, dom_calib->dac_values[i]);
         crc_printstr(&crc, linebuf);
+        halUSleep(10000 * retx);
     }
     for (i = 0; i < 24; i++ ) {
         sprintf(linebuf, "  <adc channel=\"%d\">%d</adc>\r\n", i, dom_calib->adc_values[i]);
         crc_printstr(&crc, linebuf);
+        halUSleep(10000 * retx);
     }
 
     sprintf(linebuf, "  <frontEndImpedance format=\"Ohms\">%.1f</frontEndImpedance>\r\n", dom_calib->fe_impedance);
@@ -80,6 +82,7 @@ unsigned int write_xml(calib_data *dom_calib) {
                     write_linear_fit(&crc, dom_calib->atwd1_gain_calib[ch][bin]);
                 sprintf(linebuf, "  </atwd>\r\n");
                 crc_printstr(&crc, linebuf);
+                halUSleep(10000 * retx);
             }
         }
     }
@@ -117,6 +120,7 @@ unsigned int write_xml(calib_data *dom_calib) {
         crc_printstr(&crc, linebuf);
         sprintf(linebuf, "  </amplifier>\r\n");
         crc_printstr(&crc, linebuf);
+        halUSleep(100000 * retx);
     }
 
     /* ATWD sampling frequency calibration */
@@ -146,6 +150,7 @@ unsigned int write_xml(calib_data *dom_calib) {
                        atwd, ch, dom_calib->atwd1_baseline[ch]);
                 crc_printstr(&crc, linebuf);
             }
+            halUSleep(100000 * retx);
         }
     }
     sprintf(linebuf, "  </baseline>\r\n");
@@ -168,6 +173,7 @@ unsigned int write_xml(calib_data *dom_calib) {
                         sprintf(linebuf, "%g</waveform>\r\n", dom_calib->atwd1_daq_baseline_wf[ch][bin]);
                         crc_printstr(&crc, linebuf);
                     }
+                    halUSleep(10000 * retx);
                 }
             }
         }
@@ -192,6 +198,7 @@ unsigned int write_xml(calib_data *dom_calib) {
         sprintf(linebuf, "  </hvGainCal>\r\n");
         crc_printstr(&crc, linebuf);
     }
+    halUSleep(1000000 * retx);
 
     /* Baseline measurements at various HV settings */
     if (dom_calib->hv_baselines_valid) {
@@ -211,7 +218,8 @@ unsigned int write_xml(calib_data *dom_calib) {
                                atwd, ch, base->atwd1_hv_baseline[ch]);
                         crc_printstr(&crc, linebuf);
                     }
-                }
+                }                
+                halUSleep(10000 * retx);           
             }
             sprintf(linebuf, "  </baseline>\r\n");
             crc_printstr(&crc, linebuf);
@@ -219,11 +227,14 @@ unsigned int write_xml(calib_data *dom_calib) {
     }
 
     /* HV histograms at various voltages, including fit parameters */
-    for (i = 0; i < dom_calib->num_histos; i++)
+    for (i = 0; i < dom_calib->num_histos; i++) {
         write_histogram(&crc, dom_calib->histogram_data[i]);
-
+        halUSleep(500000 * retx);
+    }
     sprintf(linebuf, "</domcal>\r\n");
     crc_printstr(&crc, linebuf);
+
+    halUSleep(1000000 * retx);
 
     return crc;
 }
@@ -243,9 +254,6 @@ void write_linear_fit(unsigned int *pCrc, linear_fit fit) {
     sprintf(buf, "%s    </fit>\r\n", buf);
     
     crc_printstr(pCrc, buf);
-
-    /* Add a little delay as to not overwhelm the surface */
-    halUSleep(100000);
 }
 
 /*--------------------------------------------------------------------*/
@@ -301,10 +309,6 @@ void write_histogram(unsigned int *pCrc, hv_histogram histo) {
         sprintf(linebuf, "  </histo>\r\n");
         crc_printstr(pCrc, linebuf);
     }
-
-    /* Add a little delay as to not overwhelm the surface */
-    halUSleep(500000);
-
 }
 
 /*--------------------------------------------------------------------*/
