@@ -13,11 +13,11 @@
 #
 # Add new calibration routines here
 #
-CALOBJS  = atwd_cal.o amp_cal.o atwd_freq_cal.o pulser_cal.o hv_gain_cal.o baseline_cal.o hv_amp_cal.o transit_cal.o fast_acq.o fadc_cal.o discriminator_cal.o
+CALOBJS  = atwd_cal.o amp_cal.o atwd_freq_cal.o pulser_cal.o hv_gain_cal.o baseline_cal.o hv_amp_cal.o transit_cal.o fast_acq.o fadc_cal.o discriminator_cal.o daq_baseline_cal.o
 
-EXOBJS = calUtils.o spefit.o lmfit.o
+EXOBJS = calUtils.o spefit.o lmfit.o icebootUtils.o write_xml.o
 KOBJS = ../lib/crt0.o ../lib/libkernel.a
-FSOBJS = ../iceboot/fis.o ../iceboot/flashdrv.o
+ICEOBJS = ../iceboot/fis.o ../iceboot/flashdrv.o
 
 ALLOBJS  = domcal.o calUtils.o $(CALOBJS)
 
@@ -26,13 +26,12 @@ all: domcal.elf
 clean:
 	rm -f *.o *.i *.bin *.elf
 
-domcal.elf: domcal.o $(EXOBJS) $(CALOBJS) $(LIBHAL)
-	$(LD) --script=$(KERNELX) -o domcal.elf \
-	$(KOBJS) $(FSOBJS) domcal.o $(CALOBJS) $(EXOBJS) $(LIBHAL) $(SYSLIBS)
+domcal.elf: domcal.o $(EXOBJS) $(CALOBJS) $(LIBHAL) $(SYSLIBS) $(KERNELX)
+	$(LD) --script=$(KERNELX) -o domcal.elf $(KOBJS) $(ICEOBJS) domcal.o $(CALOBJS) $(EXOBJS) $(LIBHAL) $(SYSLIBS) -lc
 
 ../bin/%.bin.gz: %.bin; gzip -c $< > $@
 
 $(ALLOBJS): %.o : %.h
 
 ../bin/domcal: domcal.o $(CALOBJS) $(EXOBJS)
-	gcc -o domcal domcal.o $(CALOBJS) $(EXOBJS) $(LIBHAL) -lm
+	gcc -o domcal domcal.o $(CALOBJS) $(EXOBJS) $(LIBHAL) $(SYSLIBS) -lm
