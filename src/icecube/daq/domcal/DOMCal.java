@@ -114,11 +114,12 @@ public class DOMCal implements Runnable {
         // Start the calibration!
         String xmlFilename = null;
         String xmlFilenameFinal = null;
-        boolean xmlFinished = false;            
+        boolean xmlFinished = false;     
+        boolean retx = false;
         if ( calibrate ) {
 
             String id = null;
-            logger.debug( "Beginning DOM calibration routine" );
+            logger.info( "Beginning DOM calibration routine" );
             try {
                 //fetch hwid
                 com.send("crlf domid type type\r");
@@ -158,7 +159,7 @@ public class DOMCal implements Runnable {
                             } else {
                                 toroidType = 0;
                             }
-                            logger.debug("Toroid type for " + domid + " is " + toroidType);
+                            logger.info("Toroid type for " + domid + " is " + toroidType);
                         }
                     } catch (Exception e) {
                         logger.error("Error determining toroid type");
@@ -172,7 +173,6 @@ public class DOMCal implements Runnable {
                     logger.warn("Unable to determine toroid type -- assuming old");
                     toroidType = 0;
                 }
-
 
                 /* Determine if domcal is present */
                 com.send( "s\" domcal\" find if ls endif\r" );
@@ -226,7 +226,7 @@ public class DOMCal implements Runnable {
                 return;
             }
 
-            logger.debug( "Waiting for calibration to finish" );
+            logger.info( "Waiting for calibration to finish" );
             try {
                 //Create raw output file and XML file
                 PrintWriter out = new PrintWriter(new FileWriter(outDir + "domcal_" + id + ".out", false), false);
@@ -274,33 +274,13 @@ public class DOMCal implements Runnable {
                             else if (line.indexOf("Retransmit XML (y/n)?") >= 0) {
                                 // Check CRC values
                                 if ((crc_dom == 0) || (crc.getValue() == 0) || (crc.getValue() != crc_dom)) {
-
-                                    if (retxCnt < 4) {
-                                        logger.debug( "WARNING! XML CRC mismatch; requesting retransmission" );
-                                        //logger.debug( "DOM CRC: " + Integer.toHexString(crc_dom) );
-                                        //logger.debug( "Client CRC: " + Integer.toHexString(crc.getValue()) );
-
-                                        // Close file and start over again
-                                        xml.close();
-                                        xml = new PrintWriter(new FileWriter(xmlFilename, false ), false );
-                                        inXml = false;
-                                        xmlFinished = false;   
-
-                                        // Reset the CRC value
-                                        crc.reset();
-
-                                        // Start the retransmission
-                                        com.send( "y" + "\r\n" );
-                                        retxCnt = retxCnt+1;
-                                    }
-                                    else {
-                                        logger.debug( "Too many CRC mismatches; giving up!" );
-                                        com.send( "n" + "\r\n" );
-                                        xmlFinished = false;
-                                    }
+                                    retx = true;
+                                    logger.info( "WARNING! XML CRC mismatch; requesting retransmission" );
+                                    //logger.info( "DOM CRC: " + Integer.toHexString(crc_dom) );
+                                    //logger.info( "Client CRC: " + Integer.toHexString(crc.getValue()) );
                                 }
                                 else {
-                                    logger.debug( "XML CRC matched" );
+                                    logger.info( "XML CRC matched" );
                                     com.send( "n" + "\r\n" );
                                 }              
                             }
@@ -320,12 +300,40 @@ public class DOMCal implements Runnable {
                             }
                         }
                     }
-                    try {
-                        Thread.sleep(10);
-                    } catch (InterruptedException e) {
-                        logger.debug( "Calibration interrupted!" );
+
+                    // We need to retransmit the XML                   
+                    if (retx) {
+                        if (retxCnt < 4) {
+                            // Close file and start over again
+                            xml.close();
+                            xml = new PrintWriter(new FileWriter(xmlFilename, false ), false );
+                            inXml = false;
+                            xmlFinished = false;   
+                            
+                            // Reset the CRC value
+                            crc.reset();
+                            
+                            // Start the retransmission
+                            com.send( "y" + "\r\n" );
+                            retx = false;
+                            retxCnt = retxCnt+1;
+                        }
+                        else {
+                            logger.info( "Too many retransmission attempts; giving up!" );
+                            com.send( "n" + "\r\n" );
+                            xmlFinished = false;
+                            done = true;
+                        }
                     }
-                }            
+
+                    try {
+                        // TEMP FIX ME
+                        Thread.sleep(10000);
+                    } catch (InterruptedException e) {
+                        logger.info( "Calibration interrupted!" );
+                    }                    
+                } // Finish calibration loop
+
                 out.close();
                 xml.close();
 
@@ -344,22 +352,22 @@ public class DOMCal implements Runnable {
             }
         } // End calibration section
 
-        logger.debug( "Finished calibration" );
+        logger.info( "Finished calibration" );
 
-        logger.debug( "Documents saved" );
+        logger.info( "Documents saved" );
 
         if (xmlFinished) {
-            logger.debug("Saving calibration data to database");
+            logger.info("Saving calibration data to database");
             try {
                 CalibratorDB.save(xmlFilenameFinal, logger);
             } catch (Exception ex) {
-                logger.debug("Failed!", ex);
+                logger.info("Failed!", ex);
                 return;
             }
-            logger.debug("SUCCESS");
+            logger.info("SUCCESS");
         }
         else {
-            logger.debug( "XML file did not complete cleanly -- not saving to database" );
+            logger.info( "XML file did not complete cleanly -- not saving to database" );
         }
 
     }
