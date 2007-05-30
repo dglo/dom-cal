@@ -88,16 +88,30 @@ public class DOMCal implements Runnable {
         /* Connect to domtest DB */
         Connection jdbc = null;
         if (calProps != null) {
-            try {
-            String driver = calProps.getProperty("icecube.daq.domcal.db.driver", "com.mysql.jdbc.Driver");
-            Class.forName(driver);
-            String url = calProps.getProperty("icecube.daq.domcal.db.url", "jdbc:mysql://localhost/fat");
-            String user = calProps.getProperty("icecube.daq.domcal.db.user", "dfl");
-            String passwd = calProps.getProperty("icecube.daq.domcal.db.passwd", "(D0Mus)");
-            jdbc = DriverManager.getConnection(url, user, passwd);
-            } catch (Exception e) {
-                e.printStackTrace();
-                logger.warn("Unable to establish DB connection!");
+            int dbTries = 0;
+            while ((jdbc == null) && (dbTries < 5)) {
+                try {
+                    String driver = calProps.getProperty("icecube.daq.domcal.db.driver", "com.mysql.jdbc.Driver");
+                    Class.forName(driver);
+                    String url = calProps.getProperty("icecube.daq.domcal.db.url", "jdbc:mysql://localhost/fat");
+                    String user = calProps.getProperty("icecube.daq.domcal.db.user", "dfl");
+                    String passwd = calProps.getProperty("icecube.daq.domcal.db.passwd", "(D0Mus)");
+                    jdbc = DriverManager.getConnection(url, user, passwd);
+                } catch (Exception ex) {
+                    if (dbTries < 5) {
+                        logger.warn("Unable to establish DB connection -- waiting a bit and retrying");
+                        try {
+                            Thread.sleep( 10000 * (dbTries+1) );
+                        } catch (InterruptedException e) {
+                            logger.warn( "Wait interrupted!" );
+                        }                                        
+                    }
+                    else {
+                        logger.warn("Unable to establish DB connection -- giving up");
+                        ex.printStackTrace();                   
+                    }                
+                    dbTries++;  
+                }
             }
         }
 
@@ -327,8 +341,7 @@ public class DOMCal implements Runnable {
                     }
 
                     try {
-                        // TEMP FIX ME
-                        Thread.sleep(10000);
+                        Thread.sleep(10);
                     } catch (InterruptedException e) {
                         logger.info( "Calibration interrupted!" );
                     }                    
@@ -352,19 +365,33 @@ public class DOMCal implements Runnable {
             }
         } // End calibration section
 
-        logger.info( "Finished calibration" );
+        logger.info( "Calibration finished and documents saved" );
 
-        logger.info( "Documents saved" );
-
-        if (xmlFinished) {
+        if (xmlFinished) {            
             logger.info("Saving calibration data to database");
-            try {
-                CalibratorDB.save(xmlFilenameFinal, logger);
-            } catch (Exception ex) {
-                logger.info("Failed!", ex);
-                return;
-            }
-            logger.info("SUCCESS");
+            boolean dbDone = false;
+            int dbTries = 0;
+            while ((!dbDone) && (dbTries < 5)) {
+                try {
+                    dbDone = true;
+                    CalibratorDB.save(xmlFilenameFinal, logger);
+                } catch (Exception ex) {
+                    dbDone = false;
+                    if (dbTries < 5) {
+                        logger.warn( "Database save failed -- waiting a bit and retrying" );  
+                        try {
+                            Thread.sleep( 10000 * (dbTries+1) );
+                        } catch ( InterruptedException e ) {
+                            logger.warn( "Wait interrupted!" );
+                        }
+                    }
+                    else
+                        logger.info("Database save failed -- giving up!", ex);                        
+                    dbTries++;
+                }
+            }            
+            if (dbDone)
+                logger.info("SUCCESS");
         }
         else {
             logger.info( "XML file did not complete cleanly -- not saving to database" );
