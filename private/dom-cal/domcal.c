@@ -335,13 +335,14 @@ int main(void) {
 
     /* Write calibration record to STDOUT */
     int done = 0;
-    int retx = 0;
+    /* XML transmission gets slower every transmission */
+    int tx_cnt = 1;
     while (!done) {
 
 #ifdef DEBUG
     printf("Writing XML calibration file...\r\n");
 #endif
-        unsigned int crc = write_xml(&dom_calib, retx);
+        unsigned int crc = write_xml(&dom_calib, tx_cnt);
         printf("XML CRC32 = 0x%08x\r\n", crc);
         printf("Retransmit XML (y/n)?\r\n");
         fflush(stdout);        
@@ -349,7 +350,7 @@ int main(void) {
         printf("\r\n");
         done = ((buf[0] == 'n') || (buf[0] == 'N') ||
                 (buf[0] == '\n' && ((buf[1] == 'n') || (buf[1] == 'N'))));        
-        retx++;
+        tx_cnt++;
     }
 
     /* Reboot the DOM */
