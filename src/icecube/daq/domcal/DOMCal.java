@@ -30,6 +30,9 @@ public class DOMCal implements Runnable {
 
     /* Timeout waiting for response, in seconds */
     public static final int TIMEOUT = 9000;
+    
+    /* Number of database access attempts */
+    public static final int DBMAX = 5;
 
     private static Logger logger = Logger.getLogger( DOMCal.class );
 
@@ -89,7 +92,7 @@ public class DOMCal implements Runnable {
         Connection jdbc = null;
         if (calProps != null) {
             int dbTries = 0;
-            while ((jdbc == null) && (dbTries < 5)) {
+            while ((jdbc == null) && (dbTries < DBMAX)) {
                 try {
                     String driver = calProps.getProperty("icecube.daq.domcal.db.driver", "com.mysql.jdbc.Driver");
                     Class.forName(driver);
@@ -98,7 +101,7 @@ public class DOMCal implements Runnable {
                     String passwd = calProps.getProperty("icecube.daq.domcal.db.passwd", "(D0Mus)");
                     jdbc = DriverManager.getConnection(url, user, passwd);
                 } catch (Exception ex) {
-                    if (dbTries < 5) {
+                    if (dbTries < DBMAX-1) {
                         logger.warn("Unable to establish DB connection -- waiting a bit and retrying");
                         try {
                             Thread.sleep( 10000 * (dbTries+1) );
@@ -160,13 +163,13 @@ public class DOMCal implements Runnable {
                         String sql = "select * from doms where mbid='" + id + "';";
                         ResultSet s = stmt.executeQuery(sql);
                         s.first();
-                       /* Get domid */
+                        /* Get domid */
                         String domid = s.getString("domid");
                         if (domid != null) {
                             /* Get year digit */
                             String yearStr = domid.substring(2,3);
                             int yearInt = Integer.parseInt(yearStr);
-
+                            
                             /* new toroids are in all doms produced >= 2006 */
                             if (yearInt >= 6 || domid.equals("UP5P0970")) {  //Always an exception.......
                                 toroidType = 1;
@@ -175,6 +178,8 @@ public class DOMCal implements Runnable {
                             }
                             logger.info("Toroid type for " + domid + " is " + toroidType);
                         }
+                        // We are finished with DB connection for now
+                        jdbc.close();                        
                     } catch (Exception e) {
                         logger.error("Error determining toroid type");
                     }
@@ -371,13 +376,13 @@ public class DOMCal implements Runnable {
             logger.info("Saving calibration data to database");
             boolean dbDone = false;
             int dbTries = 0;
-            while ((!dbDone) && (dbTries < 5)) {
+            while ((!dbDone) && (dbTries < DBMAX)) {
                 try {
                     dbDone = true;
                     CalibratorDB.save(xmlFilenameFinal, logger);
                 } catch (Exception ex) {
                     dbDone = false;
-                    if (dbTries < 5) {
+                    if (dbTries < DBMAX-1) {
                         logger.warn( "Database save failed -- waiting a bit and retrying" );  
                         try {
                             Thread.sleep( 10000 * (dbTries+1) );
