@@ -156,6 +156,10 @@ int hv_gain_cal(calib_data *dom_calib, int iterHVGain) {
         hv_hist_data[hv_idx].convergent = 0;
         hv_hist_data[hv_idx].is_filled = 0;
         hv_hist_data[hv_idx].pv = 0.0;
+        hv_hist_data[hv_idx].noise_rate = 0.;
+
+        /* Check if current HV is below maximum allowed HV */
+        if (hv > dom_calib->max_hv) continue;
 
         /* Set discriminator */
         /* Three different discriminator settings based on HV setting */

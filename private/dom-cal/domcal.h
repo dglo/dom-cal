@@ -102,6 +102,9 @@ typedef struct {
     /* DOM state before calibration */
     short dac_values[16];
     short adc_values[24];
+
+    /* Maximum allowed HV */
+    short max_hv;
    
     /* FADC calibration */
     linear_fit  fadc_baseline;

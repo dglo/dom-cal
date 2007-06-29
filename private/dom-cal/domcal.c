@@ -73,7 +73,7 @@ static void getstr(char *str) {
  */
 void get_date(calib_data *dom_calib) {
 
-    short day, month, year, toroid;
+    short day, month, year, toroid, maxHV;
     char timestr[7];
     char buf[100];
     int i;
@@ -274,6 +274,7 @@ int main(void) {
     dom_calib.hv_baselines_valid = 0;
     dom_calib.daq_baselines_valid = 0;
     dom_calib.transit_calib_valid = 0;
+    dom_calib.max_hv = 0;
 
     /* Query user about multi-iteration runs */
     if (doHVCal) {
@@ -284,6 +285,16 @@ int main(void) {
         iterHVGain = ((buf[0] == 'y') || (buf[0] == 'Y') ||
                       (buf[0] == '\n' && ((buf[1] == 'y') || (buf[1] == 'Y'))));
         iterHVGain = iterHVGain ? GAIN_CAL_MULTI_ITER : 1;
+    }
+
+    /* Get max HV */
+    if (doHVCal) {
+        printf("Enter maximum HV (0V-2000V): ");
+        fflush(stdout);
+        getstr(buf);
+        dom_calib.max_hv = atoi(buf);
+        if (dom_calib.max_hv > 2000) dom_calib.max_hv = 2000;
+        printf("\r\n");
     }
 
     /* Init # histos returned and number of HV baselines */
