@@ -50,13 +50,10 @@ public class DOMCal implements Runnable {
     private boolean calibrate;
     private boolean calibrateHv;
     private boolean iterateHv;
-
-    public DOMCal( String host, int port, String outDir, boolean calibrate ) {
-        this(host, port, outDir, calibrate, false, false, 2000);
-    }
+    private int maxHv;
 
     public DOMCal( String host, int port, String outDir, boolean calibrate, 
-                   boolean calibrateHv, boolean iterateHv, int maxHV ) {
+                   boolean calibrateHv, boolean iterateHv, int maxHv ) {
         this.host = host;
         this.port = port;
         this.outDir = outDir;
@@ -66,6 +63,7 @@ public class DOMCal implements Runnable {
         this.calibrate = calibrate;
         this.calibrateHv = calibrateHv;
         this.iterateHv = iterateHv;
+        this.maxHv = maxHv;
     }
 
     public void run() {
@@ -236,7 +234,7 @@ public class DOMCal implements Runnable {
                         com.send( "n" + "\r" );
                     }
                     com.receive( "\r\n" );
-                    com.send( "" + maxHV + "\r");
+                    com.send( "" + maxHv + "\r");
                     
                 } else {
                     com.send( "n" + "\r" );
@@ -414,18 +412,24 @@ public class DOMCal implements Runnable {
         boolean calibrateHV = false;
         boolean iterateHV = false;
         int maxHV = 2000;
+        if (args.length == 0) {
+            usage();
+            return;
+        }
         for (int i = 0; i < args.length; i++) {
 
             if (args[i].equals("-d") && i < args.length - 1) outDir = args[++i];
             else if (args[i].equals("-p") && i < args.length - 1) port = Integer.parseInt(args[++i]);
+            else if (args[i].equals("-n") && i < args.length - 1) nPorts = Integer.parseInt(args[++i]);
             else if (args[i].equals("-h") && i < args.length - 1) host = args[++i];
             else if (args[i].equals("-m") && i < args.length - 1) maxHV = Integer.parseInt(args[++i]);
 
             else if (args[i].charAt(0) == '-') {
                 for (int j = 0; j < args[i].length(); j++) {
-                switch (args[i].charAt(j) {
+                    switch (args[i].charAt(j)) {
                     case 'i': iterateHV = true; break;
                     case 'v': calibrateHV = true; break;
+                    }
                 }
             } else {
                 System.err.println("Invalid argument: " + args[i]);
@@ -435,7 +439,7 @@ public class DOMCal implements Runnable {
         }
         try {
             for ( int i = 0; i < nPorts; i++ ) {
-                Thread t = new Thread( new DOMCal( host, port + i, outDir, true, true, false ), "" + ( port + i ) );
+                Thread t = new Thread( new DOMCal( host, port + i, outDir, true, calibrateHV, iterateHV, maxHV ), "" + ( port + i ) );
                 threads.add( t );
                 t.start();
             }
@@ -472,6 +476,7 @@ public class DOMCal implements Runnable {
         System.out.println( "DOMCal Usage: java icecube.daq.domcal.DOMCal\n" +
                             "    -h [host]  default=localhost\n" +
                             "    -p [port]  default=5000\n" +
+                            "    -n [number of ports] default=1\n" +
                             "    -d [output directory]  default=CWD\n" +
                             "    -m [maximum HV]  default=2000V range 0V-2000V\n" +
                             "    -v (calibrate HV)\n" +
