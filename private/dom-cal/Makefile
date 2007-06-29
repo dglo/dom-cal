@@ -1,6 +1,6 @@
 .SUFFIXES: .c .o .elf .bin
 
-%.o : %.c *.h
+.c.o:
 	$(CC) -c $(CFLAGS) $<
 
 .elf.bin:
