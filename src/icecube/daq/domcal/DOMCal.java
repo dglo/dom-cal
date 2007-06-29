@@ -407,7 +407,7 @@ public class DOMCal implements Runnable {
     }
 
     public static void main( String[] args ) {
-        String host = null;
+        String host = "localhost";
         int port = 5000;
         int nPorts = 1;
         String outDir = System.getProperty("user.dir");
@@ -470,7 +470,7 @@ public class DOMCal implements Runnable {
 
     private static void usage() {
         System.out.println( "DOMCal Usage: java icecube.daq.domcal.DOMCal\n" +
-                            "    -h [host]  default=NULL\n" +
+                            "    -h [host]  default=localhost\n" +
                             "    -p [port]  default=5000\n" +
                             "    -d [output directory]  default=CWD\n" +
                             "    -m [maximum HV]  default=2000V range 0V-2000V\n" +
