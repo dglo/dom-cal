@@ -73,7 +73,7 @@ static void getstr(char *str) {
  */
 void get_date(calib_data *dom_calib) {
 
-    short day, month, year, toroid, maxHV;
+    short day, month, year, toroid;
     char timestr[7];
     char buf[100];
     int i;
@@ -294,12 +294,13 @@ int main(void) {
         getstr(buf);
         dom_calib.max_hv = atoi(buf);
         if (dom_calib.max_hv > 2000) dom_calib.max_hv = 2000;
+        if (dom_calib.max_hv < 0) dom_calib.max_hv = 0;
         printf("\r\n");
     }
 
     /* Init # histos returned and number of HV baselines */
     dom_calib.num_histos    = doHVCal ? (GAIN_CAL_HV_CNT * iterHVGain) : 0;
-    dom_calib.num_baselines = doHVCal ?  GAIN_CAL_HV_CNT : 0;
+    dom_calib.num_baselines = 0;
     
     /* Initialize DOM state: DACs, HV setting, pulser, etc. */
     init_dom();

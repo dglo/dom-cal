@@ -78,7 +78,9 @@ int hv_amp_cal(calib_data *dom_calib) {
     if (!checkHVBase()) return 0;
 
     hv = HV_AMP_CAL_VOLTS;
-                                                                                                                                               
+    /* Make sure HV doesn't exceed requested HV */
+    hv = (hv > dom_calib->max_hv) ? dom_calib->max_hv : hv;
+
 #ifdef DEBUG
     printf(" Setting HV to %d V\r\n", hv);
 #endif
