@@ -60,6 +60,10 @@ public class HVHistogramGrapher implements Runnable {
     public static final double SCALE_FACTOR = 5.0;
 
     public static void main( String[] args) {
+        if (args.length != 3) {
+            usage();
+            System.exit(0);
+        }
         try {
             //Disable X support while app is running
             System.setProperty("java.awt.headless", "true");
@@ -68,7 +72,8 @@ public class HVHistogramGrapher implements Runnable {
             String htmlRoot = args[2];
             (new HVHistogramGrapher(inDir, outDir, htmlRoot)).run();
         } catch (Exception e) {
-            usage();
+            e.printStackTrace();
+            //usage();
             System.exit(-1);
         }
     }
@@ -121,9 +126,12 @@ public class HVHistogramGrapher implements Runnable {
 
         HTMLDoc doc = new HTMLDoc(outDir + (outDir.endsWith("/") ? "" : "/") + "hv.html");
         HTMLDoc sumDoc = new HTMLDoc(outDir + (outDir.endsWith("/") ? "" : "/") + "hvsummary.html");
+        HTMLDoc fitDoc = new HTMLDoc(outDir + (outDir.endsWith("/") ? "" : "/") + "hvfits.html");
+        int fits = 0;
         try {
             doc.open();
             sumDoc.open();
+            fitDoc.open();
         } catch (IOException e) {
             System.out.println("IOException opening output HTML file " + e);
             return;
@@ -157,8 +165,9 @@ public class HVHistogramGrapher implements Runnable {
             Hashtable hTableArr[] = (Hashtable [])histTable.get(domId);
             StringTokenizer st = new StringTokenizer(domId, ".xml");
             String id = st.nextToken();
+            String name = "???";                
             if (jdbc != null) {
-                String name = "???";
+                // Get DOM name
                 try {
                     Statement stmt = jdbc.createStatement();
                     String sql = "select * from doms where mbid='" + id + "';";
@@ -170,6 +179,16 @@ public class HVHistogramGrapher implements Runnable {
                 catch (Exception e) {
                     name = "???";
                 }
+                // Get location from domtune
+                try {
+                    Statement stmt = jdbc.createStatement();
+                    String sql = "select location from domtune where mbid='" + id + "';";
+                    ResultSet s = stmt.executeQuery(sql);
+                    boolean found = s.first();
+                    if (found)
+                        name = s.getString("location")+" "+name;
+                } 
+                catch (Exception e) {}
                 doc.addNew(name);
                 sumDoc.addNew(name);
             }
@@ -192,9 +211,11 @@ public class HVHistogramGrapher implements Runnable {
                     if (currentHisto == null) {
                         System.out.println("Error -- " + domId + " histogram for " + VOLTAGES[i] + "V not found");
                         doc.add("Not produced");
+                        sumDoc.add("N/A");
                     } else if (!currentHisto.isFilled()) {
                         System.out.println(domId + " Histogram for " + VOLTAGES[i] + "V is not filled");
                         doc.add("N/A");
+                        sumDoc.add("N/A");
                     } else {
                         try {
                             String loc = graphHistogram(currentHisto, domId, set);
@@ -212,6 +233,9 @@ public class HVHistogramGrapher implements Runnable {
                         String loc = graphHV(hTableArr, domId);
                         doc.addImg(loc);
                         sumDoc.addSizedImg(loc, 100, 100);
+                        String title = id + " (" + name + ")";
+                        fitDoc.addLabeledImg(loc, title);
+                        fits++;
                     } catch (IOException e) {
                         System.out.println("Failed encoding hv summary " + e);
                     }
@@ -222,10 +246,12 @@ public class HVHistogramGrapher implements Runnable {
                 }
                 doc.addBr();
                 sumDoc.addBr();
+                if (fits % 4 == 0) fitDoc.addNew();
             }
         }
         doc.close();
         sumDoc.close();
+        fitDoc.close();
     }
 
     public Hashtable[] processDomcal(File domcalFile) throws ParserConfigurationException, SAXException, IOException {
@@ -347,7 +373,9 @@ public class HVHistogramGrapher implements Runnable {
         //count number of good fits
         int conv = 0;
         for (int i = 0; i < histos.length; i++) {
-            if (histos[i].isConvergent()) conv++;
+            if (histos[i] != null) {
+                if (histos[i].isFilled() && histos[i].isConvergent()) conv++;
+            }
         }
 
         //allocate arrays for linear fit
@@ -358,16 +386,18 @@ public class HVHistogramGrapher implements Runnable {
         int convIndx = 0;
         g.setColor(Color.RED);
         for (int i = 0; i < histos.length; i++) {
-            if (histos[i].isConvergent()) {
-                int xCenter = getXPixel(histos[i].getVoltage());
-                int yCenter = getYPixel((int)(1e-12 * histos[i].getFitParams()[3] / EC));
-                if (!(xCenter > 296 || xCenter < 53 || yCenter > 246 || yCenter < 3)) {
-                    g.drawLine(xCenter - 3, yCenter, xCenter + 3, yCenter);
-                    g.drawLine(xCenter, yCenter - 3, xCenter, yCenter + 3);
+            if (histos[i] != null) {
+                if (histos[i].isFilled() && histos[i].isConvergent()) {
+                    int xCenter = getXPixel(histos[i].getVoltage());
+                    int yCenter = getYPixel((int)(1e-12 * histos[i].getFitParams()[3] / EC));
+                    if (!(xCenter > 296 || xCenter < 53 || yCenter > 246 || yCenter < 3)) {
+                        g.drawLine(xCenter - 3, yCenter, xCenter + 3, yCenter);
+                        g.drawLine(xCenter, yCenter - 3, xCenter, yCenter + 3);
+                    }
+                    xData[convIndx] = xCenter;
+                    yData[convIndx] = yCenter;
+                    convIndx++;
                 }
-                xData[convIndx] = xCenter;
-                yData[convIndx] = yCenter;
-                convIndx++;
             }
         }
 
@@ -603,6 +633,11 @@ public class HVHistogramGrapher implements Runnable {
             out.println("<tr align=\"center\"><td>" + line + "</td>");
         }
 
+        public void addNew() {
+            if (out == null) throw new IllegalStateException("Output is null");
+            out.println("<tr align=\"center\">");
+        }
+
         public void addBr() {
             if (out == null) throw new IllegalStateException("Output is null");
             out.println("</tr>");
@@ -610,6 +645,10 @@ public class HVHistogramGrapher implements Runnable {
 
         public void addImg(String path) {
             add("<a href=\"" + path + "\"><img src=" + path + "></a>");
+        }
+
+        public void addLabeledImg(String path, String title) {
+            add("<a href=\"" + path + "\"><img src=" + path + "></a><br>"+title);            
         }
 
         public void addSizedImg(String path, int height, int width) {

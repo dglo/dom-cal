@@ -274,6 +274,7 @@ int main(void) {
     dom_calib.hv_baselines_valid = 0;
     dom_calib.daq_baselines_valid = 0;
     dom_calib.transit_calib_valid = 0;
+    dom_calib.max_hv = 0;
 
     /* Query user about multi-iteration runs */
     if (doHVCal) {
@@ -286,9 +287,20 @@ int main(void) {
         iterHVGain = iterHVGain ? GAIN_CAL_MULTI_ITER : 1;
     }
 
+    /* Get max HV */
+    if (doHVCal) {
+        printf("Enter maximum HV (0V-2000V): ");
+        fflush(stdout);
+        getstr(buf);
+        dom_calib.max_hv = atoi(buf);
+        if (dom_calib.max_hv > 2000) dom_calib.max_hv = 2000;
+        if (dom_calib.max_hv < 0) dom_calib.max_hv = 0;
+        printf("\r\n");
+    }
+
     /* Init # histos returned and number of HV baselines */
     dom_calib.num_histos    = doHVCal ? (GAIN_CAL_HV_CNT * iterHVGain) : 0;
-    dom_calib.num_baselines = doHVCal ?  GAIN_CAL_HV_CNT : 0;
+    dom_calib.num_baselines = 0;
     
     /* Initialize DOM state: DACs, HV setting, pulser, etc. */
     init_dom();

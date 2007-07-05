@@ -50,13 +50,10 @@ public class DOMCal implements Runnable {
     private boolean calibrate;
     private boolean calibrateHv;
     private boolean iterateHv;
-
-    public DOMCal( String host, int port, String outDir, boolean calibrate ) {
-        this(host, port, outDir, calibrate, false, false);
-    }
+    private int maxHv;
 
     public DOMCal( String host, int port, String outDir, boolean calibrate, 
-                   boolean calibrateHv, boolean iterateHv ) {
+                   boolean calibrateHv, boolean iterateHv, int maxHv ) {
         this.host = host;
         this.port = port;
         this.outDir = outDir;
@@ -66,6 +63,7 @@ public class DOMCal implements Runnable {
         this.calibrate = calibrate;
         this.calibrateHv = calibrateHv;
         this.iterateHv = iterateHv;
+        this.maxHv = maxHv;
     }
 
     public void run() {
@@ -235,6 +233,8 @@ public class DOMCal implements Runnable {
                     else {
                         com.send( "n" + "\r" );
                     }
+                    com.receive( "\r\n" );
+                    com.send( "" + maxHv + "\r");
                     
                 } else {
                     com.send( "n" + "\r" );
@@ -405,66 +405,45 @@ public class DOMCal implements Runnable {
     }
 
     public static void main( String[] args ) {
-        String host = null;
-        int port = -1;
-        int nPorts = -1;
-        String outDir = null;
-        try {
-            if ( args.length == 5 ) {
-                host = args[0];
-                port = Integer.parseInt( args[1] );
-                outDir = args[2];
-                Thread t = new Thread( new DOMCal( host, port, outDir, true ) );
-                threads.add( t );
-                t.start();
-            } else if ( args.length == 6 ) {
-                host = args[0];
-                port = Integer.parseInt( args[1] );
-                nPorts = Integer.parseInt( args[2] );
-                outDir = args[3];
-                for ( int i = 0; i < nPorts; i++ ) {
-                    Thread t = new Thread( new DOMCal( host, port + i, outDir, true ), "" + ( port + i ) );
-                    threads.add( t );
-                    t.start();
-                }
-            } else if ( args.length == 7 ) {
-                host = args[0];
-                port = Integer.parseInt( args[1] );
-                outDir = args[2];
-                Thread t = new Thread( new DOMCal( host, port, outDir, true, true, false ) );
-                threads.add( t );
-                t.start();
-            } else if ( args.length == 8 ) {
-                host = args[0];
-                port = Integer.parseInt( args[1] );
-                nPorts = Integer.parseInt( args[2] );
-                outDir = args[3];
-                for ( int i = 0; i < nPorts; i++ ) {
-                    Thread t = new Thread( new DOMCal( host, port + i, outDir, true, true, false ), "" + ( port + i ) );
-                    threads.add( t );
-                    t.start();
-                }
-            } else if ( args.length == 9 ) {
-                host = args[0];
-                port = Integer.parseInt( args[1] );
-                outDir = args[2];
-                Thread t = new Thread( new DOMCal( host, port, outDir, true, true, true ) );
-                threads.add( t );
-                t.start();
-            } else if ( args.length == 10 ) {
-                host = args[0];
-                port = Integer.parseInt( args[1] );
-                nPorts = Integer.parseInt( args[2] );
-                outDir = args[3];
-                for ( int i = 0; i < nPorts; i++ ) {
-                    Thread t = new Thread( new DOMCal( host, port + i, outDir, true, true, true), "" + ( port + i ) );
-                    threads.add( t );
-                    t.start();
+        String host = "localhost";
+        int port = 5000;
+        int nPorts = 1;
+        String outDir = System.getProperty("user.dir");
+        boolean calibrateHV = false;
+        boolean iterateHV = false;
+        int maxHV = 2000;
+        if (args.length == 0) {
+            usage();
+            return;
+        }
+        for (int i = 0; i < args.length; i++) {
+
+            if (args[i].equals("-d") && i < args.length - 1) outDir = args[++i];
+            else if (args[i].equals("-p") && i < args.length - 1) port = Integer.parseInt(args[++i]);
+            else if (args[i].equals("-n") && i < args.length - 1) nPorts = Integer.parseInt(args[++i]);
+            else if (args[i].equals("-h") && i < args.length - 1) host = args[++i];
+            else if (args[i].equals("-m") && i < args.length - 1) maxHV = Integer.parseInt(args[++i]);
+
+            else if (args[i].charAt(0) == '-') {
+                for (int j = 0; j < args[i].length(); j++) {
+                    switch (args[i].charAt(j)) {
+                    case 'i': iterateHV = true; break;
+                    case 'v': calibrateHV = true; break;
+                    }
                 }
             } else {
+                System.err.println("Invalid argument: " + args[i]);
                 usage();
-                die( "Invalid command line arguments" );
+                die("Invalid command line arguments");
             }
+        }
+        try {
+            for ( int i = 0; i < nPorts; i++ ) {
+                Thread t = new Thread( new DOMCal( host, port + i, outDir, true, calibrateHV, iterateHV, maxHV ), "" + ( port + i ) );
+                threads.add( t );
+                t.start();
+            }
+
             for ( int i = 0; i < TIMEOUT; i++ ) {
                 try {
                     Thread.sleep( 1000 );
@@ -483,6 +462,7 @@ public class DOMCal implements Runnable {
                     System.exit( 0 );
                 }
             }
+
             logger.warn( "Timeout reached." );
             System.exit( 0 );
         } catch ( Exception e ) {
@@ -493,25 +473,18 @@ public class DOMCal implements Runnable {
     }
 
     private static void usage() {
-        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir} calibrate dom" );
-        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir} " +
-                                                                                    "calibrate dom calibrate hv" );
-        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir} " +
-                                                                                    "calibrate dom calibrate hv iterate hv" );
-        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {num ports}" +
-                                                                      "{output dir} calibrate dom" );
-        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {num ports}" +
-                                                                      "{output dir} calibrate dom calibrate hv" );
-        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {num ports}" +
-                                                                      "{output dir} calibrate dom calibrate hv iterate hv" );
-        logger.info( "host -- hostname of domhub/terminal server to connect" );
-        logger.info( "port -- remote port to connect on 'host'" );
-        logger.info( "num ports -- number of sequential ports to connect above 'port' on 'host'" );
-        logger.info( "output dir -- local directory to store results" );
-        logger.info( "'calibrate dom' -- flag to initiate DOM calibration" );
-        logger.info( "'calibrate hv' -- flag to initiate DOM calibration -- " +
-                                                  "can only be used when calibrate dom is specified" );
-        logger.info( "'iterate hv' -- flag to iterate HV/gain calibration" );
+        System.out.println( "DOMCal Usage: java icecube.daq.domcal.DOMCal\n" +
+                            "    -h [host]  default=localhost\n" +
+                            "    -p [port]  default=5000\n" +
+                            "    -n [number of ports] default=1\n" +
+                            "    -d [output directory]  default=CWD\n" +
+                            "    -m [maximum HV]  default=2000V range 0V-2000V\n" +
+                            "    -v (calibrate HV)\n" +
+                            "    -i (iterate HV)");
+
+
+
+
     }
 
     private static void die( Object o ) {
