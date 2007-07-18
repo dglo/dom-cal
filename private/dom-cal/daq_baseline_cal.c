@@ -116,6 +116,9 @@ int daq_baseline_cal(calib_data *dom_calib) {
         
         short hv = DAQ_BASELINE_HV;
         
+        /* Check to make sure we're not exceeding max requested HV */
+        hv = (hv > dom_calib->max_hv) ? dom_calib->max_hv : hv;
+
 #ifdef DEBUG
         printf(" Setting HV to %d V\r\n", hv);
 #endif
