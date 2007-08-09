@@ -274,7 +274,6 @@ int main(void) {
     dom_calib.hv_baselines_valid = 0;
     dom_calib.daq_baselines_valid = 0;
     dom_calib.transit_calib_valid = 0;
-    dom_calib.max_hv = 0;
 
     /* Query user about multi-iteration runs */
     if (doHVCal) {
@@ -287,20 +286,9 @@ int main(void) {
         iterHVGain = iterHVGain ? GAIN_CAL_MULTI_ITER : 1;
     }
 
-    /* Get max HV */
-    if (doHVCal) {
-        printf("Enter maximum HV (0V-2000V): ");
-        fflush(stdout);
-        getstr(buf);
-        dom_calib.max_hv = atoi(buf);
-        if (dom_calib.max_hv > 2000) dom_calib.max_hv = 2000;
-        if (dom_calib.max_hv < 0) dom_calib.max_hv = 0;
-        printf("\r\n");
-    }
-
     /* Init # histos returned and number of HV baselines */
     dom_calib.num_histos    = doHVCal ? (GAIN_CAL_HV_CNT * iterHVGain) : 0;
-    dom_calib.num_baselines = 0;
+    dom_calib.num_baselines = doHVCal ?  GAIN_CAL_HV_CNT : 0;
     
     /* Initialize DOM state: DACs, HV setting, pulser, etc. */
     init_dom();
@@ -347,14 +335,13 @@ int main(void) {
 
     /* Write calibration record to STDOUT */
     int done = 0;
-    /* XML transmission gets slower every transmission */
-    int tx_cnt = 1;
+    int retx = 0;
     while (!done) {
 
 #ifdef DEBUG
     printf("Writing XML calibration file...\r\n");
 #endif
-        unsigned int crc = write_xml(&dom_calib, tx_cnt);
+        unsigned int crc = write_xml(&dom_calib, retx);
         printf("XML CRC32 = 0x%08x\r\n", crc);
         printf("Retransmit XML (y/n)?\r\n");
         fflush(stdout);        
@@ -362,7 +349,7 @@ int main(void) {
         printf("\r\n");
         done = ((buf[0] == 'n') || (buf[0] == 'N') ||
                 (buf[0] == '\n' && ((buf[1] == 'n') || (buf[1] == 'N'))));        
-        tx_cnt++;
+        retx++;
     }
 
     /* Reboot the DOM */

@@ -158,7 +158,7 @@ int transit_cal(calib_data *dom_calib) {
     int hv_idx, peak_idx;
     int peak_atwd;
     float le_atwd_idx, le_current_idx;
-    
+
     for (hv_idx = 0; hv_idx < TRANSIT_CAL_HV_CNT; hv_idx++) {
 
         float peak_avg = 0.0;
@@ -177,13 +177,6 @@ int transit_cal(calib_data *dom_calib) {
 
         /* Set high voltage and give it time to stabilize */
         hv = (hv_idx * TRANSIT_CAL_HV_INC) + TRANSIT_CAL_HV_LOW;      
-
-        if (hv > dom_calib->max_hv) {
-#ifdef DEBUG
-            printf("HV of %dV higher than requested maximum, skipping...\r\n", hv);
-#endif
-            continue;
-        }
 
 #ifdef DEBUG
         printf("Setting HV to %d V\r\n", hv);

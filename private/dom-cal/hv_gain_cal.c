@@ -146,20 +146,16 @@ int hv_gain_cal(calib_data *dom_calib, int iterHVGain) {
         /* Set high voltage and give it time to stabilize */
         hv = (hv_idx_r * GAIN_CAL_HV_INC) + GAIN_CAL_HV_LOW;      
 
+#ifdef DEBUG
+        printf(" Setting HV to %d V\r\n", hv);
+#endif
+
         /* Add hv setting to histogram struct */
         hv_hist_data[hv_idx].voltage = hv;
         hv_hist_data[hv_idx].bin_count = GAIN_CAL_BINS;
         hv_hist_data[hv_idx].convergent = 0;
         hv_hist_data[hv_idx].is_filled = 0;
         hv_hist_data[hv_idx].pv = 0.0;
-        hv_hist_data[hv_idx].noise_rate = 0.;
-
-        /* Check if current HV is below maximum allowed HV */
-        if (hv > dom_calib->max_hv) continue;
-
-#ifdef DEBUG
-        printf(" Setting HV to %d V\r\n", hv);
-#endif
 
         /* Set discriminator */
         /* Three different discriminator settings based on HV setting */

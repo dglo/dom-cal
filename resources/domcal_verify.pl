@@ -62,24 +62,12 @@ if ($SYSTEM eq "sps64") {
     exit(0);
 }
 
-# Command-line parsing 
-if ($#ARGV != 0) {
-    print "Usage: domcal_verify.pl <domcal dir>\n";
-    exit(0);
-}
-$dir = shift @ARGV;
-
-# Open directory
-opendir(DIR, $dir) or die "can't opendir $dir: $!";
-
 # Loop over all domcal files
 $passes = 0;
 $fails = 0;
 $doms = 0;
 
-while (defined($file = readdir(DIR))) {
-
-    $filename = "$dir/$file";
+while ($filename = shift @ARGV) {
 
     if (!open IN, $filename) {
         print STDERR "Couldn't open file $filename.  Skipping.\n";
@@ -87,8 +75,7 @@ while (defined($file = readdir(DIR))) {
     }
 
     if (!($filename =~ /domcal_([a-f0-9]+)\.xml$/)) {
-        # print STDERR "File $filename doesn't appear to be a domcal XML file.  Skipping.\n";         
-        next;
+        print STDERR "File $filename doesn't appear to be a domcal XML file.  Skipping.\n";         next;
     }
 
     $mbid = $1;
@@ -315,8 +302,6 @@ while (defined($file = readdir(DIR))) {
         print("FAIL\n");
         $fails++;
     }
-} # End file loop
-
-closedir(DIR);
+}
 
 print("SUMMARY: $doms DOMs, $passes Pass, $fails Fail\n");

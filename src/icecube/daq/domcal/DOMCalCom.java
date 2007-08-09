@@ -59,17 +59,15 @@ public class DOMCalCom extends SocketSerialCom {
 
     public String receive() throws IOException {
 
-        InputStream in = getInputStream();
-        
-        int br = in.available();
-        int nr = 0;
-        if (br > 0) {
-            byte[] out = new byte[br];
-            nr = in.read(out, 0 , br);
-            return new String(out, 0, nr);
-        }
-        else
-            return new String("");
+        int br = getInputStream().available();
+        byte[] out = new byte[br];
+        getInputStream().read(out, 0 , br);
+        return new String(out);
+    }
+
+    public BufferedReader getBufferedReader() throws IOException {
+        /* Get buffered input */
+        return new BufferedReader(new InputStreamReader(getInputStream()), 4092);
     }
 
     public void connect() throws IOException {

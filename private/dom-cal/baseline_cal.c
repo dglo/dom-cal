@@ -217,14 +217,6 @@ int hv_baseline_cal(calib_data *dom_calib) {
         /* Set high voltage and give it time to stabilize */
         hv = (hv_idx * GAIN_CAL_HV_INC) + GAIN_CAL_HV_LOW;
         
-        /* Check that we're not exceeding maximum requested HV */
-        if (hv > dom_calib->max_hv) {
-#ifdef DEBUG
-            printf("HV of %dV higher than requested maximum, skipping...\r\n", hv);
-#endif
-            continue;
-        }
-
 #ifdef DEBUG
         printf(" Setting HV to %d V\r\n", hv);
 #endif
@@ -245,7 +237,6 @@ int hv_baseline_cal(calib_data *dom_calib) {
             hv_base_data[hv_idx].atwd1_hv_baseline[ch] = baselines[hv_idx][1][ch];
         }
 
-        dom_calib->num_baselines++;
     }
 
     dom_calib->baseline_data = hv_base_data;

@@ -30,9 +30,6 @@ public class DOMCal implements Runnable {
 
     /* Timeout waiting for response, in seconds */
     public static final int TIMEOUT = 9000;
-    
-    /* Number of database access attempts */
-    public static final int DBMAX = 5;
 
     private static Logger logger = Logger.getLogger( DOMCal.class );
 
@@ -50,10 +47,13 @@ public class DOMCal implements Runnable {
     private boolean calibrate;
     private boolean calibrateHv;
     private boolean iterateHv;
-    private int maxHv;
+
+    public DOMCal( String host, int port, String outDir, boolean calibrate ) {
+        this(host, port, outDir, calibrate, false, false);
+    }
 
     public DOMCal( String host, int port, String outDir, boolean calibrate, 
-                   boolean calibrateHv, boolean iterateHv, int maxHv ) {
+                   boolean calibrateHv, boolean iterateHv ) {
         this.host = host;
         this.port = port;
         this.outDir = outDir;
@@ -63,7 +63,6 @@ public class DOMCal implements Runnable {
         this.calibrate = calibrate;
         this.calibrateHv = calibrateHv;
         this.iterateHv = iterateHv;
-        this.maxHv = maxHv;
     }
 
     public void run() {
@@ -89,30 +88,16 @@ public class DOMCal implements Runnable {
         /* Connect to domtest DB */
         Connection jdbc = null;
         if (calProps != null) {
-            int dbTries = 0;
-            while ((jdbc == null) && (dbTries < DBMAX)) {
-                try {
-                    String driver = calProps.getProperty("icecube.daq.domcal.db.driver", "com.mysql.jdbc.Driver");
-                    Class.forName(driver);
-                    String url = calProps.getProperty("icecube.daq.domcal.db.url", "jdbc:mysql://localhost/fat");
-                    String user = calProps.getProperty("icecube.daq.domcal.db.user", "dfl");
-                    String passwd = calProps.getProperty("icecube.daq.domcal.db.passwd", "(D0Mus)");
-                    jdbc = DriverManager.getConnection(url, user, passwd);
-                } catch (Exception ex) {
-                    if (dbTries < DBMAX-1) {
-                        logger.warn("Unable to establish DB connection -- waiting a bit and retrying");
-                        try {
-                            Thread.sleep( 10000 * (dbTries+1) );
-                        } catch (InterruptedException e) {
-                            logger.warn( "Wait interrupted!" );
-                        }                                        
-                    }
-                    else {
-                        logger.warn("Unable to establish DB connection -- giving up");
-                        ex.printStackTrace();                   
-                    }                
-                    dbTries++;  
-                }
+            try {
+            String driver = calProps.getProperty("icecube.daq.domcal.db.driver", "com.mysql.jdbc.Driver");
+            Class.forName(driver);
+            String url = calProps.getProperty("icecube.daq.domcal.db.url", "jdbc:mysql://localhost/fat");
+            String user = calProps.getProperty("icecube.daq.domcal.db.user", "dfl");
+            String passwd = calProps.getProperty("icecube.daq.domcal.db.passwd", "(D0Mus)");
+            jdbc = DriverManager.getConnection(url, user, passwd);
+            } catch (Exception e) {
+                e.printStackTrace();
+                logger.warn("Unable to establish DB connection!");
             }
         }
 
@@ -129,12 +114,11 @@ public class DOMCal implements Runnable {
         // Start the calibration!
         String xmlFilename = null;
         String xmlFilenameFinal = null;
-        boolean xmlFinished = false;     
-        boolean retx = false;
+        boolean xmlFinished = false;            
         if ( calibrate ) {
 
             String id = null;
-            logger.info( "Beginning DOM calibration routine" );
+            logger.debug( "Beginning DOM calibration routine" );
             try {
                 //fetch hwid
                 com.send("crlf domid type type\r");
@@ -161,23 +145,21 @@ public class DOMCal implements Runnable {
                         String sql = "select * from doms where mbid='" + id + "';";
                         ResultSet s = stmt.executeQuery(sql);
                         s.first();
-                        /* Get domid */
+                       /* Get domid */
                         String domid = s.getString("domid");
                         if (domid != null) {
                             /* Get year digit */
                             String yearStr = domid.substring(2,3);
                             int yearInt = Integer.parseInt(yearStr);
-                            
+
                             /* new toroids are in all doms produced >= 2006 */
                             if (yearInt >= 6 || domid.equals("UP5P0970")) {  //Always an exception.......
                                 toroidType = 1;
                             } else {
                                 toroidType = 0;
                             }
-                            logger.info("Toroid type for " + domid + " is " + toroidType);
+                            logger.debug("Toroid type for " + domid + " is " + toroidType);
                         }
-                        // We are finished with DB connection for now
-                        jdbc.close();                        
                     } catch (Exception e) {
                         logger.error("Error determining toroid type");
                     }
@@ -190,6 +172,7 @@ public class DOMCal implements Runnable {
                     logger.warn("Unable to determine toroid type -- assuming old");
                     toroidType = 0;
                 }
+
 
                 /* Determine if domcal is present */
                 com.send( "s\" domcal\" find if ls endif\r" );
@@ -233,8 +216,6 @@ public class DOMCal implements Runnable {
                     else {
                         com.send( "n" + "\r" );
                     }
-                    com.receive( "\r\n" );
-                    com.send( "" + maxHv + "\r");
                     
                 } else {
                     com.send( "n" + "\r" );
@@ -245,7 +226,7 @@ public class DOMCal implements Runnable {
                 return;
             }
 
-            logger.info( "Waiting for calibration to finish" );
+            logger.debug( "Waiting for calibration to finish" );
             try {
                 //Create raw output file and XML file
                 PrintWriter out = new PrintWriter(new FileWriter(outDir + "domcal_" + id + ".out", false), false);
@@ -293,13 +274,33 @@ public class DOMCal implements Runnable {
                             else if (line.indexOf("Retransmit XML (y/n)?") >= 0) {
                                 // Check CRC values
                                 if ((crc_dom == 0) || (crc.getValue() == 0) || (crc.getValue() != crc_dom)) {
-                                    retx = true;
-                                    logger.info( "WARNING! XML CRC mismatch; requesting retransmission" );
-                                    //logger.info( "DOM CRC: " + Integer.toHexString(crc_dom) );
-                                    //logger.info( "Client CRC: " + Integer.toHexString(crc.getValue()) );
+
+                                    if (retxCnt < 4) {
+                                        logger.debug( "WARNING! XML CRC mismatch; requesting retransmission" );
+                                        //logger.debug( "DOM CRC: " + Integer.toHexString(crc_dom) );
+                                        //logger.debug( "Client CRC: " + Integer.toHexString(crc.getValue()) );
+
+                                        // Close file and start over again
+                                        xml.close();
+                                        xml = new PrintWriter(new FileWriter(xmlFilename, false ), false );
+                                        inXml = false;
+                                        xmlFinished = false;   
+
+                                        // Reset the CRC value
+                                        crc.reset();
+
+                                        // Start the retransmission
+                                        com.send( "y" + "\r\n" );
+                                        retxCnt = retxCnt+1;
+                                    }
+                                    else {
+                                        logger.debug( "Too many CRC mismatches; giving up!" );
+                                        com.send( "n" + "\r\n" );
+                                        xmlFinished = false;
+                                    }
                                 }
                                 else {
-                                    logger.info( "XML CRC matched" );
+                                    logger.debug( "XML CRC matched" );
                                     com.send( "n" + "\r\n" );
                                 }              
                             }
@@ -319,39 +320,12 @@ public class DOMCal implements Runnable {
                             }
                         }
                     }
-
-                    // We need to retransmit the XML                   
-                    if (retx) {
-                        if (retxCnt < 4) {
-                            // Close file and start over again
-                            xml.close();
-                            xml = new PrintWriter(new FileWriter(xmlFilename, false ), false );
-                            inXml = false;
-                            xmlFinished = false;   
-                            
-                            // Reset the CRC value
-                            crc.reset();
-                            
-                            // Start the retransmission
-                            com.send( "y" + "\r\n" );
-                            retx = false;
-                            retxCnt = retxCnt+1;
-                        }
-                        else {
-                            logger.info( "Too many retransmission attempts; giving up!" );
-                            com.send( "n" + "\r\n" );
-                            xmlFinished = false;
-                            done = true;
-                        }
-                    }
-
                     try {
                         Thread.sleep(10);
                     } catch (InterruptedException e) {
-                        logger.info( "Calibration interrupted!" );
-                    }                    
-                } // Finish calibration loop
-
+                        logger.debug( "Calibration interrupted!" );
+                    }
+                }            
                 out.close();
                 xml.close();
 
@@ -370,80 +344,87 @@ public class DOMCal implements Runnable {
             }
         } // End calibration section
 
-        logger.info( "Calibration finished and documents saved" );
+        logger.debug( "Finished calibration" );
 
-        if (xmlFinished) {            
-            logger.info("Saving calibration data to database");
-            boolean dbDone = false;
-            int dbTries = 0;
-            while ((!dbDone) && (dbTries < DBMAX)) {
-                try {
-                    dbDone = true;
-                    CalibratorDB.save(xmlFilenameFinal, logger);
-                } catch (Exception ex) {
-                    dbDone = false;
-                    if (dbTries < DBMAX-1) {
-                        logger.warn( "Database save failed -- waiting a bit and retrying" );  
-                        try {
-                            Thread.sleep( 10000 * (dbTries+1) );
-                        } catch ( InterruptedException e ) {
-                            logger.warn( "Wait interrupted!" );
-                        }
-                    }
-                    else
-                        logger.info("Database save failed -- giving up!", ex);                        
-                    dbTries++;
-                }
-            }            
-            if (dbDone)
-                logger.info("SUCCESS");
+        logger.debug( "Documents saved" );
+
+        if (xmlFinished) {
+            logger.debug("Saving calibration data to database");
+            try {
+                CalibratorDB.save(xmlFilenameFinal, logger);
+            } catch (Exception ex) {
+                logger.debug("Failed!", ex);
+                return;
+            }
+            logger.debug("SUCCESS");
         }
         else {
-            logger.info( "XML file did not complete cleanly -- not saving to database" );
+            logger.debug( "XML file did not complete cleanly -- not saving to database" );
         }
 
     }
 
     public static void main( String[] args ) {
-        String host = "localhost";
-        int port = 5000;
-        int nPorts = 1;
-        String outDir = System.getProperty("user.dir");
-        boolean calibrateHV = false;
-        boolean iterateHV = false;
-        int maxHV = 2000;
-        if (args.length == 0) {
-            usage();
-            return;
-        }
-        for (int i = 0; i < args.length; i++) {
-
-            if (args[i].equals("-d") && i < args.length - 1) outDir = args[++i];
-            else if (args[i].equals("-p") && i < args.length - 1) port = Integer.parseInt(args[++i]);
-            else if (args[i].equals("-n") && i < args.length - 1) nPorts = Integer.parseInt(args[++i]);
-            else if (args[i].equals("-h") && i < args.length - 1) host = args[++i];
-            else if (args[i].equals("-m") && i < args.length - 1) maxHV = Integer.parseInt(args[++i]);
-
-            else if (args[i].charAt(0) == '-') {
-                for (int j = 0; j < args[i].length(); j++) {
-                    switch (args[i].charAt(j)) {
-                    case 'i': iterateHV = true; break;
-                    case 'v': calibrateHV = true; break;
-                    }
-                }
-            } else {
-                System.err.println("Invalid argument: " + args[i]);
-                usage();
-                die("Invalid command line arguments");
-            }
-        }
+        String host = null;
+        int port = -1;
+        int nPorts = -1;
+        String outDir = null;
         try {
-            for ( int i = 0; i < nPorts; i++ ) {
-                Thread t = new Thread( new DOMCal( host, port + i, outDir, true, calibrateHV, iterateHV, maxHV ), "" + ( port + i ) );
+            if ( args.length == 5 ) {
+                host = args[0];
+                port = Integer.parseInt( args[1] );
+                outDir = args[2];
+                Thread t = new Thread( new DOMCal( host, port, outDir, true ) );
                 threads.add( t );
                 t.start();
+            } else if ( args.length == 6 ) {
+                host = args[0];
+                port = Integer.parseInt( args[1] );
+                nPorts = Integer.parseInt( args[2] );
+                outDir = args[3];
+                for ( int i = 0; i < nPorts; i++ ) {
+                    Thread t = new Thread( new DOMCal( host, port + i, outDir, true ), "" + ( port + i ) );
+                    threads.add( t );
+                    t.start();
+                }
+            } else if ( args.length == 7 ) {
+                host = args[0];
+                port = Integer.parseInt( args[1] );
+                outDir = args[2];
+                Thread t = new Thread( new DOMCal( host, port, outDir, true, true, false ) );
+                threads.add( t );
+                t.start();
+            } else if ( args.length == 8 ) {
+                host = args[0];
+                port = Integer.parseInt( args[1] );
+                nPorts = Integer.parseInt( args[2] );
+                outDir = args[3];
+                for ( int i = 0; i < nPorts; i++ ) {
+                    Thread t = new Thread( new DOMCal( host, port + i, outDir, true, true, false ), "" + ( port + i ) );
+                    threads.add( t );
+                    t.start();
+                }
+            } else if ( args.length == 9 ) {
+                host = args[0];
+                port = Integer.parseInt( args[1] );
+                outDir = args[2];
+                Thread t = new Thread( new DOMCal( host, port, outDir, true, true, true ) );
+                threads.add( t );
+                t.start();
+            } else if ( args.length == 10 ) {
+                host = args[0];
+                port = Integer.parseInt( args[1] );
+                nPorts = Integer.parseInt( args[2] );
+                outDir = args[3];
+                for ( int i = 0; i < nPorts; i++ ) {
+                    Thread t = new Thread( new DOMCal( host, port + i, outDir, true, true, true), "" + ( port + i ) );
+                    threads.add( t );
+                    t.start();
+                }
+            } else {
+                usage();
+                die( "Invalid command line arguments" );
             }
-
             for ( int i = 0; i < TIMEOUT; i++ ) {
                 try {
                     Thread.sleep( 1000 );
@@ -462,7 +443,6 @@ public class DOMCal implements Runnable {
                     System.exit( 0 );
                 }
             }
-
             logger.warn( "Timeout reached." );
             System.exit( 0 );
         } catch ( Exception e ) {
@@ -473,18 +453,25 @@ public class DOMCal implements Runnable {
     }
 
     private static void usage() {
-        System.out.println( "DOMCal Usage: java icecube.daq.domcal.DOMCal\n" +
-                            "    -h [host]  default=localhost\n" +
-                            "    -p [port]  default=5000\n" +
-                            "    -n [number of ports] default=1\n" +
-                            "    -d [output directory]  default=CWD\n" +
-                            "    -m [maximum HV]  default=2000V range 0V-2000V\n" +
-                            "    -v (calibrate HV)\n" +
-                            "    -i (iterate HV)");
-
-
-
-
+        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir} calibrate dom" );
+        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir} " +
+                                                                                    "calibrate dom calibrate hv" );
+        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {output dir} " +
+                                                                                    "calibrate dom calibrate hv iterate hv" );
+        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {num ports}" +
+                                                                      "{output dir} calibrate dom" );
+        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {num ports}" +
+                                                                      "{output dir} calibrate dom calibrate hv" );
+        logger.info( "DOMCal Usage: java icecube.daq.domcal.DOMCal {host} {port} {num ports}" +
+                                                                      "{output dir} calibrate dom calibrate hv iterate hv" );
+        logger.info( "host -- hostname of domhub/terminal server to connect" );
+        logger.info( "port -- remote port to connect on 'host'" );
+        logger.info( "num ports -- number of sequential ports to connect above 'port' on 'host'" );
+        logger.info( "output dir -- local directory to store results" );
+        logger.info( "'calibrate dom' -- flag to initiate DOM calibration" );
+        logger.info( "'calibrate hv' -- flag to initiate DOM calibration -- " +
+                                                  "can only be used when calibrate dom is specified" );
+        logger.info( "'iterate hv' -- flag to iterate HV/gain calibration" );
     }
 
     private static void die( Object o ) {
