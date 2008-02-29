@@ -36,6 +36,7 @@
 #include "transit_cal.h"
 #include "discriminator_cal.h"
 #include "daq_baseline_cal.h"
+#include "delta_t_cal.h"
 
 /*---------------------------------------------------------------------------*/
 /* 
@@ -80,8 +81,8 @@ void get_date(calib_data *dom_calib) {
 
     /* Get year */
     year = month = 0;
-    while ((year < 2007) || (year > 2050)) {
-        printf("Enter year (2007-...): ");
+    while ((year < 2008) || (year > 2050)) {
+        printf("Enter year (2008-...): ");
         fflush(stdout);    
         getstr(buf);
         year = atoi(buf);
@@ -321,6 +322,7 @@ int main(void) {
      *  - transit time calibration
      *  - HV gain calibration
      *  - DAQ baseline calibration
+     *  - ATWD/FADC delta-T calibration
      */
     disc_cal(&dom_calib);
     atwd_cal(&dom_calib);
@@ -341,9 +343,11 @@ int main(void) {
 
         transit_cal(&dom_calib);
         hv_gain_cal(&dom_calib, iterHVGain);        
-        /* Must be last -- switches out FPGA design */
+        /* Switches out FPGA design */
         daq_baseline_cal(&dom_calib);
     }
+    /* Switches out FPGA design */
+    delta_t_cal(&dom_calib);
 
     /* Write calibration record to STDOUT */
     int done = 0;

@@ -13,7 +13,7 @@
 #
 # Add new calibration routines here
 #
-CALOBJS  = atwd_cal.o amp_cal.o atwd_freq_cal.o pulser_cal.o hv_gain_cal.o baseline_cal.o hv_amp_cal.o transit_cal.o fast_acq.o fadc_cal.o discriminator_cal.o daq_baseline_cal.o
+CALOBJS  = atwd_cal.o amp_cal.o atwd_freq_cal.o pulser_cal.o hv_gain_cal.o baseline_cal.o hv_amp_cal.o transit_cal.o fast_acq.o fadc_cal.o discriminator_cal.o daq_baseline_cal.o delta_t_cal.o
 
 EXOBJS = calUtils.o spefit.o lmfit.o icebootUtils.o write_xml.o
 KOBJS = ../lib/crt0.o ../lib/libkernel.a

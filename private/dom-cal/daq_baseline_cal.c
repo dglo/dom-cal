@@ -15,11 +15,9 @@
 #include "hal/DOM_MB_domapp.h"
 #include "hal/DOM_FPGA_domapp_regs.h"
 
-#include "../iceboot/fis.h"
-
-#include "zlib.h"
 #include "domcal.h"
 #include "calUtils.h"
+#include "zlib.h"
 #include "icebootUtils.h"
 #include "daq_baseline_cal.h"
 
@@ -33,37 +31,14 @@ int daq_baseline_cal(calib_data *dom_calib) {
 #ifdef DEBUG
     printf("Performing DAQ baseline calibration...\r\n");
 #endif
-
-    /*------------------------------------------------------------------*/
-    /* Find the FPGA file on the flash system */
-    unsigned long data_length;
-    char *filename = "domapp.sbi.gz";
-    void *flash_base = fisLookup(filename, &data_length);
-
-    if (flash_base==NULL) {
-        printf("ERROR: could not find %s on flash filesystem.\r\n", filename);      
-        return 1;
+    
+    /* Load the DOMApp FPGA if it's not already loaded */
+    if (is_domapp_loaded() == 0) {
+        if (load_domapp_fpga() != 0) {
+            printf("Error loading domapp FPGA... aborting DAQ baseline calibration\r\n");
+            return 1;
+        }
     }
-
-    /* Gunzip the file */
-    uLong zLen = 0;
-    Bytef *zDest = NULL;
-    gunzip(data_length, flash_base, &zLen, &zDest);
-
-    if ((zLen <= 0) || (zDest == NULL)) {
-        printf("ERROR: could not unzip FPGA file %s.\r\n", filename);
-        return 1;
-    }
-    /* Switch to DOMAPP FPGA using routine stolen from iceboot */
-    if (fpga_config((int *)zDest, zLen) != 0) {
-        printf("ERROR: FPGA switch failed!\r\n");
-        return 1;
-    }
-#ifdef DEBUG
-    printf("Successfully switched to DOMAPP FPGA.\r\n");
-#endif
-
-    halUSleep(100000);
 
     /*------------------------------------------------------------------*/
     /* The following is adapted from domapp's pedestalRun()             */

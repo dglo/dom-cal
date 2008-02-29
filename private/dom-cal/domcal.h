@@ -9,7 +9,7 @@
 
 /* Version of calibration program */
 #define MAJOR_VERSION 7
-#define MINOR_VERSION 1
+#define MINOR_VERSION 2
 #define PATCH_VERSION 0
 
 /* Default ATWD DAC settings */
@@ -111,6 +111,9 @@ typedef struct {
     value_error fadc_gain;
     value_error fadc_delta_t;
 
+    /* ATWD offset calibration */
+    value_error atwd_delta_t[2];
+
     /* FE pulser calibration */
     /* OBSOLETE as of v6.0 */
     linear_fit pulser_calib;
@@ -165,6 +168,9 @@ typedef struct {
 
     /* Number of valid transit time points */
     short transit_calib_points;
+
+    /* Which ATWD we used for the transit time calibration */
+    short transit_calib_atwd;
 
     /* Histograms */
     hv_histogram* histogram_data;

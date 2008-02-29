@@ -35,7 +35,8 @@ int transit_cal(calib_data *dom_calib) {
 
     /* Which atwd to use */
     short atwd = TRANSIT_CAL_ATWD;
-    
+    dom_calib->transit_calib_atwd = atwd;
+
     /* Which channel to record light output */
     ch = TRANSIT_CAL_CH;
 

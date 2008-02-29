@@ -1,8 +1,8 @@
 /*
  * fadc_cal.c
  *
- * FADC calibration.  Measures baseline, gain, and time offset from
- * ATWD.
+ * FADC calibration.  Measures baseline and gain (the latter
+ * by comparison with ATWD channel 0).
  *
  */
 
@@ -41,9 +41,6 @@ int fadc_cal(calib_data *dom_calib) {
     /* Average FADC waveform */
     float fadc_avg[256];
 
-    /* Average ATWD waveform */
-    float atwd_avg[128];
-
     /* Baseline data */
     float fadc_ref[FADC_CAL_REF_CNT];
     float fadc_baseline[FADC_CAL_REF_CNT];
@@ -55,9 +52,6 @@ int fadc_cal(calib_data *dom_calib) {
     /* Charges for ATWD and FADC */
     float atwd_charge;
     float fadc_charge;
-
-    /* Time offset between leading edges */
-    float delta_t[FADC_CAL_PULSER_AMP_CNT];
 
     /* Gain array */
     float *gains;
@@ -185,7 +179,6 @@ int fadc_cal(calib_data *dom_calib) {
         halWriteDAC(DOM_HAL_DAC_INTERNAL_PULSER, pulser_dac);
 
 #ifdef DEBUG
-        /* TEMP FIX ME */
         printf("Setting pulser dac to %d\r\n", pulser_dac);
 #endif
         halUSleep(DAC_SET_WAIT);        
@@ -193,8 +186,6 @@ int fadc_cal(calib_data *dom_calib) {
         /* Initialize average waveform arrays */
         for (i = 0; i < fadc_cnt; i++)
             fadc_avg[i] = 0.0;
-        for (i = 0; i < cnt; i++)
-            atwd_avg[i] = 0.0;
 
         /*--------------------------------------------------------------------*/
         /* Take a number of triggers */
@@ -282,8 +273,6 @@ int fadc_cal(calib_data *dom_calib) {
             /* Average the waveform */
             for (i = 0; i < fadc_cnt; i++) 
                 fadc_avg[i] += fadc[i] - fadc_baseline_set;
-            for (i = 0; i < cnt; i++) 
-                atwd_avg[i] += channels[0][i];
 
             /* Find and record the peak for FADC */
             float fadc_val;
@@ -342,119 +331,6 @@ int fadc_cal(calib_data *dom_calib) {
         printf("FADC gain: %g\r\n", gain_mean);
 #endif
 
-        /* Average waveform */
-        for (i = 0; i < fadc_cnt; i++) {
-            fadc_avg[i] /= (float)FADC_CAL_TRIG_CNT;
-            fadc_avg[i] *= gain_mean;
-        }
-        /* Average ATWD waveform */
-        for (i = 0; i < cnt; i++) {
-        
-            atwd_avg[i] /= (float)FADC_CAL_TRIG_CNT;
-
-            /* Using ATWD calibration data, convert to actual V */
-            if (atwd == 0) {
-                atwd_avg[i] = atwd_avg[i] * dom_calib->atwd0_gain_calib[0][i].slope
-                    + dom_calib->atwd0_gain_calib[0][i].y_intercept
-                    - baseline[atwd][0]; 
-            }
-            else {
-                atwd_avg[i] = atwd_avg[i] * dom_calib->atwd1_gain_calib[0][i].slope
-                    + dom_calib->atwd1_gain_calib[0][i].y_intercept
-                    - baseline[atwd][0];
-            }
-        
-            /* Also subtract out bias voltage */
-            atwd_avg[i] -= bias_v;
-        
-            atwd_avg[i] /= dom_calib->amplifier_calib[0].value;
-        }
-
-        /*--------------------------------------------------------------------*/
-        /* Calculate time offset using average waveforms */
-
-        float le_x[128], le_y[128];        
-        int le_cnt;
-        linear_fit le_fit;
-        float atwd_le, fadc_le;
-        atwd_le = fadc_le = 0.0;
-
-        /* Get ATWD LE time */
-        peak_idx = FADC_CAL_START_BIN;
-        peak_v = atwd_avg[FADC_CAL_START_BIN];
-        for (bin=FADC_CAL_START_BIN; bin<cnt; bin++) {
-            if (atwd_avg[bin] > peak_v) {
-                peak_v = atwd_avg[bin];
-                peak_idx = bin;
-            }
-        }
-        
-        /* Use peak and points down to 10% for LE */
-        le_cnt = 0;
-        for (bin=peak_idx; bin<cnt; bin++) {
-            le_x[le_cnt] = (cnt-bin-1)*1000.0/freq;
-            le_y[le_cnt] = atwd_avg[bin];
-            le_cnt++;
-            if (atwd_avg[bin] < 0.1*peak_v) 
-                break;
-        }
-
-        /* Fit LE */
-        if (le_cnt >= 2) {
-            linearFitFloat(le_x, le_y, le_cnt, &le_fit);
-            atwd_le = -le_fit.y_intercept / le_fit.slope;                    
-        }
-        else {
-#ifdef DEBUG
-            printf("WARNING: too few points to fit ATWD leading edge!\n");
-#endif
-            /* Approximate leading edge */
-            atwd_le = le_x[le_cnt-1];
-        }
-
-        /* This could have a significant systematic offset */
-        /* The FADC LE is extremely poor */
-        /* Get FADC LE time */
-        peak_idx = 0;
-        peak_v = fadc_avg[0];
-        for (bin=0; bin<FADC_CAL_STOP_SAMPLE; bin++) {
-            if (fadc_avg[bin] > peak_v) {
-                peak_v = fadc_avg[bin];
-                peak_idx = bin;
-            }
-        }
-        
-        /* Use peak and points down to 10% for LE */
-        le_cnt = 0;
-        for (bin=peak_idx; bin>=0; bin--) {
-            le_x[le_cnt] = bin*1000.0/fadc_freq;
-            le_y[le_cnt] = fadc_avg[bin];
-            le_cnt++;
-            if (fadc_avg[bin] < 0.1*peak_v) 
-                break;
-        }
-
-        /* Fit LE */
-        if (le_cnt >= 2) {
-            linearFitFloat(le_x, le_y, le_cnt, &le_fit);
-            fadc_le = -le_fit.y_intercept / le_fit.slope;                    
-        }
-        else {
-#ifdef DEBUG
-            printf("WARNING: too few points to fit FADC leading edge!\n");
-#endif
-            /* Approximate leading edge */
-            fadc_le = le_x[le_cnt-1];
-        }
-        
-        /* Now compute offset assuming LE are in same position */
-        delta_t[pulser_cnt] = atwd_le - fadc_le;
-
-#ifdef DEBUG
-        /* TEMP FIX ME */
-        printf("Offset between ATWD and FADC leading edges: %.1f ns\r\n", delta_t[pulser_cnt]);
-#endif
-
     } /* End pulser amplitude loop */
 
     /* Calculate average gain over all pulser settings */
@@ -462,12 +338,6 @@ int fadc_cal(calib_data *dom_calib) {
                  &gain_mean, &gain_var);
     dom_calib->fadc_gain.value = gain_mean;
     dom_calib->fadc_gain.error = sqrt(gain_var / (FADC_CAL_TRIG_CNT*FADC_CAL_PULSER_AMP_CNT));
-    
-    /* Calculate delta_t average over all pulser settings */
-    float delta_t_mean, delta_t_var;
-    meanVarFloat(delta_t, FADC_CAL_PULSER_AMP_CNT, &delta_t_mean, &delta_t_var);
-    dom_calib->fadc_delta_t.value = delta_t_mean;
-    dom_calib->fadc_delta_t.error = sqrt(delta_t_var / FADC_CAL_PULSER_AMP_CNT);
 
     /*--------------------------------------------------------------------*/
     /* Turn off the pulser */
