@@ -12,12 +12,66 @@
 #include "hal/DOM_MB_hal.h"
 #include "hal/DOM_MB_fpga.h"
 
+
+#include "../iceboot/fis.h"
 #include "icebootUtils.h"
+
+static int domapp_loaded = 0;
+
+/******************************************************************************/
+/* 
+ * Return status of whether we have switched to the domapp FPGA
+ *    0 = not loaded, 1 = loaded
+ */
+int is_domapp_loaded(void) { return domapp_loaded;}
 
 /******************************************************************************/
 /*
+ * Load the domapp FPGA, replacing the STF FPGA used by default in iceboot
+ * Returns 0 for success, nonzero for failure.
+ */
+int load_domapp_fpga(void) {
+
+    /*------------------------------------------------------------------*/
+    /* Find the FPGA file on the flash system */
+    unsigned long data_length;
+    char *filename = "domapp.sbi.gz";
+    void *flash_base = fisLookup(filename, &data_length);
+
+    if (flash_base==NULL) {
+        printf("ERROR: could not find %s on flash filesystem.\r\n", filename);      
+        return 1;
+    }
+
+    /* Gunzip the file */
+    uLong zLen = 0;
+    Bytef *zDest = NULL;
+    gunzip(data_length, flash_base, &zLen, &zDest);
+
+    if ((zLen <= 0) || (zDest == NULL)) {
+        printf("ERROR: could not unzip FPGA file %s.\r\n", filename);
+        return 1;
+    }
+    /* Switch to DOMAPP FPGA using routine stolen from iceboot */
+    if (fpga_config((int *)zDest, zLen) != 0) {
+        printf("ERROR: FPGA switch failed!\r\n");
+        return 1;
+    }
+#ifdef DEBUG
+    printf("Successfully switched to DOMAPP FPGA.\r\n");
+#endif
+
+    halUSleep(100000);
+
+    /* Set static flag that we've switched FPGAs */
+    domapp_loaded = 1;
+
+    return 0;
+}
+/******************************************************************************/
+/*
  * fpga_config code stolen from iceboot -- currently impossible to 
- * link in without restructing iceboot code
+ * link in without restructuring iceboot code
  *
  * returns: 0 ok, non-zero error...
  */
@@ -132,6 +186,7 @@ int fpga_config(int *p, int nbytes) {
      * the hal -- however, we don't want anyone else except
      * iceboot reloading the fpga probably...
      */
+    /* HAHA!  I like that last comment! */
     {  
         unsigned long long domid = halGetBoardIDRaw();
         unsigned base = 

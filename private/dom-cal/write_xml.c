@@ -110,6 +110,17 @@ unsigned int write_xml(calib_data *dom_calib, int retx) {
     sprintf(linebuf, "  </fadc_delta_t>\r\n");
     crc_printstr(&crc, linebuf);
 
+    /* ATWD time offset calibration */
+    for (atwd = 0; atwd < 2; atwd++) {
+        sprintf(linebuf, "  <atwd_delta_t id=\"%d\">\r\n", atwd);
+        crc_printstr(&crc, linebuf);
+        sprintf(linebuf, "    <delta_t error=\"%g\">%g</delta_t>\r\n", dom_calib->atwd_delta_t[atwd].error, 
+                dom_calib->atwd_delta_t[atwd].value);
+        crc_printstr(&crc, linebuf);
+        sprintf(linebuf, "  </atwd_delta_t>\r\n");
+        crc_printstr(&crc, linebuf);
+    }
+
     /* ATWD channel gain calibration */
     for ( ch = 0; ch < 3; ch++) {
         sprintf(linebuf, "  <amplifier channel=\"%d\">\r\n", ch);
