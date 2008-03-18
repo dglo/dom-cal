@@ -201,6 +201,8 @@ void init_dom(void) {
 
     halWriteDAC(DOM_HAL_DAC_FAST_ADC_REF, FAST_ADC_REF);
 
+    halWriteDAC(DOM_HAL_DAC_MUX_BIAS, MUX_BIAS_DAC);   
+
     /* Make sure pulser is off */
     hal_FPGA_TEST_disable_pulser();
 
@@ -308,6 +310,11 @@ int main(void) {
     
     /* Record DOM state, etc. */
     record_state(&dom_calib);
+
+#ifdef DEBUG
+    printf("Starting calibration: (v%d.%d.%d)\r\n", 
+           MAJOR_VERSION, MINOR_VERSION, PATCH_VERSION);
+#endif
 
     /* Calibration modules:
      *  - discriminator calibration

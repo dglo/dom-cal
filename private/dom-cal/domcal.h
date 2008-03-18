@@ -10,7 +10,7 @@
 /* Version of calibration program */
 #define MAJOR_VERSION 7
 #define MINOR_VERSION 2
-#define PATCH_VERSION 0
+#define PATCH_VERSION 1
 
 /* Default ATWD DAC settings */
 #ifdef DOMCAL_REV5
@@ -20,6 +20,7 @@
 #define ATWD_ANALOG_REF_DAC     2250
 #define ATWD_PEDESTAL_DAC       2130
 #define FAST_ADC_REF             800
+#define MUX_BIAS_DAC            1023
 #else
 #define ATWD_SAMPLING_SPEED_DAC 850
 #define ATWD_RAMP_TOP_DAC       2097
@@ -27,6 +28,7 @@
 #define ATWD_ANALOG_REF_DAC     2048
 #define ATWD_PEDESTAL_DAC       1925
 #define FAST_ADC_REF            800
+#define MUX_BIAS_DAC            1023
 #endif
 
 /* Oscillator frequency into ATWD channel 3, mux input 0, in MHz */
