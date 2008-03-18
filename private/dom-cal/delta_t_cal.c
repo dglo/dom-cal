@@ -117,6 +117,7 @@ int delta_t_cal(calib_data *dom_calib) {
 
     int pulser_loop = 0;
     int pulser_idx = 0;
+    int pulser_good_cnt = 0;
     while (pulser_idx < DELTA_T_PULSER_AMP_CNT) {
 
         /* Reset and zero the LBM */
@@ -288,6 +289,7 @@ int delta_t_cal(calib_data *dom_calib) {
             linear_fit le_fit;
             float atwd_le[2], fadc_le;
             atwd_le[0] = atwd_le[1] = fadc_le = 0.0;
+            int bad = 0;
             
             /* Get ATWD LE time */
             int peak_idx;
@@ -319,10 +321,9 @@ int delta_t_cal(calib_data *dom_calib) {
                 }
                 else {
 #ifdef DEBUG
-                    printf("WARNING: too few points to fit ATWD%d leading edge!\n", a);
+                    printf("WARNING: too few points to fit ATWD%d leading edge, discarding!\r\n", a);
 #endif
-                    /* Approximate leading edge */
-                    atwd_le[a] = le_x[le_cnt-1];
+                    bad = 1;
                 }
             }
             
@@ -355,23 +356,25 @@ int delta_t_cal(calib_data *dom_calib) {
             }
             else {
 #ifdef DEBUG
-                printf("WARNING: too few points to fit FADC leading edge!\n");
+                printf("WARNING: too few points to fit FADC leading edge, discarding!\r\n");
 #endif
-                /* Approximate leading edge */
-                fadc_le = le_x[le_cnt-1];
+                bad = 1;
             }
             
-            /* Now compute offset assuming LE are in same position */    
-            fadc_delta_t[pulser_idx] = atwd_le[atwd] - fadc_le;
-            atwd_delta_t[pulser_idx] = atwd_le[atwd] - atwd_le[atwd2];            
+            /* Now compute offset assuming LE are in same position */
+            if (!bad) {
+                fadc_delta_t[pulser_good_cnt] = atwd_le[atwd] - fadc_le;
+                atwd_delta_t[pulser_good_cnt] = atwd_le[atwd] - atwd_le[atwd2];            
 
 #ifdef DEBUG
-            /* TEMP FIX ME */
-            printf("Offset between ATWD%d and FADC leading edges: %.1f ns\r\n", 
-                   atwd, fadc_delta_t[pulser_idx]);
-            printf("Offset between ATWD%d and ATWD%d leading edges: %.1f ns\r\n", 
-                   atwd, atwd2, atwd_delta_t[pulser_idx]);
+                /* TEMP FIX ME */
+                printf("Offset between ATWD%d and FADC leading edges: %.1f ns\r\n", 
+                       atwd, fadc_delta_t[pulser_good_cnt]);
+                printf("Offset between ATWD%d and ATWD%d leading edges: %.1f ns\r\n", 
+                       atwd, atwd2, atwd_delta_t[pulser_good_cnt]);
 #endif   
+                pulser_good_cnt++;
+            }
         }
 
         /* Increment to pulser loop */
@@ -385,15 +388,30 @@ int delta_t_cal(calib_data *dom_calib) {
     /*------------------------------------------------------------------*/
     /* Calculate mean / error and save calibration results */
     
+    /* Check that we had good results */
+    if (pulser_good_cnt == 0) {
+        dom_calib->fadc_delta_t.value = 0;
+        dom_calib->fadc_delta_t.error = 0;
+
+        dom_calib->atwd_delta_t[atwd].value = 0;
+        dom_calib->atwd_delta_t[atwd].error = 0;
+
+        dom_calib->atwd_delta_t[atwd2].value = 0;
+        dom_calib->atwd_delta_t[atwd2].error = 0;
+
+        printf("ERROR: no good delta_t points -- all offsets set at zero!!!\r\n");
+        return -1;
+    }
+
     /* Calculate FADC delta_t average over all pulser settings */
     float fadc_delta_t_mean, fadc_delta_t_var;
-    meanVarFloat(fadc_delta_t, DELTA_T_PULSER_AMP_CNT, &fadc_delta_t_mean, &fadc_delta_t_var);
+    meanVarFloat(fadc_delta_t, pulser_good_cnt, &fadc_delta_t_mean, &fadc_delta_t_var);
     dom_calib->fadc_delta_t.value = fadc_delta_t_mean;
-    dom_calib->fadc_delta_t.error = sqrt(fadc_delta_t_var / DELTA_T_PULSER_AMP_CNT);
+    dom_calib->fadc_delta_t.error = sqrt(fadc_delta_t_var / pulser_good_cnt);
 
     /* Calculate ATWD2 delta_t average over all pulser settings */
     float atwd_delta_t_mean, atwd_delta_t_var;
-    meanVarFloat(atwd_delta_t, DELTA_T_PULSER_AMP_CNT, &atwd_delta_t_mean, &atwd_delta_t_var);
+    meanVarFloat(atwd_delta_t, pulser_good_cnt, &atwd_delta_t_mean, &atwd_delta_t_var);
 
     /* Sign of correction depends on whether we used same ATWD as transit time calibration */
     /* Goal is just to allow users to add transit time number with this delta, without */
@@ -403,19 +421,19 @@ int delta_t_cal(calib_data *dom_calib) {
         dom_calib->atwd_delta_t[atwd].error = 0;
 
         dom_calib->atwd_delta_t[atwd2].value = atwd_delta_t_mean;
-        dom_calib->atwd_delta_t[atwd2].error = sqrt(atwd_delta_t_var / DELTA_T_PULSER_AMP_CNT);
+        dom_calib->atwd_delta_t[atwd2].error = sqrt(atwd_delta_t_var / pulser_good_cnt);
     }
     else {
         dom_calib->atwd_delta_t[atwd2].value = 0;
         dom_calib->atwd_delta_t[atwd2].error = 0;
 
         dom_calib->atwd_delta_t[atwd].value = -atwd_delta_t_mean;
-        dom_calib->atwd_delta_t[atwd].error = sqrt(atwd_delta_t_var / DELTA_T_PULSER_AMP_CNT);
+        dom_calib->atwd_delta_t[atwd].error = sqrt(atwd_delta_t_var / pulser_good_cnt);
     }
 
 #ifdef DEBUG
     printf("Mean ATWD%d offset: %.2f +/- %.2f ns\r\n", atwd2, atwd_delta_t_mean, 
-           sqrt(atwd_delta_t_var / DELTA_T_PULSER_AMP_CNT));
+           sqrt(atwd_delta_t_var / pulser_good_cnt));
 #endif
 
     /*
