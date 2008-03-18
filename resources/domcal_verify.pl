@@ -21,6 +21,10 @@ $LIMIT_TT_HIGH = 149.4;
 @LIMIT_AMP_LOW = (-19.75, -2.2, -0.26);
 @LIMIT_AMP_HIGH = (-14.3, -1.5, -0.13);
 
+# Delta_T limits (ATWD0, ATWD1, FADC)
+@LIMIT_DELTAT_LOW = (0.0, -8.0, -110.0);
+@LIMIT_DELTAT_HIGH = (0.0, 8.0, -70.0);
+
 # Minimum Valid Points for TT, HV Calibration
 $MIN_HV_PTS = 4;
 $MIN_TT_PTS = 4;
@@ -113,6 +117,11 @@ while (defined($file = readdir(DIR))) {
     $ampfound = 0;
     $ampchannel = 0;
     @ampgain = (0.0, 0.0, 0.0);
+    $fadc_delta_t_found = 0;
+    $atwd = 0;
+    $atwd_delta_t_found = 0;
+    $fadc_delta_t = 0;
+    @atwd_delta_t = (0,0);
 
     while ($line = <IN>) {
         if ($line =~ /<pmtTransitTime num_pts="(\d+)"/) {
@@ -181,6 +190,25 @@ while (defined($file = readdir(DIR))) {
                 $r2scan = 1;
                 $r2 = $1;
             }
+        }
+        elsif ($line =~ /<fadc_delta_t>/) {
+            $fadc_delta_t_found = 1;
+        }
+        elsif ($line =~ /<\/fadc_delta_t>/) {
+            $fadc_delta_t_found = 0;
+        }
+        elsif ($line =~ /<atwd_delta_t id="([01])">/) {
+            $atwd_delta_t_found = 1;
+            $atwd = int($1);
+        }
+        elsif ($line =~ /<\/atwd_delta_t>/) {
+            $atwd_delta_t_found = 0;
+        }
+        elsif (($fadc_delta_t_found) && ($line =~ /([-.0-9eE]+)<\/delta_t>/)) {
+            $fadc_delta_t = $1;
+        }
+        elsif (($atwd_delta_t_found) && ($line =~ /([-.0-9eE]+)<\/delta_t>/)) {
+            $atwd_delta_t[$atwd] = $1;
         }
     }
 
@@ -299,6 +327,16 @@ while (defined($file = readdir(DIR))) {
             $CAL_BAD = 1;
             print("DOM $mbid ($location $name) amplifier gain channel $chan out of range: $ampgain[$chan]\n");
         }
+    }
+    for ($atwd = 0; $atwd < 2; $atwd++) {
+        if (($atwd_delta_t[$atwd] < $LIMIT_DELTAT_LOW[$atwd]) || ($atwd_delta_t[$atwd] > $LIMIT_DELTAT_HIGH[$atwd])) {
+            $CAL_BAD = 1;
+            print("DOM $mbid ($location $name) ATWD $atwd deltaT out of range: $atwd_delta_t[$atwd]\n");
+        }
+    }
+    if (($fadc_delta_t < $LIMIT_DELTAT_LOW[2]) || ($fadc_delta_t > $LIMIT_DELTAT_HIGH[3])) {
+        $CAL_BAD = 1;
+        print("DOM $mbid ($location $name) FADC deltaT out of range: $fadc_delta_t\n");
     }
     $modhv = int($v_10_7+0.5);
     $modtt = int($tt_10_7+0.5);
