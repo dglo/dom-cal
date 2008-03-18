@@ -12,10 +12,10 @@
 /* Note high sampling speed! */
 #ifdef DOMCAL_REV5
 #define TRANSIT_CAL_PEDESTAL_DAC   2130
-#define TRANSIT_CAL_SAMPLING_DAC   2100
+#define TRANSIT_CAL_SAMPLING_DAC   2000
 #else
 #define TRANSIT_CAL_PEDESTAL_DAC   1925
-#define TRANSIT_CAL_SAMPLING_DAC   2100
+#define TRANSIT_CAL_SAMPLING_DAC   2000
 #endif
 
 /* Which ATWD to use */
@@ -40,7 +40,7 @@
 #define TRANSIT_CAL_TRIG_CNT        250
 
 /* Trigger delay for ATWDs */
-#define TRANSIT_CAL_LAUNCH_DELAY      4
+#define TRANSIT_CAL_LAUNCH_DELAY      5
 
 /* Crossing point to define transit time */
 /* As fraction of peak value */

@@ -64,7 +64,7 @@ int transit_cal(calib_data *dom_calib) {
     short origBiasDAC = halReadDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL);
     short origSampDAC = halReadDAC((atwd == 0) ? DOM_HAL_DAC_ATWD0_TRIGGER_BIAS : 
                                    DOM_HAL_DAC_ATWD1_TRIGGER_BIAS);
-
+    
     /* Set discriminator and bias level */
     halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, TRANSIT_CAL_PEDESTAL_DAC);   
     halWriteDAC((atwd == 0) ? DOM_HAL_DAC_ATWD0_TRIGGER_BIAS : 
@@ -142,7 +142,7 @@ int transit_cal(calib_data *dom_calib) {
                                   cnt, NULL, 0, trigger_mask);
         }
 
-        for(bin = 0; bin<cnt; bin++)
+        for(bin = 0; bin<cnt; bin++) 
             pedestal[bin] += (float)channels[3][bin];
         
     }
@@ -329,7 +329,11 @@ int transit_cal(calib_data *dom_calib) {
             }
             peak_v -= baseline[atwd][ch];
             peak_v -= bias_v;
-            
+
+            /* DEBUG FIX ME */
+            if (trig == 10)
+                printf("DEBUG sample ch0 waveform\r\n");
+
             for (bin=0; bin<cnt; bin++) {
                 
                 /* Use calibration to convert to V */
@@ -347,7 +351,11 @@ int transit_cal(calib_data *dom_calib) {
                     bin_v -= baseline[1][ch];
                     bin_v -= bias_v;
                 }
-                
+
+                /* DEBUG FIX ME */
+                if (trig == 10)
+                    printf("%d %d %g\r\n", bin, channels[ch][bin], bin_v);
+
                 if (bin_v < peak_v) {
                     peak_idx = bin;
                     peak_v = bin_v;
@@ -440,10 +448,11 @@ int transit_cal(calib_data *dom_calib) {
                         
             /* Find the peak and leading edge in the current waveform */
             /* Note polarity of pedestal subtraction to keep peak a minimum like in ATWD */
-            /* Also -- baseline is off, use first few samples as an average */
-            float ch3_baseline = (float)((pedestal[0] - channels[3][0]) +
-                                         (pedestal[1] - channels[3][1]) +
-                                         (pedestal[2] - channels[3][2])) / 3.0;
+            /* Also -- baseline is off, use last few samples as an average */
+            float ch3_baseline = (float)((pedestal[124] - channels[3][124]) +
+                                         (pedestal[125] - channels[3][125]) +
+                                         (pedestal[126] - channels[3][126]) +
+                                         (pedestal[127] - channels[3][127])) / 4.0;
             peak_v = pedestal[0] - channels[3][0] - ch3_baseline;
             peak_idx = 0;
             for (bin=0; bin<cnt; bin++) {
@@ -453,6 +462,11 @@ int transit_cal(calib_data *dom_calib) {
                     peak_idx = bin;
                     peak_v = bin_v;
                 }
+
+                /* DEBUG FIX ME */
+                if (trig == 10)
+                    printf("%d %d %g\r\n", bin, channels[3][bin], bin_v);
+
             }           
             
             /* Calculate peak average, for kicks */
@@ -463,6 +477,7 @@ int transit_cal(calib_data *dom_calib) {
             /* Also, 50% point is independent of current pulse amplitude to 0.2 ns or so */
             float last_bin_v = peak_v;
             le_current_idx = 0.0;
+
             for (bin=peak_idx; bin<cnt; bin++) {
                 bin_v = pedestal[bin] - channels[3][bin] - ch3_baseline;
                 
@@ -477,7 +492,10 @@ int transit_cal(calib_data *dom_calib) {
             
             /* Save transit time in ns = samples * 1000 / freq in MHz */
             transits[trig] = (le_current_idx - le_atwd_idx) * 1.0E3 / freq;
-            
+
+            /* DEBUG FIX ME */
+            if (trig == 10)
+                printf("peak idx %d peak_v %g le_atwd_idx %g le_current_idx %g\r\n", peak_idx, peak_v, le_atwd_idx, le_current_idx);            
             
         } /* End trigger loop */
         

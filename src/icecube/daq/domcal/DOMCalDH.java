@@ -186,8 +186,7 @@ public class DOMCalDH {
                         props.getProperty("icecube.domcal.outputDirectory", "."),
                         afecal,
                         pmtcal,
-                        itercal,
-                        2000
+                        itercal
                 ) );
                 // Getting odd behavior from DOMHub - try delay 1.0 sec.
                 Thread.sleep(1000L);
