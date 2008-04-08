@@ -4,9 +4,9 @@
 
 /* HV settings for gain calibration (in V) */
 /* Starting value, amount to increment, and number of settings */
-#define TRANSIT_CAL_HV_LOW        1100
+#define TRANSIT_CAL_HV_LOW        1000
 #define TRANSIT_CAL_HV_INC         100
-#define TRANSIT_CAL_HV_CNT           9
+#define TRANSIT_CAL_HV_CNT          10
 
 /* Specific DAC values for this test */
 /* Note high sampling speed! */

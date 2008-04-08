@@ -330,9 +330,8 @@ int transit_cal(calib_data *dom_calib) {
             peak_v -= baseline[atwd][ch];
             peak_v -= bias_v;
 
-            /* DEBUG FIX ME */
-            if (trig == 10)
-                printf("DEBUG sample ch0 waveform\r\n");
+            /* if (trig == 10)
+               printf("DEBUG sample ch0 waveform\r\n"); */
 
             for (bin=0; bin<cnt; bin++) {
                 
@@ -352,9 +351,8 @@ int transit_cal(calib_data *dom_calib) {
                     bin_v -= bias_v;
                 }
 
-                /* DEBUG FIX ME */
-                if (trig == 10)
-                    printf("%d %d %g\r\n", bin, channels[ch][bin], bin_v);
+                /* if (trig == 10)
+                   printf("%d %d %g\r\n", bin, channels[ch][bin], bin_v); */
 
                 if (bin_v < peak_v) {
                     peak_idx = bin;
@@ -462,10 +460,9 @@ int transit_cal(calib_data *dom_calib) {
                     peak_idx = bin;
                     peak_v = bin_v;
                 }
-
-                /* DEBUG FIX ME */
-                if (trig == 10)
-                    printf("%d %d %g\r\n", bin, channels[3][bin], bin_v);
+                
+                /* if (trig == 10)
+                   printf("%d %d %g\r\n", bin, channels[3][bin], bin_v); */
 
             }           
             
@@ -493,9 +490,10 @@ int transit_cal(calib_data *dom_calib) {
             /* Save transit time in ns = samples * 1000 / freq in MHz */
             transits[trig] = (le_current_idx - le_atwd_idx) * 1.0E3 / freq;
 
-            /* DEBUG FIX ME */
+            /* 
             if (trig == 10)
-                printf("peak idx %d peak_v %g le_atwd_idx %g le_current_idx %g\r\n", peak_idx, peak_v, le_atwd_idx, le_current_idx);            
+            printf("peak idx %d peak_v %g le_atwd_idx %g le_current_idx %g\r\n", 
+            peak_idx, peak_v, le_atwd_idx, le_current_idx);            */
             
         } /* End trigger loop */
         

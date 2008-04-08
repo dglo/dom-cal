@@ -255,10 +255,6 @@ public class DOMCal implements Runnable {
                 boolean done = false;
                 boolean inXml = false;
                 String termDat = "";
-                int retxCnt = 0;
-                // CRC check for XML data 
-                CRC32_IEEE crc = new CRC32_IEEE();
-                int crc_dom = 0;
                 while (!done) {
                     termDat += com.receive();
                     int lineIdx = termDat.lastIndexOf("\n");
@@ -269,90 +265,31 @@ public class DOMCal implements Runnable {
                         while (lineChunk.length() > 0) {                            
                             String line = lineChunk.substring(0, lineChunk.indexOf("\n")+1);
                             lineChunk = lineChunk.substring(lineChunk.indexOf("\n")+1);
-
-                            // Stop printing XML file after seeing closing tag
-                            inXml = inXml && !xmlFinished;
-
-                            // XML starting tag
-                            if (line.indexOf("<domcal") >= 0) {
-                                inXml = true;
-                            }
-                            // XML closing tag
-                            else if (line.indexOf("</domcal>") >= 0) {
-                                xmlFinished = true;
-                            }
-                            // DOM reporting XML CRC value
-                            else if (line.indexOf("XML CRC32") >= 0) {
-                                int hexIdx = line.indexOf("0x")+2;
-                                long temp;
-                                // String parsing of large int hex values is buggy
-                                temp = Long.parseLong(line.substring(hexIdx, hexIdx+8), 16); 
-                                crc_dom = (int)temp;
-                            }
-                            // DOM asking if we want a retx
-                            else if (line.indexOf("Retransmit XML (y/n)?") >= 0) {
-                                // Check CRC values
-                                if ((crc_dom == 0) || (crc.getValue() == 0) || (crc.getValue() != crc_dom)) {
-                                    retx = true;
-                                    logger.info( "WARNING! XML CRC mismatch; requesting retransmission" );
-                                    //logger.info( "DOM CRC: " + Integer.toHexString(crc_dom) );
-                                    //logger.info( "Client CRC: " + Integer.toHexString(crc.getValue()) );
-                                }
-                                else {
-                                    logger.info( "XML CRC matched" );
-                                    com.send( "n" + "\r\n" );
-                                }              
-                            }
-                            // DOM is finished and is rebooting
-                            else if (line.indexOf("Rebooting") >= 0) {
+                            
+                            if (line.indexOf("Send compressed XML (y/n)?") >= 0) {
+                                logger.info( "Starting XML transmission" );
                                 done = true;
                             }
-                            // Print to XML file or log file
-                            if (inXml) {
-                                xml.print(line);
-                                xml.flush();
-                                crc.update(line.getBytes());
-                            }
-                            else {
-                                out.print(line);
-                                out.flush();
-                            }
+                            out.print(line);
+                            out.flush();
                         }
                     }
-
-                    // We need to retransmit the XML                   
-                    if (retx) {
-                        if (retxCnt < 4) {
-                            // Close file and start over again
-                            xml.close();
-                            xml = new PrintWriter(new FileWriter(xmlFilename, false ), false );
-                            inXml = false;
-                            xmlFinished = false;   
-                            
-                            // Reset the CRC value
-                            crc.reset();
-                            
-                            // Start the retransmission
-                            com.send( "y" + "\r\n" );
-                            retx = false;
-                            retxCnt = retxCnt+1;
-                        }
-                        else {
-                            logger.info( "Too many retransmission attempts; giving up!" );
-                            com.send( "n" + "\r\n" );
-                            xmlFinished = false;
-                            done = true;
-                        }
-                    }
-
-                    try {
-                        Thread.sleep(10);
-                    } catch (InterruptedException e) {
-                        logger.info( "Calibration interrupted!" );
-                    }                    
-                } // Finish calibration loop
-
+                } // Calibration finished
                 out.close();
+
+                // Read the zlib-compressed XML                
+                try {
+                    com.send( "y" + "\r" );
+                    com.receive("\r\n");
+                    String xmlData = new String(com.zreceive());
+                    xml.print(xmlData);
+                    // Check for completion (closing XML tag)
+                    xmlFinished = xmlData.endsWith("</domcal>\r\n");
+                } catch ( IOException e ) {
+                    logger.error( "IO Error reading XML data from DOM" );
+                    die( e );
+                    return;
+                }
                 xml.close();
 
                 // Rename output file indicating XML file is ready
