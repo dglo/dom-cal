@@ -154,6 +154,11 @@ while (defined($file = readdir(DIR))) {
             elsif ($line =~ /<\/amplifier>/) {
                 $ampfound = 0;
             }
+	    elsif ($line =~ /<baseline voltage="(\d+)"/) {
+		if ($1 > 0) {
+		    $hvattempt++;
+		}
+	    }
             elsif ($line =~ /<histo voltage="(\d+)" convergent="([0-9a-z]+)" pv="([-0-9.]+)" noiseRate="([-0-9.]+)"/) {
                 if ($2 eq "1") {
                     $hv_numpts++;
@@ -218,7 +223,7 @@ while (defined($file = readdir(DIR))) {
         }
 
         # Calculate 10**7 HV, TT
-        if ($hv_numpts >= 2) {
+        if (($hv_numpts >= 2) && ($hv_slope != 0)) {
             $v_10_7 = (10**(7-$hv_intercept))**(1/$hv_slope);
             $tt_10_7 = ($tt_slope / sqrt($v_10_7)) + $tt_intercept;
         } else {
@@ -270,7 +275,6 @@ while (defined($file = readdir(DIR))) {
 
 
         # Calculate previous 10**7 HV
-        my $hv_old;
         if ($slope eq 0.0 || $intercept eq 0.0) {
             $hv_old = 0.0;
         } else {
@@ -278,7 +282,6 @@ while (defined($file = readdir(DIR))) {
         }
         
         # Calculate change in gain, HV
-        my $delta_g, $delta_hv;
         if ($slope eq 0.0 || $hv_numpts < 2 || $hv_old == 0.) {
             $delta_g = 0.0;
             $delta_hv = 0.0;
