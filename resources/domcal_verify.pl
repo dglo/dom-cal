@@ -254,9 +254,9 @@ while (defined($file = readdir(DIR))) {
     $dbh->disconnect();
 
     if (!$incomplete) {
-        if ($slope eq 0.0) {
+        if (($slope eq 0.0) || ($intercept eq 0.0)) {
             print("No historic DOM-Cal record found for DOM $mbid ($location $name) in database!\n");
-            if ($hv_slope != 0.0) {
+            if (($hv_slope != 0.0) && ($hv_intercept != 0.0)) {
                 print("Setting the current calibration as historic for DOM $mbid ($location $name) in database!\n");
                 $dbh = DBI->connect("dbi:mysql:$DB:$DB_HOST","tester", "SouthPoleUser");
                 $stmt = "update domtune set historic_gain_slope=\"$hv_slope\" where mbid=\"$mbid\"";
@@ -264,6 +264,8 @@ while (defined($file = readdir(DIR))) {
                 $myt=$dbh->prepare($stmt);
                 $myt->execute();
                 $myt->finish();
+                $stmt = "update domtune set historic_gain_intercept=\"$hv_intercept\" where mbid=\"$mbid\"";
+                print("$stmt\n");
                 $myt=$dbh->prepare($stmt);
                 $myt->execute();
                 $myt->finish();
@@ -271,8 +273,10 @@ while (defined($file = readdir(DIR))) {
                 $intercept = $hv_intercept;
                 $dbh->disconnect();
             } 
+            else {
+                print("HV calibration was not successful: not updating DB (still no historic value)\n");
+            }
         }
-
 
         # Calculate previous 10**7 HV
         if ($slope eq 0.0 || $intercept eq 0.0) {
