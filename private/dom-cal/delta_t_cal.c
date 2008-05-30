@@ -28,7 +28,7 @@ int delta_t_cal(calib_data *dom_calib) {
     int fadc_cnt = 256;
 
     int ch, bin;
-    int npeds;
+    int npeds, n_atwd[2];
     
     /* Which atwd to use for time reference */
     /* For a consistent calibration, this has to match transit time calibration ATWD */
@@ -159,7 +159,7 @@ int delta_t_cal(calib_data *dom_calib) {
         hal_FPGA_DOMAPP_lc_mode(HAL_FPGA_DOMAPP_LC_MODE_OFF);
         
         int didMissedTrigWarning   = 0;
-        npeds                      = 0;
+        npeds = n_atwd[0] = n_atwd[1] = 0;
         int numMissedTriggers = 0;
         
         /* Discard first couple of triggers */
@@ -215,25 +215,36 @@ int delta_t_cal(calib_data *dom_calib) {
                 /* Count the waveforms into the running sums */
                 ch = 0;
                 float val;
+                
+                /* Figure out which ATWD we triggered from the header */
+                /* We are ping-ponging!                               */
+                a = e[10] & 0x1;
+
                 for(bin=0; bin<cnt; bin++) {
                     val = (float)(atwd_data[cnt*ch + bin] & 0x3FF);
                     
                     /* Using ATWD calibration data, convert to V */
                     if (pulser_loop == 0) {
-                        ch0_baseline_wf[0][bin] += val * dom_calib->atwd0_gain_calib[ch][bin].slope
-                            + dom_calib->atwd0_gain_calib[ch][bin].y_intercept - bias_v;
-                        
-                        ch0_baseline_wf[1][bin] += val * dom_calib->atwd1_gain_calib[ch][bin].slope
-                            + dom_calib->atwd1_gain_calib[ch][bin].y_intercept - bias_v;
+                        if (a == 0) {
+                            ch0_baseline_wf[0][bin] += val * dom_calib->atwd0_gain_calib[ch][bin].slope
+                                + dom_calib->atwd0_gain_calib[ch][bin].y_intercept - bias_v;
+                        }
+                        else {
+                            ch0_baseline_wf[1][bin] += val * dom_calib->atwd1_gain_calib[ch][bin].slope
+                                + dom_calib->atwd1_gain_calib[ch][bin].y_intercept - bias_v;
+                        }
                     }
                     else {
-                        atwd_avg[0][bin] += val * dom_calib->atwd0_gain_calib[ch][bin].slope
-                            + dom_calib->atwd0_gain_calib[ch][bin].y_intercept - bias_v
-                            - ch0_baseline_wf[0][bin];
-                        
-                        atwd_avg[1][bin] += val * dom_calib->atwd1_gain_calib[ch][bin].slope
-                            + dom_calib->atwd1_gain_calib[ch][bin].y_intercept - bias_v
-                            - ch0_baseline_wf[1][bin];
+                        if (a == 0) {
+                            atwd_avg[0][bin] += val * dom_calib->atwd0_gain_calib[ch][bin].slope
+                                + dom_calib->atwd0_gain_calib[ch][bin].y_intercept - bias_v
+                                - ch0_baseline_wf[0][bin];
+                        }
+                        else {                        
+                            atwd_avg[1][bin] += val * dom_calib->atwd1_gain_calib[ch][bin].slope
+                                + dom_calib->atwd1_gain_calib[ch][bin].y_intercept - bias_v
+                                - ch0_baseline_wf[1][bin];
+                        }
                     }
                 }
 
@@ -243,8 +254,10 @@ int delta_t_cal(calib_data *dom_calib) {
                     else
                         fadc_avg[bin] += (fadc_data[bin] & 0x3FF) - fadc_baseline;
                 }
-            }        
-            npeds++;
+                n_atwd[a]++;
+                npeds++;            
+
+            } /* Triggers after the first couple */
             
             /* Go to next event in LBM */
             lbmp = lbmp + HAL_FPGA_DOMAPP_LBM_EVENT_SIZE;
@@ -262,9 +275,9 @@ int delta_t_cal(calib_data *dom_calib) {
         for(a = 0; a < 2; a++) {
             for(bin=0; bin<cnt; bin++) {
                 if (pulser_loop == 0)
-                    ch0_baseline_wf[a][bin] /= (float)npeds * dom_calib->amplifier_calib[0].value;
+                    ch0_baseline_wf[a][bin] /= (float)n_atwd[a] * dom_calib->amplifier_calib[0].value;
                 else 
-                    atwd_avg[a][bin] /= (float)npeds * dom_calib->amplifier_calib[0].value;
+                    atwd_avg[a][bin] /= (float)n_atwd[a] * dom_calib->amplifier_calib[0].value;
             }
         }
         if (pulser_loop == 0) {
@@ -448,6 +461,7 @@ int delta_t_cal(calib_data *dom_calib) {
     for (bin=0; bin<fadc_cnt; bin++)
         printf("%g %g\r\n", bin*1000.0/fadc_freq + fadc_delta_t_mean, fadc_avg[bin]*1000.0);
     */
+
     /*------------------------------------------------------------------*/
     /* Stop data taking */
     
