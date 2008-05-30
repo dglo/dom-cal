@@ -32,7 +32,7 @@ public class DOMCal implements Runnable {
     public static final int TIMEOUT = 9000;
     
     /* Number of database access attempts */
-    public static final int DBMAX = 5;
+    public static final int DBMAX = 10;
 
     private static Logger logger = Logger.getLogger( DOMCal.class );
 
