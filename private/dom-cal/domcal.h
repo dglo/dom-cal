@@ -9,8 +9,8 @@
 
 /* Version of calibration program */
 #define MAJOR_VERSION 7
-#define MINOR_VERSION 2
-#define PATCH_VERSION 1
+#define MINOR_VERSION 3
+#define PATCH_VERSION 2
 
 /* Default ATWD DAC settings */
 #ifdef DOMCAL_REV5

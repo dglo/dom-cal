@@ -17,8 +17,7 @@
 #include "hal/DOM_MB_hal.h"
 #include "hal/DOM_MB_fpga.h"
 
-/* Needed for flash filesystem write routine */
-#include "../iceboot/fis.h"
+#include "zlib.h"
 
 #include "domcal.h"
 #include "calUtils.h"
@@ -357,29 +356,20 @@ int main(void) {
     delta_t_cal(&dom_calib);
 
     /* Write calibration record to STDOUT */
-    int done = 0;
-    /* XML transmission gets slower every transmission */
-    int tx_cnt = 1;
-    while (!done) {
+    int compress = 0;
+    /* XML transmission gets slower with higher throttle */
+    int throttle = 0;
 
-#ifdef DEBUG
-    printf("Writing XML calibration file...\r\n");
-#endif
-        unsigned int crc = write_xml(&dom_calib, tx_cnt);
-        printf("XML CRC32 = 0x%08x\r\n", crc);
-        printf("Retransmit XML (y/n)?\r\n");
-        fflush(stdout);        
-        getstr(buf);        
-        printf("\r\n");
-        done = ((buf[0] == 'n') || (buf[0] == 'N') ||
-                (buf[0] == '\n' && ((buf[1] == 'n') || (buf[1] == 'N'))));        
-        tx_cnt++;
-    }
+    printf("Send compressed XML (y/n)?\r\n");    
+    fflush(stdout);        
+    getstr(buf);        
+    printf("\r\n");
+    compress = ((buf[0] == 'y') || (buf[0] == 'Y') ||
+                (buf[0] == '\n' && ((buf[1] == 'y') || (buf[1] == 'Y'))));        
+
+    write_xml(&dom_calib, throttle, compress);
 
     /* Reboot the DOM */
-    printf("\r\n");
-    printf("Rebooting...\r\n");
-
     halUSleep( 250000 );
     halBoardReboot();
     

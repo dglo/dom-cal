@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.zip.InflaterInputStream;
+import java.util.zip.GZIPInputStream;
 
 public class DOMCalCom extends SocketSerialCom {
 
@@ -30,7 +31,7 @@ public class DOMCalCom extends SocketSerialCom {
     }
 
     /**
-     * Read zipped data from dom
+     * Read zipped data from dom (output of zd)
      * @return The inflated data
      * @throws IOException
      */
@@ -55,6 +56,25 @@ public class DOMCalCom extends SocketSerialCom {
             offset += z.read(out, offset, length-offset);
         }
         return out;
+    }
+ 
+    /**
+     * Read zlib data from dom in one chunk
+     * no size header like zdump
+     */
+    public String zreceive() throws IOException {
+
+        InputStream in = getInputStream();
+        InflaterInputStream z = new InflaterInputStream(in);
+
+        int b;
+        StringBuffer sb = new StringBuffer();
+        while (z.available() != 0) {
+            b = z.read();
+            if (b != -1)
+                sb.append((char)(b & 0xFF));
+        }
+        return new String(sb);
     }
 
     public String receive() throws IOException {

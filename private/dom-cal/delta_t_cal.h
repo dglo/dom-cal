@@ -27,8 +27,8 @@
 #define FPGA_DOMAPP_LBM_BLOCKSIZE     2048 /* BYTES not words */
 
 /* Number of triggers to record, and minimum number deemed clean */
-#define DELTA_T_TRIG_CNT               300
-#define DELTA_T_MIN_WF                 100 
+#define DELTA_T_TRIG_CNT               400
+#define DELTA_T_MIN_WF                 200 
 
 /* Wait between forced triggers, in microsec */
 #define DELTA_T_WAIT_US               1000
