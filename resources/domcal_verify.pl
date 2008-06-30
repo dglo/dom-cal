@@ -14,8 +14,8 @@ $LIMIT_HV_HIGH = 1676;
 $LIMIT_HV_LOW = 924;
 
 # Transit Time Limits
-$LIMIT_TT_LOW = 131.8;
-$LIMIT_TT_HIGH = 149.4;
+$LIMIT_TT_LOW = 130;
+$LIMIT_TT_HIGH = 156;
 
 # Amplifier Gain Limits
 @LIMIT_AMP_LOW = (-19.75, -2.2, -0.26);
