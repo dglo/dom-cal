@@ -361,13 +361,15 @@ int hv_gain_cal(calib_data *dom_calib, int iterHVGain) {
                     /* If PV < 1.1, we have fit problems */
                     if (pv_ratio > 1.1) {
                         
-                        log_hv[spe_cnt] = log10(hv);
-                        log_gain[spe_cnt] = log10(fit_params[hv_idx][3] / Q_E) - 12.0;
-                        
+                      log_hv[spe_cnt] = log10(hv);
+                      log_gain[spe_cnt] = log10(fit_params[hv_idx][3] / Q_E) - 12.0;
+
+                      /* If gain < 2.5e6, discriminator effects are problematic */
+                      if (log_gain[spe_cnt] > 6.4) {
 #ifdef DEBUG
                         printf("New gain point: log(V) %.6g log(gain) %.6g\r\n", 
                                log_hv[spe_cnt], log_gain[spe_cnt]);
-#endif         
+#endif        
                         /* note fit convergence */
                         hv_hist_data[hv_idx].convergent = 1;                         
                         hv_hist_data[hv_idx].pv = pv_ratio;
@@ -377,9 +379,15 @@ int hv_gain_cal(calib_data *dom_calib, int iterHVGain) {
                         vldIdx[spe_cnt] = hv_idx;
 
                         spe_cnt++;
-                        
+                      }
+                      /* Enter the tangled skein of else statements */
+                      else {
+#ifdef DEBUG
+                        printf("Log(gain) too low (%.6g).  Gain point at %d V not used.\r\n",  
+                               log_gain[spe_cnt], hv);
+                      }
+#endif 
                     }
-                    /* Enter the tangled skein of else statements */
                     else {
 #ifdef DEBUG
                         printf("PV ratio unrealistic: gain point at %d V not used\r\n", hv);
