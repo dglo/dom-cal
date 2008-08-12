@@ -14,11 +14,11 @@ $LIMIT_HV_HIGH = 1676;
 $LIMIT_HV_LOW = 924;
 
 # Transit Time Limits
-$LIMIT_TT_LOW = 131.8;
-$LIMIT_TT_HIGH = 149.4;
+$LIMIT_TT_LOW = 130;
+$LIMIT_TT_HIGH = 156;
 
 # Amplifier Gain Limits
-@LIMIT_AMP_LOW = (-19.75, -2.2, -0.26);
+@LIMIT_AMP_LOW =  (-19.8, -2.3, -0.28);
 @LIMIT_AMP_HIGH = (-14.3, -1.5, -0.13);
 
 # Delta_T limits (ATWD0, ATWD1, FADC)

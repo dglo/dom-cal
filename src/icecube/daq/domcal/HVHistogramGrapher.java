@@ -189,9 +189,9 @@ public class HVHistogramGrapher implements Runnable {
                         name = s.getString("location")+" "+name;
                 } 
                 catch (Exception e) {}
-                doc.addNew(name);
-                sumDoc.addNew(name);
             }
+            doc.addNew(name);
+            sumDoc.addNew(name);
             doc.add(id);
             sumDoc.add(id);
             for (int set = 0; set < hTableArr.length; set++) {
