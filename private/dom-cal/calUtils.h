@@ -4,7 +4,7 @@
 float getCalibV(short val, calib_data dom_calib, int atwd, int ch, int bin, float bias_v);
 float getCalibFreq(int atwd, calib_data dom_calib, short sampling_dac);
 float temp2K(short temp);
-float pulserDAC2Q(int pulser_dac);
+float pulserDAC2Q(int pulser_dac, float fe_impedance);
 float discDAC2V(int disc_dac, int bias_dac);
 int discV2DAC(float disc_v, int bias_dac);
 float biasDAC2V(int val);
@@ -17,5 +17,4 @@ int checkHVBase();
 int getDiscDAC(float charge_threshold, calib_data dom_calib);
 void refineLinearFit(float *x, float *y, int *vld_cnt, char *vld, 
                      linear_fit *fit, float minR2, int minPts);
-void sort(float *data, int cnt);
 

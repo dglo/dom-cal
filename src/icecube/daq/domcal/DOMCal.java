@@ -86,15 +86,38 @@ public class DOMCal implements Runnable {
             logger.warn("Unable to load DB properties file /usr/local/etc/domcal.properties");
         }
 
-        // Check for domtest DB cache directory
-        // Currently only use for toroid query result caching
-        File cacheDir = new File(System.getProperty("user.home") + "/.domcal.cache");
-        try {
-            if (!cacheDir.isDirectory()) cacheDir.mkdir();
-        } catch (Exception e) {
-            logger.warn("Unable to open or create cache directory");
+        /* Connect to domtest DB */
+        Connection jdbc = null;
+        if (calProps != null) {
+            int dbTries = 0;
+            while ((jdbc == null) && (dbTries < DBMAX)) {
+                try {
+                    String driver = calProps.getProperty("icecube.daq.domcal.db.driver", "com.mysql.jdbc.Driver");
+                    Class.forName(driver);
+                    String url = calProps.getProperty("icecube.daq.domcal.db.url", "jdbc:mysql://localhost/fat");
+                    String user = calProps.getProperty("icecube.daq.domcal.db.user", "dfl");
+                    String passwd = calProps.getProperty("icecube.daq.domcal.db.passwd", "(D0Mus)");
+                    jdbc = DriverManager.getConnection(url, user, passwd);
+                } catch (Exception ex) {
+                    if (dbTries < DBMAX-1) {
+                        logger.warn("Unable to establish DB connection -- waiting a bit and retrying");
+                        try {
+                            Thread.sleep( 10000 * (dbTries+1) );
+                        } catch (InterruptedException e) {
+                            logger.warn( "Wait interrupted!" );
+                        }                                        
+                    }
+                    else {
+                        logger.warn("Unable to establish DB connection -- giving up");
+                        ex.printStackTrace();                   
+                    }                
+                    dbTries++;  
+                }
+            }
         }
-       
+
+        if (jdbc != null) logger.info("Database connection established");
+
         DOMCalCom com = new DOMCalCom(host, port);
         try {
             com.connect();
@@ -131,101 +154,34 @@ public class DOMCal implements Runnable {
                 }
                 id = r.nextToken();
 
-                // First see if we can find cached toroid result 
-                File domPropFile = new File(cacheDir.getPath()+"/dom_"+id+".properties");
-                if (domPropFile.exists()) {
+                /* Determine toroid type from DB */
+                if (jdbc != null) {
                     try {
-                        Properties domProps = new Properties();
-                        domProps.load(new FileInputStream(domPropFile));
-                        toroidType = Integer.parseInt(domProps.getProperty("icecube.daq.domcal.dom.toroid", "-1"));
-                        if (toroidType <= -1) {
-                            logger.warn("Invalid toroid type cached for DOM "+id);
-                            toroidType = -1;
+                        Statement stmt = jdbc.createStatement();
+                        String sql = "select * from doms where mbid='" + id + "';";
+                        ResultSet s = stmt.executeQuery(sql);
+                        s.first();
+                        /* Get domid */
+                        String domid = s.getString("domid");
+                        if (domid != null) {
+                            /* Get year digit */
+                            String yearStr = domid.substring(2,3);
+                            int yearInt = Integer.parseInt(yearStr);
+                            
+                            /* new toroids are in all doms produced >= 2006 */
+                            if (yearInt >= 6 || domid.equals("UP5P0970")) {  //Always an exception.......
+                                toroidType = 1;
+                            } else {
+                                toroidType = 0;
+                            }
+                            logger.info("Toroid type for " + domid + " is " + toroidType);
                         }
-                        else
-                            logger.info("Loaded cached value for toroid for DOM "+id);
+                        // We are finished with DB connection for now
+                        jdbc.close();                        
                     } catch (Exception e) {
-                        logger.warn("Unable to load DOM properties file "+domPropFile);
-                    }                                        
-                }
-
-                // Was toroid cache found?  If not, or if invalid, connect to DB
-                if (toroidType <= -1) {
-                    Connection jdbc = null;
-                    if (calProps != null) {
-                        int dbTries = 0;
-                        while ((jdbc == null) && (dbTries < DBMAX)) {
-                            try {
-                                String driver = calProps.getProperty("icecube.daq.domcal.db.driver", 
-                                                                     "com.mysql.jdbc.Driver");
-                                Class.forName(driver);
-                                String url = calProps.getProperty("icecube.daq.domcal.db.url", 
-                                                                  "jdbc:mysql://localhost/fat");
-                                String user = calProps.getProperty("icecube.daq.domcal.db.user", "dfl");
-                                String passwd = calProps.getProperty("icecube.daq.domcal.db.passwd", "(D0Mus)");
-                                jdbc = DriverManager.getConnection(url, user, passwd);
-                            } catch (Exception ex) {
-                                if (dbTries < DBMAX-1) {
-                                    logger.warn("Unable to establish DB connection -- waiting a bit and retrying");
-                                    try {
-                                        Thread.sleep( 10000 * (dbTries+1) );
-                                    } catch (InterruptedException e) {
-                                        logger.warn( "Wait interrupted!" );
-                                    }                                        
-                                }
-                                else {
-                                logger.warn("Unable to establish DB connection -- giving up");
-                                ex.printStackTrace();                   
-                                }                
-                                dbTries++;  
-                            }
-                        }
-                    }
-                
-                    if (jdbc != null) logger.info("Database connection established");
-                
-                    /* Determine toroid type from DB */
-                    if (jdbc != null) {
-                        try {
-                            Statement stmt = jdbc.createStatement();
-                            String sql = "select * from doms where mbid='" + id + "';";
-                            ResultSet s = stmt.executeQuery(sql);
-                            s.first();
-                            /* Get domid */
-                            String domid = s.getString("domid");
-                            if (domid != null) {
-                                /* Get year digit */
-                                String yearStr = domid.substring(2,3);
-                                int yearInt = Integer.parseInt(yearStr);
-                                
-                                /* new toroids are in all doms produced >= 2006 */
-                                if (yearInt >= 6 || domid.equals("UP5P0970")) {  //Always an exception.......
-                                    toroidType = 1;
-                                } else {
-                                    toroidType = 0;
-                                }
-                                logger.info("Toroid type for " + domid + " is " + toroidType);
-                                
-                            }
-                            // We are finished with DB connection for now
-                            jdbc.close();                        
-                            Properties domProps = new Properties();                                           
-                            domProps.setProperty("icecube.daq.domcal.dom.id", id);
-                            domProps.setProperty("icecube.daq.domcal.dom.domid", domid);
-                            domProps.setProperty("icecube.daq.domcal.dom.toroid", Integer.toString(toroidType));
-                            try {
-                                domProps.store(new FileOutputStream(domPropFile),"");
-                            }
-                            catch (Exception e) {
-                                logger.warn("Couldn't store DB results in cache file");
-                            }
-
-                        } catch (Exception e) {
-                            logger.error("Error determining toroid type");
-                        }
+                        logger.error("Error determining toroid type");
                     }
                 }
-
 
                 if (toroidType != -1) {
                     String tstr = toroidType == 0 ? "old" : "new";

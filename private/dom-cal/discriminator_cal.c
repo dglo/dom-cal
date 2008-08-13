@@ -96,13 +96,15 @@ int disc_cal(calib_data *dom_calib) {
         if (pulser_loop(&pulser_dac, 0)) return -1;
 
         /* Convert pulser amplitude to charge */
-        pulser_spe_charge_data[i] = pulserDAC2Q(pulser_dac);
+        pulser_spe_charge_data[i] = pulserDAC2Q(pulser_dac,
+                                          dom_calib->fe_impedance);
 
         /* Do same for MPE disc */
         if (pulser_loop(&pulser_dac, 1)) return -1;
 
         /* Convert pulser amplitude to charge */
-        pulser_mpe_charge_data[i] = pulserDAC2Q(pulser_dac);
+        pulser_mpe_charge_data[i] = pulserDAC2Q(pulser_dac,
+                                          dom_calib->fe_impedance);
 
         #ifdef DEBUG
         printf("Got disc point: SPE DAC: %f SPE Q: %f MPE DAC: %f MPE Q: %f\r\n",

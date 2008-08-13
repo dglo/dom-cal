@@ -25,10 +25,9 @@ $LIMIT_TT_HIGH = 156;
 @LIMIT_DELTAT_LOW = (0.0, -8.0, -110.0);
 @LIMIT_DELTAT_HIGH = (0.0, 8.0, -70.0);
 
-# Minimum Valid Points for TT, HV, PMT Disc Calibration
+# Minimum Valid Points for TT, HV Calibration
 $MIN_HV_PTS = 4;
 $MIN_TT_PTS = 4;
-$MIN_PMT_DISC_CAL_PTS = 4;
 
 # Minimum R**2 Value for Any Calibration
 $MIN_R2 = 0.99;
@@ -120,8 +119,6 @@ while (defined($file = readdir(DIR))) {
         $r2 = 0.0;
         $nr1900 = 0;
         $hvattempt = 0;
-        $pmtDiscFound = 0;
-        $pmtDiscNumPts = 0;
         $ampfound = 0;
         $ampchannel = 0;
         @ampgain = (0.0, 0.0, 0.0);
@@ -143,13 +140,6 @@ while (defined($file = readdir(DIR))) {
             }
             elsif ($line =~ /<\/pmtTransitTime>/) {
                 $ttfound = 0;
-            }
-            elsif ($line =~ /<pmtDiscCal numPts="(\d+)">/) {
-                $pmtDiscFound = 1;
-                $pmtDiscNumPts = "$1";
-            }
-            elsif ($line =~ /<\/pmtDiscCal>/) {
-                $pmtDiscFound = 0;
             }
             elsif ($line =~ /<hvGainCal>/) {
                 $hvfound = 1;
@@ -353,10 +343,6 @@ while (defined($file = readdir(DIR))) {
         if ($r2scan == 1) {
             $CAL_BAD = 1;
             print("DOM $mbid ($location $name): found low r2 value $r2\n");
-        }
-        if ($pmtDiscNumPts < $MIN_PMT_DISC_CAL_PTS && $hvattempt > 0) {
-            $CAL_BAD = 1;
-            print("DOM $mbid ($location $name): Not enough PMT discriminator gain points: $pmtDiscNumPts.  Minimum: $MIN_PMT_DISC_CAL_PTS\n");
         }
         for ($chan = 0; $chan < 3; $chan++) {
             if ($ampgain[$chan] < $LIMIT_AMP_LOW[$chan] || $ampgain[$chan] > $LIMIT_AMP_HIGH[$chan]) {

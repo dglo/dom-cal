@@ -338,8 +338,6 @@ int hv_gain_cal(calib_data *dom_calib, int iterHVGain) {
             /* Record histogram */
             hv_hist_data[hv_idx].x_data = hist_x[hv_idx];
             hv_hist_data[hv_idx].y_data = hist_y[hv_idx];
-            hv_hist_data[hv_idx].underflow = hist_under;
-            hv_hist_data[hv_idx].overflow = hist_over;
             
             /* If no error in fit, record gain and P/V */
             if (!fiterr) {
