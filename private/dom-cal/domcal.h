@@ -74,6 +74,8 @@ typedef struct {
     float pv;
     float noise_rate;
     short is_filled;
+    short underflow;
+    short overflow;
 } hv_histogram;
 
 /* HV baselines */
@@ -176,6 +178,10 @@ typedef struct {
 
     /* Histograms */
     hv_histogram* histogram_data;
+
+    /* PMT Discriminator Calibration */
+    linear_fit pmt_disc_calib;
+    short pmt_disc_calib_valid;
 
 } calib_data;
 #endif

@@ -34,6 +34,7 @@
 #include "hv_amp_cal.h"
 #include "transit_cal.h"
 #include "discriminator_cal.h"
+#include "pmt_discriminator_cal.h"
 #include "daq_baseline_cal.h"
 #include "delta_t_cal.h"
 
@@ -351,6 +352,7 @@ int main(void) {
         hv_gain_cal(&dom_calib, iterHVGain);        
         /* Switches out FPGA design */
         daq_baseline_cal(&dom_calib);
+        //pmt_discriminator_cal(&dom_calib);
     }
     /* Switches out FPGA design */
     delta_t_cal(&dom_calib);
