@@ -88,8 +88,8 @@ float temp2K(short temp) {
  * Converts the pulser amplitude DAC into a charge (in pC) at the FE.
  *
  */
-float pulserDAC2Q(int pulser_dac, float fe_impedance) {
-    return (pulser_dac * 0.0247 * 43.0/fe_impedance);
+float pulserDAC2Q(int pulser_dac) {
+    return (pulser_dac * 0.0247);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -149,12 +149,12 @@ float biasDAC2V(int val) {
  * getFEImpedance
  *
  * Returns FE impedance for given toroid type
- * New == 1 == ?? Ohms
- * Old == !1 == 43 Ohms
+ * New == 1 == 50 Ohms
+ * Old == 0 == 43 Ohms
  *
  */
 float getFEImpedance(short toroid_type) {
-    return toroid_type ? 43.0 : 43.0;
+    return toroid_type ? 50.0 : 43.0;
 }
 
 
