@@ -81,8 +81,8 @@ void get_date(calib_data *dom_calib) {
 
     /* Get year */
     year = month = 0;
-    while ((year < 2008) || (year > 2050)) {
-        printf("Enter year (2008-...): ");
+    while ((year < 2009) || (year > 2050)) {
+        printf("Enter year (2009-...): ");
         fflush(stdout);    
         getstr(buf);
         year = atoi(buf);
@@ -350,9 +350,9 @@ int main(void) {
 
         transit_cal(&dom_calib);
         hv_gain_cal(&dom_calib, iterHVGain);        
+        pmt_discriminator_cal(&dom_calib);
         /* Switches out FPGA design */
         daq_baseline_cal(&dom_calib);
-        //pmt_discriminator_cal(&dom_calib);
     }
     /* Switches out FPGA design */
     delta_t_cal(&dom_calib);

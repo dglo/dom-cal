@@ -182,6 +182,7 @@ typedef struct {
     /* PMT Discriminator Calibration */
     linear_fit pmt_disc_calib;
     short pmt_disc_calib_valid;
+    short pmt_disc_calib_num_pts;
 
 } calib_data;
 #endif

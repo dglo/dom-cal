@@ -17,4 +17,5 @@ int checkHVBase();
 int getDiscDAC(float charge_threshold, calib_data dom_calib);
 void refineLinearFit(float *x, float *y, int *vld_cnt, char *vld, 
                      linear_fit *fit, float minR2, int minPts);
+void sort(float *data, int cnt);
 

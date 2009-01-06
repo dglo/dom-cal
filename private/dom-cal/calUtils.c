@@ -393,3 +393,46 @@ void refineLinearFit(float *x, float *y, int *vld_cnt, char *vld,
     if (localVld) 
         free(vld);
 }
+
+/*---------------------------------------------------------------------------*/
+/*
+ * sort -- do a standard heap sort on an array of floats
+ */
+
+void hsswap(float *data, int index1, int index2) {
+
+  float d = data[index1];
+  data[index1] = data[index2];
+  data[index2] = d;
+
+}
+
+void hsrestore(float *data, int vertex, int limit) {
+
+  int max_child;
+  for (max_child = 2*vertex+1; max_child < limit; max_child = 2*vertex+1) {
+
+    if (max_child + 1 < limit) {
+      if (data[max_child+1] > data[max_child]) {
+        max_child++;
+      }
+    }
+    if (data[vertex] >= data[max_child]) return;
+    hsswap(data, vertex, max_child);
+    vertex = max_child;
+  }
+}
+
+void sort(float *data, int cnt) {
+
+  //Do std heap sort
+  int cur_vertex;
+  for (cur_vertex = cnt/2-1; cur_vertex >= 0; cur_vertex--) {
+    hsrestore(data, cur_vertex, cnt);
+  }
+  for (cur_vertex = cnt-1; cur_vertex > 0; cur_vertex--) {
+    hsswap(data, 0, cur_vertex);
+    hsrestore(data, 0, cur_vertex);
+  }
+}
+
