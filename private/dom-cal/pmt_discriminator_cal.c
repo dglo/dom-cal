@@ -41,6 +41,7 @@ int pmt_discriminator_cal(calib_data *dom_calib) {
 
     /* Calibration isn't valid until I say so */
     dom_calib->pmt_disc_calib_valid = 0;
+    dom_calib->pmt_disc_calib_num_pts = 0;
 
     /* Which ATWD to use */
     short atwd = GAIN_CAL_ATWD;
@@ -131,8 +132,9 @@ int pmt_discriminator_cal(calib_data *dom_calib) {
         if (disc_dac  > 1023.) break;
 
         // Select and set discriminator threshold for histogram
-        if (qidx < 4) disc_dac_base = getDiscDAC(GAIN_CAL_PC_LOW, *dom_calib);
-        else disc_dac_base = getDiscDAC(GAIN_CAL_PC_MED, *dom_calib);
+        if (qidx < 4) disc_dac_base =
+                      getDiscDAC(PMT_DISC_CAL_PC_LOW, *dom_calib);
+        else disc_dac_base = getDiscDAC(PMT_DISC_CAL_PC_MED, *dom_calib);
         halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, disc_dac_base);
 #ifdef DEBUG
         printf("Iteration %d: Q: %f, Base Disc: %d, Upper Disc %d, HV: %d\n",
@@ -152,6 +154,10 @@ int pmt_discriminator_cal(calib_data *dom_calib) {
         // Quit this iteration if rate is too low
         if (10.*count0/PMT_DISC_CAL_NOISE_CNT < PMT_DISC_CAL_NOISE_MIN) {
           printf("Noise rate %f too low.  Skipping.\n",
+                             10.*count0/PMT_DISC_CAL_NOISE_CNT);
+          continue;
+        } else if (10.*count0/PMT_DISC_CAL_NOISE_CNT > PMT_DISC_CAL_NOISE_MAX) {
+          printf("Noise rate %f too high.  Skipping.\n",
                              10.*count0/PMT_DISC_CAL_NOISE_CNT);
           continue;
         }
@@ -239,7 +245,20 @@ int pmt_discriminator_cal(calib_data *dom_calib) {
     // Do fit if possible
     if (cnt >= 2) {
       linearFitFloat(disc, charge_thresh, cnt, &(dom_calib->pmt_disc_calib));
+
+      /* Check for bad R^2 and refine fit if necessary */
+      int origPts = cnt;
+      char vld[cnt];
+      refineLinearFit(disc, charge_thresh, &cnt, vld,
+             &(dom_calib->pmt_disc_calib), PMT_DISC_CAL_MIN_R2,
+             PMT_DISC_CAL_MIN_R2_PTS);
+      
+      /* Report discarded fits as bad */
+      for (i = 0; i < origPts; i++) {
+          if (!vld[i]) printf("Discarded point %d\n", i);
+      }
       dom_calib->pmt_disc_calib_valid = 1;
+      dom_calib->pmt_disc_calib_num_pts = cnt;
 #ifdef DEBUG
       printf("Old fit: a: %g b: %g r2: %g  New fit: a: %g b: %g r2: %g\n",
         dom_calib->spe_disc_calib.slope, dom_calib->spe_disc_calib.y_intercept,
