@@ -12,7 +12,7 @@
 
 package icecube.daq.domcal;
 
-import icecube.daq.domhub.common.messaging.SocketSerialCom;
+import icecube.daq.domcal.messaging.SocketSerialCom;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
