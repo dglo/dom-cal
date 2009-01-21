@@ -9,8 +9,8 @@
 
 /* Version of calibration program */
 #define MAJOR_VERSION 7
-#define MINOR_VERSION 3
-#define PATCH_VERSION 3
+#define MINOR_VERSION 4
+#define PATCH_VERSION 0
 
 /* Default ATWD DAC settings */
 #ifdef DOMCAL_REV5
@@ -74,6 +74,8 @@ typedef struct {
     float pv;
     float noise_rate;
     short is_filled;
+    short underflow;
+    short overflow;
 } hv_histogram;
 
 /* HV baselines */
@@ -176,6 +178,11 @@ typedef struct {
 
     /* Histograms */
     hv_histogram* histogram_data;
+
+    /* PMT Discriminator Calibration */
+    linear_fit pmt_disc_calib;
+    short pmt_disc_calib_valid;
+    short pmt_disc_calib_num_pts;
 
 } calib_data;
 #endif

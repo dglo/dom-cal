@@ -88,8 +88,8 @@ float temp2K(short temp) {
  * Converts the pulser amplitude DAC into a charge (in pC) at the FE.
  *
  */
-float pulserDAC2Q(int pulser_dac, float fe_impedance) {
-    return (pulser_dac * 0.0247 * 43.0/fe_impedance);
+float pulserDAC2Q(int pulser_dac) {
+    return (pulser_dac * 0.0247);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -149,12 +149,12 @@ float biasDAC2V(int val) {
  * getFEImpedance
  *
  * Returns FE impedance for given toroid type
- * New == 1 == ?? Ohms
- * Old == !1 == 43 Ohms
+ * New == 1 == 50 Ohms
+ * Old == 0 == 43 Ohms
  *
  */
 float getFEImpedance(short toroid_type) {
-    return toroid_type ? 43.0 : 43.0;
+    return toroid_type ? 50.0 : 43.0;
 }
 
 
@@ -393,3 +393,46 @@ void refineLinearFit(float *x, float *y, int *vld_cnt, char *vld,
     if (localVld) 
         free(vld);
 }
+
+/*---------------------------------------------------------------------------*/
+/*
+ * sort -- do a standard heap sort on an array of floats
+ */
+
+void hsswap(float *data, int index1, int index2) {
+
+  float d = data[index1];
+  data[index1] = data[index2];
+  data[index2] = d;
+
+}
+
+void hsrestore(float *data, int vertex, int limit) {
+
+  int max_child;
+  for (max_child = 2*vertex+1; max_child < limit; max_child = 2*vertex+1) {
+
+    if (max_child + 1 < limit) {
+      if (data[max_child+1] > data[max_child]) {
+        max_child++;
+      }
+    }
+    if (data[vertex] >= data[max_child]) return;
+    hsswap(data, vertex, max_child);
+    vertex = max_child;
+  }
+}
+
+void sort(float *data, int cnt) {
+
+  //Do std heap sort
+  int cur_vertex;
+  for (cur_vertex = cnt/2-1; cur_vertex >= 0; cur_vertex--) {
+    hsrestore(data, cur_vertex, cnt);
+  }
+  for (cur_vertex = cnt-1; cur_vertex > 0; cur_vertex--) {
+    hsswap(data, 0, cur_vertex);
+    hsrestore(data, 0, cur_vertex);
+  }
+}
+
