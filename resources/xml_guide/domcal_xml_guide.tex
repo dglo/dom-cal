@@ -326,7 +326,7 @@ element provides the following log-log relation:
 
 %------------
 
-\item{$<$pmtDiscCal numPts=\textit{points}$>$}\\
+\item{$<$pmtDiscCal num\_pts=\textit{points}$>$}\\
 Contains a linear fit with the result of the SPE discriminator calibration.
 This calibration translates the SPE discriminator DAC setting (DAC 9) to
 the amplified charge (after the PMT) corresponding to that trigger level:
@@ -335,7 +335,7 @@ the amplified charge (after the PMT) corresponding to that trigger level:
 \mathrm{charge\ trigger\ level\ (pC)} = m \cdot \mathrm{DAC[9]} + b\ .
 \ee
 
-The attribute numPts indicates the number of discriminator settings used in
+The attribute num\_pts indicates the number of discriminator settings used in
 the linear fit.  If present,
 this calibration should be used in preference to the $<$discriminator$>$
 calibration, as it is more accurate for SPEs and sub-SPE pulses.  
