@@ -224,7 +224,7 @@ int write_xml(calib_data *dom_calib, int throttle, int compress) {
 
     /* PMT discriminator calibration */
     if (dom_calib->pmt_disc_calib_valid) {            
-        sprintf(linebuf, "  <pmtDiscCal numPts=\"%d\">\r\n",
+        sprintf(linebuf, "  <pmtDiscCal num_pts=\"%d\">\r\n",
                                   dom_calib->pmt_disc_calib_num_pts);
         zprintstr(linebuf, compress, &zs, 0);
         write_linear_fit(dom_calib->pmt_disc_calib, compress, &zs);
