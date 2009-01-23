@@ -144,7 +144,7 @@ while (defined($file = readdir(DIR))) {
             elsif ($line =~ /<\/pmtTransitTime>/) {
                 $ttfound = 0;
             }
-            elsif ($line =~ /<pmtDiscCal numPts="(\d+)">/) {
+            elsif ($line =~ /<pmtDiscCal num_pts="(\d+)">/) {
                 $pmtDiscFound = 1;
                 $pmtDiscNumPts = "$1";
             }
