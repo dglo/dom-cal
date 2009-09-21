@@ -350,7 +350,7 @@ public class HVHistogramGrapher implements Runnable {
         g.drawLine(50, 0, 50, 249);
 
         //draw X tick marks
-        int[] xTicks = {1100, 1300, 1500, 1700, 1900};
+        int[] xTicks = {800, 1100, 1400, 1700, 2000};
         for (int i = 0; i < xTicks.length; i ++) {
             int x = getXPixel(xTicks[i]);
             g.drawLine(x, 247, x, 251);
@@ -441,8 +441,8 @@ public class HVHistogramGrapher implements Runnable {
 
     private int getXPixel(int val) {
         double logVal = Math.log(val);
-        double staticHVal = Math.log(1900);
-        double staticLVal = Math.log(1000);
+        double staticHVal = Math.log(1800);
+        double staticLVal = Math.log(800);
 
         return 50 + (int)(200 * ((logVal - staticLVal)/(staticHVal - staticLVal)));
     }
