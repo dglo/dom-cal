@@ -1,5 +1,5 @@
-/* Fraction of hits in first real bin */
-#define SPE_FIT_NOISE_FRACT     0.0075
+/* Fraction of hits to skip at beginning of histogram */
+#define SPE_BAD_HEAD_FRACTION     0.04
 
 /* Fraction of hits to consider essentially zero */
 #define SPE_FIT_ZERO_FRACT      0.0004

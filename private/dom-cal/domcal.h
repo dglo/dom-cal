@@ -9,7 +9,7 @@
 
 /* Version of calibration program */
 #define MAJOR_VERSION 7
-#define MINOR_VERSION 4
+#define MINOR_VERSION 5
 #define PATCH_VERSION 0
 
 /* Default ATWD DAC settings */
@@ -107,8 +107,8 @@ typedef struct {
     short dac_values[16];
     short adc_values[24];
 
-    /* Maximum allowed HV */
-    short max_hv;
+    /* Allowed HV */
+    short min_hv, max_hv;
    
     /* FADC calibration */
     linear_fit  fadc_baseline;

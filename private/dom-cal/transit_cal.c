@@ -177,7 +177,8 @@ int transit_cal(calib_data *dom_calib) {
         hv_tt_valid[hv_idx] = 0;
 
         /* Set high voltage and give it time to stabilize */
-        hv = (hv_idx * TRANSIT_CAL_HV_INC) + TRANSIT_CAL_HV_LOW;      
+        hv = (short)(dom_calib->min_hv + 1.*hv_idx/(TRANSIT_CAL_HV_CNT-1)*
+                                  (dom_calib->max_hv - dom_calib->min_hv));
 
         if (hv > dom_calib->max_hv) {
 #ifdef DEBUG
@@ -545,7 +546,8 @@ int transit_cal(calib_data *dom_calib) {
     int vld_cnt = 0;
     for (hv_idx = 0; hv_idx < TRANSIT_CAL_HV_CNT; hv_idx++) {
         if (hv_tt_valid[hv_idx]) {
-            int hv = (hv_idx * TRANSIT_CAL_HV_INC) + TRANSIT_CAL_HV_LOW;
+            hv = (short)(dom_calib->min_hv + 1.*hv_idx/(TRANSIT_CAL_HV_CNT-1)*
+                                  (dom_calib->max_hv - dom_calib->min_hv));
             x[vld_cnt] = 1 / sqrt(hv);
             y[vld_cnt] = transit_data[hv_idx];
 #ifdef DEBUG
