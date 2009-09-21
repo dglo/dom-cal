@@ -50,10 +50,10 @@ public class DOMCal implements Runnable {
     private boolean calibrate;
     private boolean calibrateHv;
     private boolean iterateHv;
-    private int maxHv;
+    private int maxHv, minHv;
 
     public DOMCal( String host, int port, String outDir, boolean calibrate, 
-                   boolean calibrateHv, boolean iterateHv, int maxHv ) {
+                   boolean calibrateHv, boolean iterateHv, int maxHv, int minHv) {
         this.host = host;
         this.port = port;
         this.outDir = outDir;
@@ -64,6 +64,7 @@ public class DOMCal implements Runnable {
         this.calibrateHv = calibrateHv;
         this.iterateHv = iterateHv;
         this.maxHv = maxHv;
+        this.minHv = minHv;
     }
 
     public void run() {
@@ -278,6 +279,7 @@ public class DOMCal implements Runnable {
                         com.send( "n" + "\r" );
                     }
                     com.receive( "\r\n" );
+                    com.send( "" + minHv + "\r");
                     com.send( "" + maxHv + "\r");
                     
                 } else {
@@ -392,7 +394,8 @@ public class DOMCal implements Runnable {
         String outDir = System.getProperty("user.dir");
         boolean calibrateHV = false;
         boolean iterateHV = false;
-        int maxHV = 2000;
+        int maxHV = 1900;
+        int minHV = 1020;
         if (args.length == 0) {
             usage();
             return;
@@ -404,6 +407,7 @@ public class DOMCal implements Runnable {
             else if (args[i].equals("-n") && i < args.length - 1) nPorts = Integer.parseInt(args[++i]);
             else if (args[i].equals("-h") && i < args.length - 1) host = args[++i];
             else if (args[i].equals("-m") && i < args.length - 1) maxHV = Integer.parseInt(args[++i]);
+            else if (args[i].equals("-s") && i < args.length - 1) minHV = Integer.parseInt(args[++i]);
 
             else if (args[i].charAt(0) == '-') {
                 for (int j = 0; j < args[i].length(); j++) {
@@ -420,7 +424,7 @@ public class DOMCal implements Runnable {
         }
         try {
             for ( int i = 0; i < nPorts; i++ ) {
-                Thread t = new Thread( new DOMCal( host, port + i, outDir, true, calibrateHV, iterateHV, maxHV ), "" + ( port + i ) );
+                Thread t = new Thread( new DOMCal( host, port + i, outDir, true, calibrateHV, iterateHV, maxHV, minHV ), "" + ( port + i ) );
                 threads.add( t );
                 t.start();
             }
@@ -459,7 +463,8 @@ public class DOMCal implements Runnable {
                             "    -p [port]  default=5000\n" +
                             "    -n [number of ports] default=1\n" +
                             "    -d [output directory]  default=CWD\n" +
-                            "    -m [maximum HV]  default=2000V range 0V-2000V\n" +
+                            "    -m [maximum HV]  default=1900V range 0V-2000V\n" +
+                            "    -s [starting HV] default=1020V range 0V-2000V\n" +
                             "    -v (calibrate HV)\n" +
                             "    -i (iterate HV)");
 
