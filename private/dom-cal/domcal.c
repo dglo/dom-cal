@@ -358,11 +358,11 @@ int main(void) {
 #ifdef DEBUG
         printf(" Waiting 10m for neighbors to settle...\r\n");
 #endif
-        int i;
+		int i;
         for (i = 0; i < 600; i++) halUSleep(1000000);
 
         transit_cal(&dom_calib);
-        hv_gain_cal(&dom_calib, iterHVGain);        
+        hv_gain_cal(&dom_calib, iterHVGain);
         pmt_discriminator_cal(&dom_calib);
         /* Switches out FPGA design */
         daq_baseline_cal(&dom_calib);

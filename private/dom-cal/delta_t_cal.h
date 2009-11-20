@@ -47,5 +47,28 @@
 /* FADC bin to stop looking for peak */
 #define DELTA_T_STOP_SAMPLE             12
 
+/* Fit information for the pulser pulses */
+#define PULSE_FIT_PARAMS              2
+#define PULSE_FIT_MAX_ITER           75
+#define PULSE_FIT_CHISQ_ABS_DONE   0.01
+#define PULSE_FIT_CHISQ_PCT_DONE  0.001
+
+/* LM fit errors */
+#define PULSE_FIT_NO_ERR                0
+#define PULSE_FIT_ERR_NO_CONVERGE       1
+#define PULSE_FIT_ERR_BAD_FIT           2
+#define PULSE_FIT_ERR_SINGULAR          3
+#define PULSE_FIT_ERR_EMPTY_HIST        4
+
+/* Area over 10% of maximum for different pulse forms */
+#define FADC_PULSE_FIT_INTEGRAL_SCALE       2.7154f
+#define ATWD_NEW_PULSE_FIT_INTEGRAL_SCALE   0.7978f
+#define ATWD_OLD_PULSE_FIT_INTEGRAL_SCALE   0.8191f
+
+/* Offset of pulse leading edge from fit offset parameter (x0), in nanoseconds */
+#define FADC_PULSE_LE_OFFSET       1.846f
+#define ATWD_NEW_PULSE_LE_OFFSET   0.8932f
+#define ATWD_OLD_PULSE_LE_OFFSET   0.9493f
+
 int delta_t_cal(calib_data *dom_calib);
 
