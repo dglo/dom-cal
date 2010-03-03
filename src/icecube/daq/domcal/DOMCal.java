@@ -456,7 +456,8 @@ public class DOMCal implements Runnable {
 
             for (Iterator it = descriptorList.iterator(); it.hasNext();) {
               DOMCalDescriptor d = (DOMCalDescriptor)it.next();
-              Thread t = new Thread( new DOMCal( d.host, d.port, outDir, true, calibrateHV, iterateHV, d.hvHi, d.hvLow, d.cid), d.string);
+              boolean calibrateHVCurrent = calibrateHV && !(d.hvHi == 0 && d.hvLow == 0);
+              Thread t = new Thread( new DOMCal( d.host, d.port, outDir, true, calibrateHVCurrent, iterateHV, d.hvHi, d.hvLow, d.cid), d.string);
               threads.add( t );
               t.start();
             }
