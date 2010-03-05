@@ -264,7 +264,7 @@ while (defined($file = readdir(DIR))) {
     $dbh->disconnect();
 
     if (!$incomplete) {
-        if ($slope eq 0.0 || $intercept eq 0.0 || $slope eq "" || $intercept eq "") {
+        if (($slope eq 0.0) || ($intercept eq 0.0)) {
             print("No historic DOM-Cal record found for DOM $mbid ($location $name) in database!\n");
             if (($hv_slope != 0.0) && ($hv_intercept != 0.0)) {
                 print("Setting the current calibration as historic for DOM $mbid ($location $name) in database!\n");
@@ -289,7 +289,7 @@ while (defined($file = readdir(DIR))) {
         }
 
         # Calculate previous 10**7 HV
-        if ($slope eq 0.0 || $intercept eq 0.0 || $slope eq "" || $intercept eq "") {
+        if ($slope eq 0.0 || $intercept eq 0.0) {
             $hv_old = 0.0;
         } else {
             $hv_old = (10**(7-$intercept))**(1/$slope);

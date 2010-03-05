@@ -72,32 +72,6 @@ float getCalibFreq(int atwd, calib_data dom_calib, short sampling_dac) {
 
 /*---------------------------------------------------------------------------*/
 /*
- * getFreqCalib
- *
- * Use calibration data to get sampling DAC setting, given the sampling 
- * frequency of an ATWD, in MHz
- *
- */
-short getFreqCalib(int atwd, calib_data dom_calib, float sampling_freq) {
-	short dac;
-	
-	/* Clock speed to sampling frequency */
-	if (atwd == 0)
-		dac = (-dom_calib.atwd0_freq_calib.c1 + 
-			   sqrt((dom_calib.atwd0_freq_calib.c1 * dom_calib.atwd0_freq_calib.c1) - 
-					(4.0 * dom_calib.atwd0_freq_calib.c2 * (dom_calib.atwd0_freq_calib.c0 - sampling_freq)))) / 
-			  (2.0 * dom_calib.atwd0_freq_calib.c2);
-	else
-		dac = (-dom_calib.atwd1_freq_calib.c1 + 
-			   sqrt((dom_calib.atwd1_freq_calib.c1 * dom_calib.atwd1_freq_calib.c1) - 
-					(4.0 * dom_calib.atwd1_freq_calib.c2 * (dom_calib.atwd1_freq_calib.c0 - sampling_freq)))) / 
-		(2.0 * dom_calib.atwd1_freq_calib.c2);
-		
-	return(dac);
-}
-
-/*---------------------------------------------------------------------------*/
-/*
  * temp2K
  *
  * Converts a raw DOM temperature reading to Kelvin.
@@ -181,20 +155,6 @@ float biasDAC2V(int val) {
  */
 float getFEImpedance(short toroid_type) {
     return toroid_type ? 50.0 : 43.0;
-}
-
-
-/*---------------------------------------------------------------------------*/
-/*
- * getFEImpedance
- *
- * Returns torroid type for a give impedance
- * New == 1 == 50 Ohms
- * Old == 0 == 43 Ohms
- *
- */
-short getTorroidType(float fe_impedance) {
-    return fe_impedance<50.0 ? 0 : 1;
 }
 
 

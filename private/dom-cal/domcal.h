@@ -9,8 +9,8 @@
 
 /* Version of calibration program */
 #define MAJOR_VERSION 7
-#define MINOR_VERSION 5
-#define PATCH_VERSION 2
+#define MINOR_VERSION 4
+#define PATCH_VERSION 0
 
 /* Default ATWD DAC settings */
 #ifdef DOMCAL_REV5
@@ -107,8 +107,8 @@ typedef struct {
     short dac_values[16];
     short adc_values[24];
 
-    /* Allowed HV */
-    short min_hv, max_hv;
+    /* Maximum allowed HV */
+    short max_hv;
    
     /* FADC calibration */
     linear_fit  fadc_baseline;

@@ -141,8 +141,8 @@ public class HVHistogramGrapher implements Runnable {
         doc.add("DOM Id");
         sumDoc.add("DOM Id");
         for (int i = 0; i < VOLTAGES.length; i++) {
-            doc.add("HV Iter. " + i);
-            sumDoc.add("HV Iter. " + i);
+            doc.add(VOLTAGES[i] + "V");
+            sumDoc.add(VOLTAGES[i] + "V");
         }
         doc.add("Gain vs HV");
         doc.addBr();
@@ -206,18 +206,16 @@ public class HVHistogramGrapher implements Runnable {
                     sumDoc.addNew("  ");
                     sumDoc.add("  ");
                 }
-                int vldcnt = 0;
-                for (short i = 0; i < 2000; i++) {
-                    HVHistogram currentHisto = (HVHistogram)hTable.get(new Short(i));
+                for (int i = 0; i < VOLTAGES.length; i++) {
+                    HVHistogram currentHisto = (HVHistogram)hTable.get(new Short(VOLTAGES[i]));
                     if (currentHisto == null) {
-                        //System.out.println("Error -- " + domId + " histogram for " + VOLTAGES[i] + "V not found");
-                        //doc.add("Not produced");
-                        //sumDoc.add("N/A");
+                        System.out.println("Error -- " + domId + " histogram for " + VOLTAGES[i] + "V not found");
+                        doc.add("Not produced");
+                        sumDoc.add("N/A");
                     } else if (!currentHisto.isFilled()) {
-                        System.out.println(domId + " Histogram for " + i + "V is not filled");
+                        System.out.println(domId + " Histogram for " + VOLTAGES[i] + "V is not filled");
                         doc.add("N/A");
                         sumDoc.add("N/A");
-                        vldcnt++;
                     } else {
                         try {
                             String loc = graphHistogram(currentHisto, domId, set);
@@ -226,12 +224,7 @@ public class HVHistogramGrapher implements Runnable {
                         } catch (IOException e) {
                             System.out.println("Failed encoding histogram " + e);
                         }
-                        vldcnt++;
                     }
-                }
-                for (; vldcnt < 12; vldcnt++) {
-                  doc.add("Not produced");
-                  sumDoc.add("N/A");
                 }
 
                 // Put summary graph at end of first set
@@ -350,7 +343,7 @@ public class HVHistogramGrapher implements Runnable {
         g.drawLine(50, 0, 50, 249);
 
         //draw X tick marks
-        int[] xTicks = {800, 1100, 1400, 1700, 2000};
+        int[] xTicks = {1100, 1300, 1500, 1700, 1900};
         for (int i = 0; i < xTicks.length; i ++) {
             int x = getXPixel(xTicks[i]);
             g.drawLine(x, 247, x, 251);
@@ -441,8 +434,8 @@ public class HVHistogramGrapher implements Runnable {
 
     private int getXPixel(int val) {
         double logVal = Math.log(val);
-        double staticHVal = Math.log(1800);
-        double staticLVal = Math.log(800);
+        double staticHVal = Math.log(1900);
+        double staticLVal = Math.log(1000);
 
         return 50 + (int)(200 * ((logVal - staticLVal)/(staticHVal - staticLVal)));
     }
@@ -530,14 +523,12 @@ public class HVHistogramGrapher implements Runnable {
         String meanString = "Mean=" + mean + "pC";
         String pvString = "PV=" + pv;
         String noiseString = "Noise=" + noise + "Hz";
-        String HVString = "HV=" + (int)histo.getVoltage() + "V";
         String maxStr = (pvString.length() > noiseString.length()) ? pvString : noiseString;
         if (meanString.length() > maxStr.length()) maxStr = meanString;
 
         g.drawString(pvString, 295 - g.getFontMetrics().stringWidth(maxStr), 5 + charHeight );
         g.drawString(noiseString, 295 - g.getFontMetrics().stringWidth(maxStr), 8 + 2*charHeight );
         g.drawString(meanString, 295 - g.getFontMetrics().stringWidth(maxStr), 11 + 3*charHeight );
-        g.drawString(HVString, 295 - g.getFontMetrics().stringWidth(maxStr), 14 + 4*charHeight );
         return bi;
     }
 

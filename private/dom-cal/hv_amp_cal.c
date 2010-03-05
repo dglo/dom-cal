@@ -81,8 +81,7 @@ int hv_amp_cal(calib_data *dom_calib) {
     if (!checkHVBase()) return 0;
 
     hv = HV_AMP_CAL_VOLTS;
-
-    /* Check to make sure we're not exceeding max requested HV */
+    /* Make sure HV doesn't exceed requested HV */
     hv = (hv > dom_calib->max_hv) ? dom_calib->max_hv : hv;
 
 #ifdef DEBUG

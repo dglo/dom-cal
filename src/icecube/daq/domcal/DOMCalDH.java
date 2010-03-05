@@ -187,9 +187,7 @@ public class DOMCalDH {
                         afecal,
                         pmtcal,
                         itercal,
-                        1020,
-                        1900,
-                        domId
+                        2000
                 ) );
                 // Getting odd behavior from DOMHub - try delay 1.0 sec.
                 Thread.sleep(1000L);

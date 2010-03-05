@@ -229,11 +229,11 @@ int spe_fit(float *xdata, float *ydata, int pts,
     int start_bin = 0;    
     int nonzero_bin = 0;
     int nonzero_found = 0;
-    float head_int = 0.;
 
-    for (;;) {
-
-        head_int += ydata[start_bin];
+    while (((ydata[start_bin] < (SPE_FIT_NOISE_FRACT * num_samples)) || 
+            ((ydata[start_bin] < ydata[start_bin + 1]) && 
+             (ydata[start_bin] < (2 * SPE_FIT_NOISE_FRACT * num_samples)))) &&
+           (start_bin < pts - 1)) {
         
         /* Also record first essentially non-zero bin as a fallback */
         if ((!nonzero_found) && (ydata[start_bin] > SPE_FIT_ZERO_FRACT * num_samples)) {
@@ -241,16 +241,12 @@ int spe_fit(float *xdata, float *ydata, int pts,
             nonzero_bin = start_bin;
         }
 
-        if (head_int > num_samples * SPE_BAD_HEAD_FRACTION) break;
-
         start_bin++;
     }
 
     /* if start_bin is too high, we're better off starting at first nonzero */
     if ( start_bin > (pts / 10))
         start_bin = nonzero_bin;
-
-    printf("Starting fit at bin %d, x=%.2fpC\n", start_bin, xdata[start_bin]);
 
     ndata = pts;
     /*  OK -- let's chop off the last few % -- these are probably non-gaussian */
@@ -279,12 +275,12 @@ int spe_fit(float *xdata, float *ydata, int pts,
     float *sigma = vector(ndata);
     for (i = 0; i < ndata; i++) {
             /* Std. dev. estimate for each point */
-            sigma[i] = sqrt(ydata[i+start_bin]);
+            /* sigma[i] = sqrt(ydata[i+startbin]); */
             /* Shouldn't be < 1.0 */
-            sigma[i] = (sigma[i] < 1.0) ? 1.0 : sigma[i];
+            /* sigma[i] = (sigma[i] < 1.0) ? 1.0 : sigma[i]; */
 
             /* TEMP */
-            /* sigma[i] = 0.1; */
+            sigma[i] = 0.1;
     }
   
     /* Get starting fit parameters */

@@ -144,8 +144,7 @@ int hv_gain_cal(calib_data *dom_calib, int iterHVGain) {
         short hv_idx_r = hv_idx % GAIN_CAL_HV_CNT;
 
         /* Set high voltage and give it time to stabilize */
-        hv = (short)(dom_calib->min_hv + 1.*hv_idx_r/(GAIN_CAL_HV_CNT-1)*
-                                (dom_calib->max_hv - dom_calib->min_hv));
+        hv = (hv_idx_r * GAIN_CAL_HV_INC) + GAIN_CAL_HV_LOW;      
 
         /* Add hv setting to histogram struct */
         hv_hist_data[hv_idx].voltage = hv;
@@ -165,8 +164,8 @@ int hv_gain_cal(calib_data *dom_calib, int iterHVGain) {
         /* Set discriminator */
         /* Three different discriminator settings based on HV setting */
         int disc_dac;
-        if (hv < 1250) disc_dac = getDiscDAC(GAIN_CAL_PC_LOW, *dom_calib);
-        else if (hv < 1580) disc_dac = getDiscDAC(GAIN_CAL_PC_MED, *dom_calib);
+        if (hv_idx_r < 4) disc_dac = getDiscDAC(GAIN_CAL_PC_LOW, *dom_calib);
+        else if (hv_idx_r < 8) disc_dac = getDiscDAC(GAIN_CAL_PC_MED, *dom_calib);
         else disc_dac = getDiscDAC(GAIN_CAL_PC_HIGH, *dom_calib);
         halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, disc_dac);
 #ifdef DEBUG

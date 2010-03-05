@@ -1,7 +1,7 @@
 /*
  * class: StreamSerialCom
  *
- * Version $Id: StreamSerialCom.java,v 1.1 2009-01-05 17:31:13 jkelley Exp $
+ * Version $Id: StreamSerialCom.java,v 1.1.2.2 2009-01-21 22:09:42 jkelley Exp $
  *
  * Date: January 22 2003
  *
@@ -23,7 +23,7 @@ import java.util.regex.*;
  * <code>{@link icecube.daq.domcal.messaging.SerialCom}</code> intefaces in terms of an
  * <code>InputStream</code> and <code>OutputStream</code> pair.
  *
- * @version $Id: StreamSerialCom.java,v 1.1 2009-01-05 17:31:13 jkelley Exp $
+ * @version $Id: StreamSerialCom.java,v 1.1.2.2 2009-01-21 22:09:42 jkelley Exp $
  * @author patton
  */
 public class StreamSerialCom

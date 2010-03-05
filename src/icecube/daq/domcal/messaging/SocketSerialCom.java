@@ -1,7 +1,7 @@
 /*
  * class: SocketSerialCom
  *
- * Version $Id: SocketSerialCom.java,v 1.1 2009-01-05 17:31:13 jkelley Exp $
+ * Version $Id: SocketSerialCom.java,v 1.1.2.2 2009-01-21 22:09:42 jkelley Exp $
  *
  * Date: January 24 2003
  *
@@ -20,7 +20,7 @@ import java.net.Socket;
  * This class an impelementation of the {@link icecube.daq.domcal.messaging.SerialCom} interface that
  * communicates over a sokect connection. This class uses a client socket.
  *
- * @version $Id: SocketSerialCom.java,v 1.1 2009-01-05 17:31:13 jkelley Exp $
+ * @version $Id: SocketSerialCom.java,v 1.1.2.2 2009-01-21 22:09:42 jkelley Exp $
  * @author patton
  */
 public class SocketSerialCom
