@@ -215,7 +215,8 @@ int hv_baseline_cal(calib_data *dom_calib) {
     for (hv_idx = 0; hv_idx < GAIN_CAL_HV_CNT; hv_idx++) {
         
         /* Set high voltage and give it time to stabilize */
-        hv = (hv_idx * GAIN_CAL_HV_INC) + GAIN_CAL_HV_LOW;
+        hv = (short)(dom_calib->min_hv + 1.*hv_idx/(GAIN_CAL_HV_CNT-1)*
+                                (dom_calib->max_hv - dom_calib->min_hv));
         
         /* Check that we're not exceeding maximum requested HV */
         if (hv > dom_calib->max_hv) {

@@ -19,8 +19,8 @@
 
 /* HV settings for gain calibration (in V) */
 /* Starting value, amount to increment, and number of settings */
-#define GAIN_CAL_HV_LOW        1020
-#define GAIN_CAL_HV_INC          80
+//#define GAIN_CAL_HV_LOW        1020
+//#define GAIN_CAL_HV_INC          80
 #define GAIN_CAL_HV_CNT          12
 
 /* In the case of multiple iterations of HV/gain calibration, */
@@ -42,7 +42,7 @@
 #define NOISE_CNT                10
 
 /* Minimum acceptable noise level to fill histogram */
-#define MIN_NOISE                400
+#define MIN_NOISE                250
 
 /* Number of PMT baseline ATWD readouts to take */
 #define BASELINE_TRIG_CNT      10
