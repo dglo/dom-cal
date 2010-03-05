@@ -35,15 +35,15 @@ void fadc_pulse(float x, float *a, float *y, float *dyda, int nparam){
 	float z, e1, e2, es, es8;
 	/* compute intermediate values */
 	z = x - a[1];
-	e1 = exp(-z/5.5f);
-	e2 = exp(z/42.0f);
+	e1 = exp(-z/30.0f);
+	e2 = exp(z/186.0f);
 	es = e1+e2;
 	es8 = pow(es,8.0f);
 	/* evaluate function */
 	*y = a[0]/es8;
 	/* evaulate jacobian */
 	dyda[0] = 1.0f/es8;
-	dyda[1] = (-8.0f*a[0]*(e1/5.5f - e2/42.0f))/(es*es8);
+	dyda[1] = (-8.0f*a[0]*(e1/30.0f - e2/186.0f))/(es*es8);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -59,15 +59,15 @@ void atwd_new_pulse(float x, float *a, float *y, float *dyda, int nparam){
 	float z, e1, e2, es, es8;
 	/* compute intermediate values */
 	z = x - a[1];
-	e1 = exp(-z/30.0f);
-	e2 = exp(z/186.0f);
+	e1 = exp(-z/5.5f);
+	e2 = exp(z/42.0f);
 	es = e1+e2;
 	es8 = pow(es,8.0f);
 	/* evaluate function */
 	*y = a[0]/es8;
 	/* evaulate jacobian */
 	dyda[0] = 1.0f/es8;
-	dyda[1] = (-8.0f*a[0]*(e1/30.0f - e2/186.0f))/(es*es8);
+	dyda[1] = (-8.0f*a[0]*(e1/5.5f - e2/42.0f))/(es*es8);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -190,6 +190,15 @@ int pulseFit(float* xdata, float* ydata, int ndata, float* fit_params, void(*pul
     }
 	
 	printf("Finished non-linear pulse fit\n");
+	
+	printf("Dump of fit input: x y fit value\n");
+	for (i = 0; i < ndata; i++) {
+		float fit_y;
+		float jacobian[2];
+		pulse_func(xdata[i],fit_params,&fit_y,jacobian,2);
+		printf("\t%f %f %f\n",xdata[i],ydata[i],fit_y);
+	}
+	
     return err;
 }
 
@@ -267,7 +276,7 @@ void guessPulseFitParams(float* samples, int start_bin, int stop_bin, float freq
 	/* set the guess for the first fit parameter, A, by scaling the integral of the waveform */
 	fit_params[0] = (sum*1000.0f/freq)/integral_scale;
 #ifdef DEBUG
-	printf("Guess fit parameters are A=%f x0=%f\n",fit_params[0],fit_params[1]);
+	printf("Guess fit parameters are A=%f, x0=%f\n",fit_params[0],fit_params[1]);
 #endif
 }
 
@@ -576,6 +585,7 @@ int delta_t_cal(calib_data *dom_calib) {
 					if(fiterr != PULSE_FIT_NO_ERR){
 #ifdef DEBUG
 						printf("WARNING: ATWD %i pulse fit failed with error %i, discarding!\r\n", a, fiterr);
+						printf("ATWD %i pulse fit: A=%f, x0=%f, leading edge time=%f\n",a,pulse_fit_params[0],pulse_fit_params[1],atwd_le[a]);
 #endif
 						bad = 1;
 					}
@@ -605,6 +615,7 @@ int delta_t_cal(calib_data *dom_calib) {
 				if(fiterr != PULSE_FIT_NO_ERR){
 #ifdef DEBUG
 					printf("WARNING: FADC pulse fit failed with error %i, discarding!\r\n", fiterr);
+					printf("FADC pulse fit: A=%f, x0=%f, leading edge time=%f\n",pulse_fit_params[0],pulse_fit_params[1],fadc_le);
 #endif
 					bad = 1;
 				}
