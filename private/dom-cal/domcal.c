@@ -292,13 +292,26 @@ int main(void) {
 
     /* Get max HV */
     if (doHVCal) {
-        printf("Enter maximum HV (0V-2000V): ");
-        fflush(stdout);
-        getstr(buf);
-        dom_calib.max_hv = atoi(buf);
-        if (dom_calib.max_hv > 2000) dom_calib.max_hv = 2000;
-        if (dom_calib.max_hv < 0) dom_calib.max_hv = 0;
-        printf("\r\n");
+        int max_min_set = 0;
+        while (!max_min_set) {
+            printf("Enter minimum HV (0V-2000V): ");
+            fflush(stdout);
+            getstr(buf);
+            dom_calib.min_hv = atoi(buf);
+            if (dom_calib.min_hv > 2000) dom_calib.min_hv = 2000;
+            if (dom_calib.min_hv < 900) dom_calib.min_hv = 900;
+            printf("\r\n");
+            printf("Enter maximum HV (%dV-2000V): ", dom_calib.min_hv);
+            fflush(stdout);
+            getstr(buf);
+            dom_calib.max_hv = atoi(buf);
+            if (dom_calib.max_hv > 2000) dom_calib.max_hv = 2000;
+            if (dom_calib.max_hv < 900) dom_calib.max_hv = 900;
+            printf("\r\n");
+            if (dom_calib.max_hv >= dom_calib.min_hv) max_min_set = 1;
+            else printf("Max HV %d is less than Min HV %d.\r\n",
+                                    dom_calib.max_hv, dom_calib.min_hv);
+        }
     }
 
     /* Init # histos returned and number of HV baselines */
@@ -345,11 +358,11 @@ int main(void) {
 #ifdef DEBUG
         printf(" Waiting 10m for neighbors to settle...\r\n");
 #endif
-        int i;
+		int i;
         for (i = 0; i < 600; i++) halUSleep(1000000);
 
         transit_cal(&dom_calib);
-        hv_gain_cal(&dom_calib, iterHVGain);        
+        hv_gain_cal(&dom_calib, iterHVGain);
         pmt_discriminator_cal(&dom_calib);
         /* Switches out FPGA design */
         daq_baseline_cal(&dom_calib);

@@ -50,10 +50,12 @@ public class DOMCal implements Runnable {
     private boolean calibrate;
     private boolean calibrateHv;
     private boolean iterateHv;
-    private int maxHv;
+    private int maxHv, minHv;
+    private String cid;
 
     public DOMCal( String host, int port, String outDir, boolean calibrate, 
-                   boolean calibrateHv, boolean iterateHv, int maxHv ) {
+                   boolean calibrateHv, boolean iterateHv, int maxHv,
+                   int minHv, String cid) {
         this.host = host;
         this.port = port;
         this.outDir = outDir;
@@ -64,6 +66,8 @@ public class DOMCal implements Runnable {
         this.calibrateHv = calibrateHv;
         this.iterateHv = iterateHv;
         this.maxHv = maxHv;
+        this.minHv = minHv;
+        this.cid = cid;
     }
 
     public void run() {
@@ -130,6 +134,12 @@ public class DOMCal implements Runnable {
                     return;
                 }
                 id = r.nextToken();
+
+                // Check if ID matches, if requested
+                if (cid != null && !cid.equalsIgnoreCase(id)) {
+                  logger.error("mbid " + id + " does not match requested id " + cid);
+                  return;
+                } 
 
                 // First see if we can find cached toroid result 
                 File domPropFile = new File(cacheDir.getPath()+"/dom_"+id+".properties");
@@ -278,6 +288,7 @@ public class DOMCal implements Runnable {
                         com.send( "n" + "\r" );
                     }
                     com.receive( "\r\n" );
+                    com.send( "" + minHv + "\r");
                     com.send( "" + maxHv + "\r");
                     
                 } else {
@@ -387,16 +398,21 @@ public class DOMCal implements Runnable {
 
     public static void main( String[] args ) {
         String host = "localhost";
+        String cid = null;
         int port = 5000;
-        int nPorts = 1;
+        int nPorts = 0;
         String outDir = System.getProperty("user.dir");
         boolean calibrateHV = false;
         boolean iterateHV = false;
-        int maxHV = 2000;
+        int maxHV = 1900;
+        int minHV = 1020;
         if (args.length == 0) {
             usage();
             return;
         }
+
+        List descriptorList = new LinkedList();
+
         for (int i = 0; i < args.length; i++) {
 
             if (args[i].equals("-d") && i < args.length - 1) outDir = args[++i];
@@ -404,6 +420,16 @@ public class DOMCal implements Runnable {
             else if (args[i].equals("-n") && i < args.length - 1) nPorts = Integer.parseInt(args[++i]);
             else if (args[i].equals("-h") && i < args.length - 1) host = args[++i];
             else if (args[i].equals("-m") && i < args.length - 1) maxHV = Integer.parseInt(args[++i]);
+            else if (args[i].equals("-s") && i < args.length - 1) minHV = Integer.parseInt(args[++i]);
+            else if (args[i].equals("-c") && i < args.length - 1) cid = args[++i];
+            else if (args[i].equals("-D") && i < args.length - 1) {
+              try {
+                descriptorList.add(parseDOMCalThread(args[++i]));
+              } catch (Exception e) {
+                usage();
+                die( e );
+              }
+            }
 
             else if (args[i].charAt(0) == '-') {
                 for (int j = 0; j < args[i].length(); j++) {
@@ -418,11 +444,22 @@ public class DOMCal implements Runnable {
                 die("Invalid command line arguments");
             }
         }
+
+        if (nPorts > 1) cid = null;
+
         try {
             for ( int i = 0; i < nPorts; i++ ) {
-                Thread t = new Thread( new DOMCal( host, port + i, outDir, true, calibrateHV, iterateHV, maxHV ), "" + ( port + i ) );
+                Thread t = new Thread( new DOMCal( host, port + i, outDir, true, calibrateHV, iterateHV, maxHV, minHV, cid), "" + ( port + i ) );
                 threads.add( t );
                 t.start();
+            }
+
+            for (Iterator it = descriptorList.iterator(); it.hasNext();) {
+              DOMCalDescriptor d = (DOMCalDescriptor)it.next();
+              boolean calibrateHVCurrent = calibrateHV && !(d.hvHi == 0 && d.hvLow == 0);
+              Thread t = new Thread( new DOMCal( d.host, d.port, outDir, true, calibrateHVCurrent, iterateHV, d.hvHi, d.hvLow, d.cid), d.string);
+              threads.add( t );
+              t.start();
             }
 
             for ( int i = 0; i < TIMEOUT; i++ ) {
@@ -457,18 +494,54 @@ public class DOMCal implements Runnable {
         System.out.println( "DOMCal Usage: java icecube.daq.domcal.DOMCal\n" +
                             "    -h [host]  default=localhost\n" +
                             "    -p [port]  default=5000\n" +
-                            "    -n [number of ports] default=1\n" +
+                            "    -n [number of ports] default=0\n" +
                             "    -d [output directory]  default=CWD\n" +
-                            "    -m [maximum HV]  default=2000V range 0V-2000V\n" +
+                            "    -m [maximum HV]  default=1900V range 0V-2000V\n" +
+                            "    -s [starting HV] default=1020V range 0V-2000V\n" +
                             "    -v (calibrate HV)\n" +
-                            "    -i (iterate HV)");
+                            "    -i (iterate HV)\n" +
+                            "    -c [mbid] check if DOM mbid matches before beginning calibration\n" +
+                            "    -D [host:port:minHV:maxHV:<mbid>] add a DOM given a specific host, port, HV limits, and optionally check if DOM mbid matches before beginning calibration");
 
+    }
 
+    private static DOMCalDescriptor parseDOMCalThread(String s) throws Exception {
 
+      DOMCalDescriptor d = new DOMCalDescriptor();
 
+      StringTokenizer st = new StringTokenizer(s, ":");
+      if (st.countTokens() != 4 && st.countTokens() != 5) {
+        logger.error("Invalid DOM format string: " + s);
+        throw new Exception();
+      }
+
+      d.string = s;
+      d.host = st.nextToken();
+      d.port = Integer.parseInt(st.nextToken());
+      d.hvLow = Integer.parseInt(st.nextToken());
+      d.hvHi = Integer.parseInt(st.nextToken());
+      d.cid = null;
+
+      if (st.hasMoreTokens()) {
+        d.cid = st.nextToken();
+      }
+
+      if (d.hvLow < 0 || d.hvHi > 2000 || d.hvLow > d.hvHi) {
+        logger.error("HV out of range: " + s);
+        throw new Exception();
+      }
+
+      return d;
     }
 
     private static void die( Object o ) {
         logger.fatal( o );
+        System.exit(-1);
+    }
+
+    private static class DOMCalDescriptor {
+
+      private String string,host,cid;
+      private int port,hvLow,hvHi;
     }
 }

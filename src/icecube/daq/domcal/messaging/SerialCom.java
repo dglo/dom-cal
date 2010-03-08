@@ -1,7 +1,7 @@
 /*
  * interface: SerialCom
  *
- * Version $Id: SerialCom.java,v 1.1.2.2 2009-01-21 22:09:42 jkelley Exp $
+ * Version $Id: SerialCom.java,v 1.1.2.3 2010-03-08 23:17:03 cweaver Exp $
  *
  * Date: January 22 2003
  *
@@ -27,7 +27,7 @@ import java.io.IOException;
  * to an stfserv image on the DOM.
  * </ul>
  *
- * @version $Id: SerialCom.java,v 1.1.2.2 2009-01-21 22:09:42 jkelley Exp $
+ * @version $Id: SerialCom.java,v 1.1.2.3 2010-03-08 23:17:03 cweaver Exp $
  * @author patton
  */
 public interface SerialCom
