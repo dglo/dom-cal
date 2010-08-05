@@ -296,7 +296,6 @@ public class DOMCal implements Runnable {
                 }
             } catch ( IOException e ) {
                 logger.error( "IO Error starting DOM calibration routine" );
-                die( e );
                 return;
             }
 
@@ -342,7 +341,6 @@ public class DOMCal implements Runnable {
                     xmlFinished = xmlData.endsWith("</domcal>\r\n");
                 } catch ( IOException e ) {
                     logger.error( "IO Error reading XML data from DOM" );
-                    die( e );
                     return;
                 }
                 xml.close();
@@ -357,7 +355,6 @@ public class DOMCal implements Runnable {
                 
             } catch ( IOException e ) {
                 logger.error( "IO Error occurred during calibration routine" );
-                die( e );
                 return;
             }
         } // End calibration section
