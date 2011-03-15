@@ -12,164 +12,123 @@
 
 package icecube.daq.domcal;
 
+import icecube.daq.domcal.messaging.SocketSerialCom;
+
 import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.net.Socket;
 import java.util.zip.InflaterInputStream;
+import java.util.zip.GZIPInputStream;
 
-public class DOMCalCom {
-    
-    public static final int CONNECT_TIMEOUT_MSEC = 5000;
-    
-    private InputStream in;
-    private OutputStream out;
-    private Socket s;
+public class DOMCalCom extends SocketSerialCom {
 
-    public DOMCalCom( Socket s ) throws IOException {
+    public DOMCalCom(String host, int port) {
 
-        this.in = s.getInputStream();
-        this.out = s.getOutputStream();
-        this.s = s;
-
-        int avail = in.available();
-        if ( avail != 0 ) {
-            in.read( new byte[avail] );
-        }
-        initCom();
+        super(host, port);
     }
 
-    public void send( String s ) throws IOException {
-        byte[] bytes = s.getBytes();
-        out.write( bytes );
-        out.flush();
-    }
-
-    public String receive( String terminator ) throws IOException {
-        String out = "";
-        while ( !out.endsWith( terminator ) ) {
-            int avail = in.available();
-            if ( avail == 0 ) {
-                try {
-                    Thread.sleep( 100 );
-                } catch ( InterruptedException e ) {
-                }
-            }
-            byte[] b = new byte[in.available()];
-            in.read( b );
-            out += new String( b );
-        }
-        return out;
-    }
-
-    public String receiveAvailable() throws IOException {
-
-        int avail = in.available();
-        if (avail == 0) return "";
-        byte[] b = new byte[in.available()];
-        in.read(b);
-        return new String(b);
-    }
-
-    public String receive( String terminator, long timeout ) throws IOException {
-        long startTime = System.currentTimeMillis();
-        String out = "";
-        while ( !out.endsWith( terminator ) ) {
-            if ( System.currentTimeMillis() - startTime > timeout ) {
-                throw new IOException( "Timeout reached" );
-            }
-            int avail = in.available();
-            if ( avail == 0 ) {
-                try {
-                    Thread.sleep( 100 );
-                } catch ( InterruptedException e ) {
-                }
-            }
-            byte[] b = new byte[in.available()];
-            in.read( b );
-            out += new String( b );
-        }
-        return out;
-    }
-
-    public String receivePartial( String terminator ) throws IOException {
-        String out = "";
-        while ( !out.endsWith( terminator ) ) {
-            out += ( char )in.read();
-        }
-        return out;
-    }
+    /**
+     * Read zipped data from dom (output of zd)
+     * @return The inflated data
+     * @throws IOException
+     */
 
     public byte[] zRead() throws IOException {
-        
+
+        InputStream in = getInputStream();
+
         byte [] len = new byte[4];
-        for ( int i = 0; i < 4; i++ ) {
-            len[i] = ( byte )in.read();
+        for (int i = 0; i < 4; i++) {
+            len[i] = (byte)in.read();
         }
-        
-        ByteBuffer buf = ByteBuffer.wrap( len );
-        buf.order( ByteOrder.LITTLE_ENDIAN );
+
+        ByteBuffer buf = ByteBuffer.wrap(len);
+        buf.order(ByteOrder.LITTLE_ENDIAN);
         int length = buf.getInt();
 
-        InflaterInputStream z = new InflaterInputStream( in );
-        
+        InflaterInputStream z = new InflaterInputStream(in);
+
         byte[] out = new byte[length];
-        for ( int offset = 0; offset != length; ) {
-            offset += z.read( out, offset, z.available() );
+        for (int offset = 0; offset != length;) {
+            offset += z.read(out, offset, length-offset);
         }
         return out;
     }
+ 
+    /**
+     * Read zlib data from dom in one chunk
+     * no size header like zdump
+     */
+    public String zreceive() throws IOException {
 
-    public void close() throws IOException {
-        in.close();
-        out.close();
-        s.close();
+        InputStream in = getInputStream();
+        InflaterInputStream z = new InflaterInputStream(in);
+
+        int b;
+        StringBuffer sb = new StringBuffer();
+        while (z.available() != 0) {
+            b = z.read();
+            if (b != -1)
+                sb.append((char)(b & 0xFF));
+        }
+        return new String(sb);
     }
 
-    private void initCom() throws IOException {
-        Thread t = new Thread( new InitRunnable( this ) );
-        t.start();
-        for ( int i = 0; i < ( CONNECT_TIMEOUT_MSEC / 100 ); i++ ) {
-            try {
-                Thread.sleep( 100 );
-                if ( !t.isAlive() ) {
-                    return;
-                }
-            } catch ( InterruptedException e ) {
-                i--;
-            }
+    public String receive() throws IOException {
+
+        InputStream in = getInputStream();
+        
+        int br = in.available();
+        int nr = 0;
+        if (br > 0) {
+            byte[] out = new byte[br];
+            nr = in.read(out, 0 , br);
+            return new String(out, 0, nr);
         }
-        if ( t.isAlive() ) {
-            try {
-                t.join( 100 );
-            } catch ( InterruptedException e ) {
-            }
-            throw new IOException( "Connect timeout reached" );
-        }
+        else
+            return new String("");
     }
 
-    protected void finalize() throws Throwable {
-        close();
-    }
+    public void connect() throws IOException {
 
-    private class InitRunnable implements Runnable {
+        super.connect("socket");
 
-        private DOMCalCom com;
+        /* Determine runstate with prompt -- send enough newline characters to deal with configboot power-on info */
+        send("\r\n");
+        String promptStr = receive("\r\n");
+        send("\r\n\r\n\r\n");
+        promptStr = receive("\r\n");
+        promptStr = receive("\r\n");
+        promptStr = receive("\r\n");
 
-        public InitRunnable( DOMCalCom com ) {
-            this.com = com;
+        if (promptStr.length() == 0) throw new IllegalStateException("Unable to determine DOM run state");
+        char promptChar = promptStr.charAt(0);
+
+        /* If in iceboot, we're good */
+        if (promptChar == '>') {
+
+            /* Sync I/O */
+            send("ls\r\n");
+            receive("ls\r\n");
+            receive(">");
+
+            return;
         }
 
-        public void run() {
-            try {
-                com.send( "r\r" );
-                com.receive( "\r\n> " );
-                com.receive( "\r\n> ", 100 );
-                return;
-            } catch ( IOException e ) {
-            }
+        /* If in configboot, move to iceboot */
+        else if (promptChar == '#') {
+
+            send("r\r\n");
+            receive(">");
+            /* Now in iceboot */
+
+            return;
         }
+
+        /* We can't determine DOM run state */
+        throw new IllegalStateException("Unable to determine DOM run state");
     }
 }

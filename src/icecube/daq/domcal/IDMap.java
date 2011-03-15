@@ -3,6 +3,7 @@ package icecube.daq.domcal;
 import icecube.daq.db.domprodtest.DOMProdTestUtil;
 
 import java.util.HashMap;
+import java.util.Iterator;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -45,7 +46,7 @@ class IDMap
                     final int id = rs.getInt(1);
                     final String name = rs.getString(2);
 
-                    map.put(name, new Integer(id));
+                    map.put(name.toLowerCase(), new Integer(id));
                 }
             } catch (SQLException se) {
                 resultEx = se;
@@ -72,11 +73,37 @@ class IDMap
      */
     public int getId(String name)
     {
-        Integer iObj = (Integer) map.get(name);
+        if (name == null) {
+            return DOMProdTestUtil.ILLEGAL_ID;
+        }
+
+        Integer iObj = (Integer) map.get(name.toLowerCase());
         if (iObj == null) {
             return DOMProdTestUtil.ILLEGAL_ID;
         }
 
         return iObj.intValue();
+    }
+
+    /**
+     * Get the name for the specified ID.
+     *
+     * @param id ID being looked up
+     *
+     * @return associated name
+     */
+    public String getName(int id)
+    {
+        Iterator iter = map.keySet().iterator();
+        while (iter.hasNext()) {
+            String name = (String) iter.next();
+
+            Integer iObj = (Integer) map.get(name);
+            if (iObj.intValue() == id) {
+                return name;
+            }
+        }
+
+        return null;
     }
 }

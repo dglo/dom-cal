@@ -83,15 +83,27 @@ public class CalibratorComparator
                 if (cmp == 0) {
                     cmp = comparePulsers(c1, c2, verbose);
                     if (cmp == 0) {
-                        cmp = compareATWDs(c1, c2, verbose);
+                        cmp = compareFADCs(c1, c2, verbose);
                         if (cmp == 0) {
-                            cmp = compareAmpGains(c1, c2, verbose);
+                            cmp = compareDiscrim(c1, c2, verbose);
                             if (cmp == 0) {
-                                cmp = compareATWDFreqs(c1, c2, verbose);
+                                cmp = compareATWDs(c1, c2, verbose);
                                 if (cmp == 0) {
-                                    cmp = compareHvGains(c1, c2, verbose);
+                                    cmp = compareAmpGains(c1, c2, verbose);
                                     if (cmp == 0) {
-                                        cmp = compareHvHistos(c1, c2, verbose);
+                                        cmp = compareATWDFreqs(c1, c2, verbose);
+                                        if (cmp == 0) {
+                                            cmp = compareBaselines(c1, c2, verbose);
+                                            if (cmp == 0) {
+                                                cmp = comparePmtTransits(c1, c2, verbose);
+                                                if (cmp == 0) {
+                                                    cmp = compareHvGains(c1, c2, verbose);
+                                                    if (cmp == 0) {
+                                                        cmp = compareHvHistos(c1, c2, verbose);
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -124,17 +136,18 @@ public class CalibratorComparator
                 System.err.println("ADC length mismatch (" + len + " != " +
                                    c2.getNumberOfADCs() + ")");
             }
-            return len - c2.getNumberOfADCs();
+            return c2.getNumberOfADCs() - len;
         }
 
         for (int i = 0; i < len; i++) {
-            if (c1.getADC(i) != c2.getADC(i)) {
+            int diff = c2.getADC(i) - c2.getADC(i);
+            if (diff < -2 || diff > 2) {
                 if (verbose) {
                     System.err.println("ADC#" + i + " mismatch (" +
                                        c1.getADC(i) + " != " + c2.getADC(i) +
                                        ")");
                 }
-                return c1.getADC(i) - c2.getADC(i);
+                return diff;
             }
         }
 
@@ -162,14 +175,14 @@ public class CalibratorComparator
                                    numChips + " != " +
                                    c2.getNumberOfATWDFrequencyChips() + ")");
             }
-            return numChips - c2.getNumberOfATWDFrequencyChips();
+            return c2.getNumberOfATWDFrequencyChips() - numChips;
         }
 
         for (int ch = 0; ch < numChips; ch++) {
             final String model = c1.getATWDFrequencyFitModel(ch);
             if (!model.equals(c2.getATWDFrequencyFitModel(ch))) {
                 if (verbose) {
-                    System.err.println("ATWD chip#" + ch +
+                    System.err.println("ATWD frequency chip#" + ch +
                                        " model mismatch (" + model + " != " +
                                        c2.getATWDFrequencyFitModel(ch) + ")");
                 }
@@ -189,7 +202,7 @@ public class CalibratorComparator
                             i1.next();
                         }
 
-                        System.err.println("ATWD chip#" + ch +
+                        System.err.println("ATWD frequency chip#" + ch +
                                            " entry length mismatch (" + num1 +
                                            " != " + num + ")");
                     }
@@ -200,8 +213,9 @@ public class CalibratorComparator
                 final String p2 = (String) i2.next();
                 if (!p1.equals(p2)) {
                     if (verbose) {
-                        System.err.println("ATWD chip#" + ch + " parameter#" +
-                                           num + " mismatch (" + p1 + " != " +
+                        System.err.println("ATWD frequency chip#" + ch +
+                                           " parameter#" + num +
+                                           " mismatch (" + p1 + " != " +
                                            p2 + ")");
                     }
                     return p1.compareTo(p2);
@@ -212,13 +226,14 @@ public class CalibratorComparator
                 }
 
                 final double v1 = c1.getATWDFrequencyFitParam(ch, p1);
-                final double v2 = c1.getATWDFrequencyFitParam(ch, p2);
-                final double delta = 0.00000001;
+                final double v2 = c2.getATWDFrequencyFitParam(ch, p2);
+                final double delta = 2.5;
                 if (v1 < v2 - delta || v1 > v2 + delta) {
                     if (verbose) {
-                        System.err.println("ATWD chip#" + ch + " parameter " +
-                                           p1 + " mismatch (" + v1 +
-                                           " != " + v2 + ")");
+                        System.err.println("ATWD frequency chip#" + ch +
+                                           " parameter " + p1 +
+                                           " mismatch (" + v1 + " != " +
+                                           v2 + ")");
                     }
                     return (int) (v1 < v2 - delta ? 1 : -1);
                 }
@@ -234,7 +249,7 @@ public class CalibratorComparator
                         i2.next();
                     }
 
-                    System.err.println("ATWD chip#" + ch +
+                    System.err.println("ATWD frequency chip#" + ch +
                                        " entry length mismatch (" + num +
                                        " != " + num2 + ")");
                 }
@@ -266,7 +281,7 @@ public class CalibratorComparator
                                    " != " + c2.getNumberOfATWDChannels() +
                                    ")");
             }
-            return numChan - c2.getNumberOfATWDChannels();
+            return c2.getNumberOfATWDChannels() - numChan;
         }
 
         for (int ch = 0; ch < numChan; ch++) {
@@ -283,7 +298,7 @@ public class CalibratorComparator
                                        " != " + c2.getNumberOfATWDBins(ch) +
                                        ")");
                 }
-                return numBin - c2.getNumberOfATWDBins(ch);
+                return c2.getNumberOfATWDBins(ch) - numBin;
             }
 
             for (int bin = 0; bin < numBin; bin++) {
@@ -336,8 +351,8 @@ public class CalibratorComparator
                     }
 
                     final double v1 = c1.getATWDFitParam(ch, bin, p1);
-                    final double v2 = c1.getATWDFitParam(ch, bin, p2);
-                    final double delta = 0.00000001;
+                    final double v2 = c2.getATWDFitParam(ch, bin, p2);
+                    final double delta = 0.002;
                     if (v1 < v2 - delta || v1 > v2 + delta) {
                         if (verbose) {
                             System.err.println("ATWD channel#" + ch +
@@ -394,31 +409,122 @@ public class CalibratorComparator
                                    c2.getNumberOfAmplifierGainChannels() +
                                    ")");
             }
-            return len - c2.getNumberOfAmplifierGainChannels();
+            return c2.getNumberOfAmplifierGainChannels() - len;
         }
 
         for (int i = 0; i < len; i++) {
-            final double delta = 0.00000001;
-
             final double g1 = c1.getAmplifierGain(i);
             final double g2 = c2.getAmplifierGain(i);
-            if (g1 < g2 - delta || g1 > g2 + delta) {
+            final double gainDelta = 0.5;
+            if (g1 < g2 - gainDelta || g1 > g2 + gainDelta) {
                 if (verbose) {
                     System.err.println("Amplifier#" + i + " gain mismatch (" +
                                        g1 + " != " + g2 + ")");
                 }
-                return (int) (g1 < g2 - delta ? 1 : -1);
+                return (int) (g1 < g2 - gainDelta ? 1 : -1);
             }
 
             final double e1 = c1.getAmplifierGainError(i);
             final double e2 = c2.getAmplifierGainError(i);
-            if (e1 < e2 - delta || e1 > e2 + delta) {
+            final double errorDelta = 0.005;
+            if (e1 < e2 - errorDelta || e1 > e2 + errorDelta) {
                 if (verbose) {
                     System.err.println("Amplifier#" + i + " error mismatch (" +
                                        e1 + " != " + e2 + ")");
                 }
-                return (int) (e1 < e2 - delta ? 1 : -1);
+                return (int) (e1 < e2 - errorDelta ? 1 : -1);
             }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Compare baseline data.
+     *
+     * @param c1 first set of calibration data
+     * @param c2 second set of calibration data
+     * @param verbose <tt>true</tt> to print reason for inequality
+     *
+     * @return <tt>0</tt> if the arguments are equal, <tt>-1</tt> if
+     *         <tt>c1</tt> is greater than <tt>c2</tt>, or <tt>-1</tt> if
+     *         <tt>c1</tt> is less than <tt>c2</tt>
+     */
+    private static int compareBaselines(Calibrator c1, Calibrator c2,
+                                        boolean verbose)
+    {
+        final float delta = 0.00000001F;
+
+        Iterator iter1 = c1.getBaselines();
+        Iterator iter2 = c2.getBaselines();
+
+        if (iter1 == null) {
+            if (iter2 == null) {
+                return 0;
+            }
+
+            return 1;
+        } else if (iter2 == null) {
+            return -1;
+        }
+
+        int num = 0;
+        while (true) {
+            if (!iter1.hasNext() && !iter2.hasNext()) {
+                break;
+            }
+
+            if (!iter1.hasNext() || !iter2.hasNext()) {
+                int num1 = num;
+                while (iter1.hasNext()) {
+                    iter1.next();
+                    num1++;
+                }
+
+                int num2 = num;
+                while (iter2.hasNext()) {
+                    iter2.next();
+                    num2++;
+                }
+
+                if (verbose) {
+                    System.err.println("Baseline length mismatch (" + num1 +
+                                       " != " + num2 + ")");
+                }
+
+                return num2 - num1;
+            }
+
+            Baseline bl1 = (Baseline) iter1.next();
+            Baseline bl2 = (Baseline) iter2.next();
+
+            final int v1 = bl1.getVoltage();
+            if (v1 != bl2.getVoltage()) {
+                if (verbose) {
+                    System.err.println("Baseline#" + num +
+                                       " voltage mismatch (" + v1 + " != " +
+                                       bl2.getVoltage() + ")");
+                }
+                return bl2.getVoltage() - v1;
+            }
+
+            for (int i = 0; i < 2; i++) {
+                for (int j = 0; j < 3; j++) {
+                    final float d1 = bl1.getBaseline(i, j);
+                    final float d2 = bl2.getBaseline(i, j);
+                    if (d1 < d2 - delta || d1 > d2 + delta) {
+                        if (verbose) {
+                            System.err.println("Baseline#" + num +
+                                               " ATWD#" + i + " Chan#" + j +
+                                               " mismatch (" +
+                                               d1 + " != " + d2 + ")");
+                        }
+                        return (int) (d1 < d2 - delta ? 1 : -1);
+                    }
+                }
+            }
+
+            num++;
         }
 
         return 0;
@@ -444,7 +550,7 @@ public class CalibratorComparator
                 System.err.println("DAC length mismatch (" + len + " != " +
                                    c2.getNumberOfDACs() + ")");
             }
-            return len - c2.getNumberOfDACs();
+            return c2.getNumberOfDACs() - len;
         }
 
         for (int i = 0; i < len; i++) {
@@ -454,7 +560,173 @@ public class CalibratorComparator
                                        c1.getDAC(i) + " != " + c2.getDAC(i) +
                                        ")");
                 }
-                return c1.getDAC(i) - c2.getDAC(i);
+                return c2.getDAC(i) - c1.getDAC(i);
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Compare discriminator data.
+     *
+     * @param c1 first set of calibration data
+     * @param c2 second set of calibration data
+     * @param verbose <tt>true</tt> to print reason for inequality
+     *
+     * @return <tt>0</tt> if the arguments are equal, <tt>-1</tt> if
+     *         <tt>c1</tt> is greater than <tt>c2</tt>, or <tt>-1</tt> if
+     *         <tt>c1</tt> is less than <tt>c2</tt>
+     */
+    private static int compareDiscrim(Calibrator c1, Calibrator c2,
+                                      boolean verbose)
+    {
+        int cmp = compareDiscrim(c1, c2, "SPE", verbose);
+        if (cmp == 0) {
+            cmp = compareDiscrim(c1, c2, "MPE", verbose);
+        }
+        return cmp;
+    }
+
+    /**
+     * Compare discriminator data.
+     *
+     * @param c1 first set of calibration data
+     * @param c2 second set of calibration data
+     * @param verbose <tt>true</tt> to print reason for inequality
+     *
+     * @return <tt>0</tt> if the arguments are equal, <tt>-1</tt> if
+     *         <tt>c1</tt> is greater than <tt>c2</tt>, or <tt>-1</tt> if
+     *         <tt>c1</tt> is less than <tt>c2</tt>
+     */
+    private static int compareDiscrim(Calibrator c1, Calibrator c2,
+                                      String name, boolean verbose)
+    {
+        String m1;
+        try {
+            m1 = c1.getDiscriminatorFitModel(name);
+        } catch (DOMCalibrationException dce) {
+            m1 = null;
+        }
+        if (m1 == null) {
+            m1 = "";
+        }
+
+        String m2;
+        try {
+            m2 = c2.getDiscriminatorFitModel(name);
+        } catch (DOMCalibrationException dce) {
+            m2 = null;
+        }
+        if (m2 == null) {
+            m2 = "";
+        }
+
+        if (!m1.equalsIgnoreCase(m2)) {
+            if (verbose) {
+                System.err.println(name + " model mismatch (\"" + m1 +
+                                   "\" != \"" + m2 + "\")");
+            }
+
+            return m1.toLowerCase().compareTo(m2.toLowerCase());
+        }
+
+        final double delta = 0.00000001;
+
+        final String[] param = new String[] { "slope", "intercept", "r" };
+        for (int i = 0; i < param.length; i++) {
+            double v1;
+            try {
+                v1 = c1.getDiscriminatorFitParam(param[i], name);
+            } catch (DOMCalibrationException dce) {
+                v1 = Double.NaN;
+            }
+
+            double v2;
+            try {
+                v2 = c2.getDiscriminatorFitParam(param[i], name);
+            } catch (DOMCalibrationException dce) {
+                v2 = Double.NaN;
+            }
+
+            if (v1 < v2 - delta || v1 > v2 + delta) {
+                if (verbose) {
+                    System.err.println(name + " discrim param " + param[i] +
+                                       " mismatch (" + v1 + " != " +
+                                       v2 + ")");
+                }
+                return (int) (v1 < v2 - delta ? 1 : -1);
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Compare FADC data.
+     *
+     * @param c1 first set of calibration data
+     * @param c2 second set of calibration data
+     * @param verbose <tt>true</tt> to print reason for inequality
+     *
+     * @return <tt>0</tt> if the arguments are equal, <tt>-1</tt> if
+     *         <tt>c1</tt> is greater than <tt>c2</tt>, or <tt>-1</tt> if
+     *         <tt>c1</tt> is less than <tt>c2</tt>
+     */
+    private static int compareFADCs(Calibrator c1, Calibrator c2,
+                                      boolean verbose)
+    {
+        final double delta = 0.01;
+
+        for (int i = 0; i < 7; i++) {
+            double v1, v2;
+            String name;
+            switch (i) {
+            case 0:
+                v1 = c1.getFadcSlope();
+                v2 = c2.getFadcSlope();
+                name = "slope";
+                break;
+            case 1:
+                v1 = c1.getFadcIntercept();
+                v2 = c2.getFadcIntercept();
+                name = "intercept";
+                break;
+            case 2:
+                v1 = c1.getFadcRegression();
+                v2 = c2.getFadcRegression();
+                name = "regression";
+                break;
+            case 3:
+                v1 = c1.getFadcGain();
+                v2 = c2.getFadcGain();
+                name = "gain";
+                break;
+            case 4:
+                v1 = c1.getFadcGainError();
+                v2 = c2.getFadcGainError();
+                name = "gain error";
+                break;
+            case 5:
+                v1 = c1.getFadcDeltaT();
+                v2 = c2.getFadcDeltaT();
+                name = "delta T";
+                break;
+            case 6:
+                v1 = c1.getFadcDeltaTError();
+                v2 = c2.getFadcDeltaTError();
+                name = "delta T error";
+                break;
+            default:
+                throw new Error("Unknown param #" + i);
+            }
+
+            if (v1 < v2 - delta || v1 > v2 + delta) {
+                if (verbose) {
+                    System.err.println("FADC param " + name + " mismatch (" +
+                                       v1 + " != " + v2 + ")");
+                }
+                return (int) (v1 < v2 - delta ? 1 : -1);
             }
         }
 
@@ -481,7 +753,6 @@ public class CalibratorComparator
             if (verbose) {
                 System.err.println("Histogram#" + num + " voltage mismatch (" +
                                    v1 + " != " + h2.getVoltage() + ")");
-                                   
             }
             return (h2.getVoltage() - v1);
         }
@@ -492,7 +763,7 @@ public class CalibratorComparator
                 System.err.println("Histogram#" + num +
                                    " convergence mismatch (" +
                                    (convergent ? "" : "!") + "convergent != " +
-                                   (h2.isConvergent() ?"" : "!") +
+                                   (h2.isConvergent() ? "" : "!") +
                                    "convergent)");
             }
             return (convergent ? -1 : 1);
@@ -527,7 +798,7 @@ public class CalibratorComparator
                 System.err.println("Histogram#" + num +
                                    " isFilled mismatch (" +
                                    (isFilled ? "" : "!") + "isFilled != " +
-                                   (h2.isFilled() ?"" : "!") + "isFilled)");
+                                   (h2.isFilled() ? "" : "!") + "isFilled)");
             }
             return (isFilled ? -1 : 1);
         }
@@ -558,9 +829,8 @@ public class CalibratorComparator
         } else if (hp1.length != hp2.length) {
             if (verbose) {
                 System.err.println("Histogram#" + num +
-                                   " param array mismatch (float[" +
-                                   hp1.length + "] != float[" + hp2.length +
-                                   "])");
+                                   " param array length mismatch (" +
+                                   hp1.length + " != " + hp2.length + ")");
             }
 
             return (hp2.length - hp1.length);
@@ -604,9 +874,8 @@ public class CalibratorComparator
         } else if (x1.length != x2.length) {
             if (verbose) {
                 System.err.println("Histogram#" + num +
-                                   " charge array mismatch (float[" +
-                                   x1.length + "] != float[" + x2.length +
-                                   "])");
+                                   " charge array length mismatch (" +
+                                   x1.length + " != " + x2.length + ")");
             }
 
             return (x2.length - x1.length);
@@ -638,9 +907,8 @@ public class CalibratorComparator
         } else if (y1.length != y2.length) {
             if (verbose) {
                 System.err.println("Histogram#" + num +
-                                   " count array mismatch (float[" +
-                                   y1.length + "] != float[" + y2.length +
-                                   "])");
+                                   " count array length mismatch (" +
+                                   y1.length + " != " + y2.length + ")");
             }
 
             return (y2.length - y1.length);
@@ -694,26 +962,26 @@ public class CalibratorComparator
             return (hasHvGain ? -1 : 1);
         }
 
-        final double delta = 0.00000001;
-
         final double s1 = c1.getHvGainSlope();
         final double s2 = c2.getHvGainSlope();
-        if (s1 < s2 - delta || s1 > s2 + delta) {
+        final double sDelta = 0.25;
+        if (s1 < s2 - sDelta || s1 > s2 + sDelta) {
             if (verbose) {
-                System.err.println("high-voltage slope mismatch (" +
+                System.err.println("High-voltage slope mismatch (" +
                                    s1 + " != " + s2 + ")");
             }
-            return (int) (s1 < s2 - delta ? 1 : -1);
+            return (int) (s1 < s2 - sDelta ? 1 : -1);
         }
 
         final double i1 = c1.getHvGainIntercept();
         final double i2 = c2.getHvGainIntercept();
-        if (i1 < i2 - delta || i1 > i2 + delta) {
+        final double iDelta = 0.00001;
+        if (i1 < i2 - iDelta || i1 > i2 + iDelta) {
             if (verbose) {
-                System.err.println("high-voltage intercept mismatch (" +
+                System.err.println("High-voltage intercept mismatch (" +
                                    i1 + " != " + i2 + ")");
             }
-            return (int) (i1 < i2 - delta ? 1 : -1);
+            return (int) (i1 < i2 - iDelta ? 1 : -1);
         }
 
         return 0;
@@ -817,6 +1085,64 @@ public class CalibratorComparator
     }
 
     /**
+     * Compare PMT transits data.
+     *
+     * @param c1 first set of calibration data
+     * @param c2 second set of calibration data
+     * @param verbose <tt>true</tt> to print reason for inequality
+     *
+     * @return <tt>0</tt> if the arguments are equal, <tt>-1</tt> if
+     *         <tt>c1</tt> is greater than <tt>c2</tt>, or <tt>-1</tt> if
+     *         <tt>c1</tt> is less than <tt>c2</tt>
+     */
+    private static int comparePmtTransits(Calibrator c1, Calibrator c2,
+                                          boolean verbose)
+    {
+        final int num = c1.getNumberOfTransitPoints();
+        if (num != c2.getNumberOfTransitPoints()) {
+            if (verbose) {
+                System.err.println("Num transit pts mismatch (" + num + " != " +
+                                   c2.getNumberOfTransitPoints() + ")");
+            }
+            return c2.getNumberOfTransitPoints() - num;
+        }
+
+        final double delta = 0.00001;
+
+        final double s1 = c1.getPmtTransitSlope();
+        final double s2 = c2.getPmtTransitSlope();
+        if (s1 < s2 - delta || s1 > s2 + delta) {
+            if (verbose) {
+                System.err.println("PMT transit slope mismatch (" +
+                                   s1 + " != " + s2 + ")");
+            }
+            return (int) (s1 < s2 - delta ? 1 : -1);
+        }
+
+        final double i1 = c1.getPmtTransitIntercept();
+        final double i2 = c2.getPmtTransitIntercept();
+        if (i1 < i2 - delta || i1 > i2 + delta) {
+            if (verbose) {
+                System.err.println("PMT transit intercept mismatch (" +
+                                   i1 + " != " + i2 + ")");
+            }
+            return (int) (i1 < i2 - delta ? 1 : -1);
+        }
+
+        final double r1 = c1.getPmtTransitRegression();
+        final double r2 = c2.getPmtTransitRegression();
+        if (r1 < r2 - delta || r1 > r2 + delta) {
+            if (verbose) {
+                System.err.println("PMT transit regression mismatch (" +
+                                   r1 + " != " + r2 + ")");
+            }
+            return (int) (r1 < r2 - delta ? 1 : -1);
+        }
+
+        return 0;
+    }
+
+    /**
      * Compare pulser calibration data.
      *
      * @param c1 first set of calibration data
@@ -830,13 +1156,29 @@ public class CalibratorComparator
     private static int comparePulsers(Calibrator c1, Calibrator c2,
                                       boolean verbose)
     {
-        if (!c1.getPulserFitModel().equals(c2.getPulserFitModel())) {
-            if (verbose) {
-                System.err.println("Pulser model mismatch (" +
-                                   c1.getPulserFitModel() + " != " +
-                                   c2.getPulserFitModel() + ")");
+        String m1 = c1.getPulserFitModel();
+        String m2 = c2.getPulserFitModel();
+
+        int cmpVal;
+        if (m1 == null) {
+            if (m2 == null) {
+                cmpVal = 0;
+            } else {
+                cmpVal = 1;
             }
-            return c1.getPulserFitModel().compareTo(c2.getPulserFitModel());
+        } else if (m2 == null) {
+            cmpVal = -1;
+        } else {
+            cmpVal = m1.compareTo(m2);
+        }
+
+        if (cmpVal != 0) {
+            if (verbose) {
+                System.err.println("Pulser model mismatch (" + m1 + " != " +
+                                   m2 + ")");
+            }
+
+            return cmpVal;
         }
 
         Iterator i1 = c1.getPulserFitKeys();
@@ -873,8 +1215,8 @@ public class CalibratorComparator
             }
 
             final double v1 = c1.getPulserFitParam(p1);
-            final double v2 = c1.getPulserFitParam(p2);
-            final double delta = 0.00000001;
+            final double v2 = c2.getPulserFitParam(p2);
+            final double delta = 0.0001;
             if (v1 < v2 - delta || v1 > v2 + delta) {
                 if (verbose) {
                     System.err.println("Pulser parameter " + p1 +
@@ -917,21 +1259,36 @@ public class CalibratorComparator
     private static int compareMain(Calibrator c1, Calibrator c2,
                                    boolean verbose)
     {
-        if (!c1.getDOMId().equals(c2.getDOMId())) {
+        final int domCmp;
+        if (c1.getDOMId() == null) {
+            if (c2.getDOMId() != null) {
+                domCmp = 1;
+            } else {
+                domCmp = 0;
+            }
+        } else if (c2.getDOMId() == null) {
+            domCmp = -1;
+        } else if (!c1.getDOMId().equals(c2.getDOMId())) {
+            domCmp = c1.getDOMId().compareTo(c2.getDOMId());
+        } else {
+            domCmp = 0;
+        }
+        if (domCmp != 0) {
             if (verbose) {
                 System.err.println("DOMId mismatch (" + c1.getDOMId() +
                                    " != " + c2.getDOMId() + ")");
             }
-            return c1.getDOMId().compareTo(c2.getDOMId());
+
+            return domCmp;
         }
 
         final Calendar cal1 = c1.getCalendar();
         final Calendar cal2 = c2.getCalendar();
-        int calCmp = cal1.get(Calendar.YEAR) - cal2.get(Calendar.YEAR);
+        int calCmp = cal2.get(Calendar.YEAR) - cal1.get(Calendar.YEAR);
         if (calCmp == 0) {
-            calCmp = cal1.get(Calendar.MONTH) - cal2.get(Calendar.MONTH);
+            calCmp = cal2.get(Calendar.MONTH) - cal1.get(Calendar.MONTH);
             if (calCmp == 0) {
-                calCmp = cal1.get(Calendar.DATE) - cal2.get(Calendar.DATE);
+                calCmp = cal2.get(Calendar.DATE) - cal1.get(Calendar.DATE);
             }
         }
         if (calCmp != 0) {

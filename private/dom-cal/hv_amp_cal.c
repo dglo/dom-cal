@@ -38,10 +38,10 @@ int hv_amp_cal(calib_data *dom_calib) {
     short channels[3][128];
 
     /* Charge arrays for each channel, in Volts */
-    float charges[3][AMP_CAL_TRIG_CNT];
+    float charges[3][HV_AMP_CAL_TRIG_CNT];
 
     /* Charge arrays for higher gain channels, for later comparison, in Volts */
-    float hcharges[3][AMP_CAL_TRIG_CNT];
+    float hcharges[3][HV_AMP_CAL_TRIG_CNT];
 
 #ifdef DEBUG
     printf("Performing HV amplifier calibration (using ATWD%d)...\r\n", atwd);
@@ -59,10 +59,13 @@ int hv_amp_cal(calib_data *dom_calib) {
     halWriteDAC(DOM_HAL_DAC_PMT_FE_PEDESTAL, AMP_CAL_PEDESTAL_DAC);   
     halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, HV_AMP_CAL_DISC_DAC);
     halWriteDAC((atwd == 0) ? DOM_HAL_DAC_ATWD0_TRIGGER_BIAS : 
-                DOM_HAL_DAC_ATWD1_TRIGGER_BIAS, AMP_CAL_SAMPLING_DAC);
+                DOM_HAL_DAC_ATWD1_TRIGGER_BIAS, HV_AMP_CAL_SAMPLING_DAC);
 
     bias_v = biasDAC2V(AMP_CAL_PEDESTAL_DAC);
 
+    /* Get the sampling speed */
+    float freq = getCalibFreq(atwd, *dom_calib, HV_AMP_CAL_SAMPLING_DAC);
+    
     /* Set the ATWD launch delay */
     hal_FPGA_TEST_set_atwd_LED_delay(HV_AMP_CAL_ATWD_LAUNCH_DELAY);
 
@@ -78,7 +81,10 @@ int hv_amp_cal(calib_data *dom_calib) {
     if (!checkHVBase()) return 0;
 
     hv = HV_AMP_CAL_VOLTS;
-                                                                                                                                               
+
+    /* Check to make sure we're not exceeding max requested HV */
+    hv = (hv > dom_calib->max_hv) ? dom_calib->max_hv : hv;
+
 #ifdef DEBUG
     printf(" Setting HV to %d V\r\n", hv);
 #endif
@@ -136,7 +142,8 @@ int hv_amp_cal(calib_data *dom_calib) {
     halUSleep(DAC_SET_WAIT);        
 
     /* Loop over channels and pulser settings for each channel */
-    for (ch = 1; ch < 3; ch++) {
+    /* Start with brightest channel to reduce chance of interference with other DOMs' HV gain cal */
+    for (ch = 2; ch >= 1; ch--) {
 
         /* Do binary search to place average LED pulse at prime level */
         int l_max = LED_MAX_AMPLITUDE;
@@ -190,7 +197,7 @@ int hv_amp_cal(calib_data *dom_calib) {
         long long clk = hal_FPGA_TEST_get_local_clock();
         short cidx = 1;
 
-        for (trig=0; trig<(int)AMP_CAL_TRIG_CNT; trig++) {
+        for (trig=0; trig<(int)HV_AMP_CAL_TRIG_CNT; trig++) {
 
             iter++;
 
@@ -256,13 +263,6 @@ int hv_amp_cal(calib_data *dom_calib) {
 
             /* OK -- we have a reasonable muon pulse */
 
-            /* FIX ME DEBUG */
-            if (trig%10 == 0) {
-                long long dt = hal_FPGA_TEST_get_local_clock() - clk;
-                int time = dt / 40000;
-                printf("Got trigger %d loop iteration %d time %dms\n", trig, iter, time);
-            }
-
             float current_v[2];
             float peak_v[2];
             int peak_bin[2];
@@ -308,17 +308,20 @@ int hv_amp_cal(calib_data *dom_calib) {
                 }
                         
                 /* Save voltage data for integration */
-                for (i = 0; i < 2; i++) peak_vdat[i][bin] = current_v[i];
+                for (i = 0; i < 2; i++)
+                    peak_vdat[i][bin] = current_v[i];
             }
 
             /* Integrate around peak bin */
             /* Set limits */
             int mins[2];
             int maxes[2];
+            int charge_fow_bins = (int)(CHARGE_FOW_NS * freq / 1000.0 + 1);
+            int charge_rev_bins = (int)(CHARGE_REV_NS * freq / 1000.0 + 1);
             for (i = 0; i < 2; i++) {
-                mins[i] = peak_bin[i] - CHARGE_FOW_BINS < HV_AMP_CAL_START_BIN ? 
-                                                    HV_AMP_CAL_START_BIN : peak_bin[i] - CHARGE_FOW_BINS;
-                maxes[i] = peak_bin[i] + CHARGE_REV_BINS > cnt-1 ? cnt-1 : peak_bin[i] + CHARGE_REV_BINS;
+                mins[i] = peak_bin[i] - charge_fow_bins < HV_AMP_CAL_START_BIN ? 
+                                                    HV_AMP_CAL_START_BIN : peak_bin[i] - charge_fow_bins;
+                maxes[i] = peak_bin[i] + charge_rev_bins > cnt-1 ? cnt-1 : peak_bin[i] + charge_rev_bins;
             }   
 
             float charge_data[2];
@@ -331,26 +334,26 @@ int hv_amp_cal(calib_data *dom_calib) {
 
             charges[ch][trig] = charge_data[0];
             hcharges[ch-1][trig] = charge_data[1];
-
-        }
+                        
+        } /* End trigger loop */
 
         /* Turn down LED between channel calibration */
         halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, LED_MAX_AMPLITUDE);
         halUSleep(DAC_SET_WAIT);
-    }
+    } /* End channel loop */
 
     float mean, var;
     for (ch = 1; ch < 3; ch++) {
         /* Divide by charges in higher gain ch to get amp ratio */
         /* Multiply by known amplification factor to find gain */
-        for (bin = 0; bin < AMP_CAL_TRIG_CNT; bin++) {
+        for (bin = 0; bin < HV_AMP_CAL_TRIG_CNT; bin++) {
 
             charges[ch][bin] /= hcharges[ch-1][bin];
             charges[ch][bin] *= dom_calib->amplifier_calib[ch-1].value;
         }
 
         /* Find mean and var */
-        meanVarFloat(charges[ch], AMP_CAL_TRIG_CNT, &mean, &var);
+        meanVarFloat(charges[ch], HV_AMP_CAL_TRIG_CNT, &mean, &var);
 
         /* FIX ME */
 #ifdef DEBUG
@@ -377,7 +380,7 @@ int hv_amp_cal(calib_data *dom_calib) {
                 DOM_HAL_DAC_ATWD1_TRIGGER_BIAS, origSampDAC);
     halWriteDAC(DOM_HAL_DAC_LED_BRIGHTNESS, old_led_value);
 
-    /* Won't turn off the HV for now...*/
+    /* Won't disable HV ATTM */
 
     /* FIX ME: return real error code */
     return 0;
@@ -390,7 +393,7 @@ float get_average_amplitude(int atwd, int ch, int trig_time_sec) {
      * construct peak histograms instead?  Possibly better performance.
      */
 
-    /* LED rate is >1KHz, so no prescan needed in this loop */
+    /* LED rate is 610Hz, so no prescan needed in this loop */
 
     /* ATWD readout */
     short channels[2][128];
