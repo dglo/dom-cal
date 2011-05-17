@@ -209,7 +209,16 @@ public class DOMCal implements Runnable {
                                 int yearInt = Integer.parseInt(yearStr);
                                 
                                 /* new toroids are in all doms produced >= 2006 */
-                                if (yearInt >= 6 || domid.equals("UP5P0970")) {  //Always an exception.......
+								// There are, however, six DOMs which have new toroids, despite 
+								// having IDs indicating production before year 6: 
+								// Alaska - UP5P0970
+								// Beren - UP5H9214
+								// Huddinge - TP4H0049
+								// Leukophobia - UP5P0672
+								// Pipe_Nebula - TP5P0901
+                                if (yearInt >= 6 || domid.equals("UP5P0970")
+									|| domid.equals("UP5H9214") || domid.equals("TP4H0049")
+									|| domid.equals("UP5P0672") || domid.equals("TP5P0901")) {
                                     toroidType = 1;
                                 } else {
                                     toroidType = 0;
