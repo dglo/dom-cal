@@ -19,3 +19,4 @@
 /* Prototypes */
 int atwd_freq_cal(calib_data *dom_calib);
 int atwd_get_frq(int trigger_mask, float *ratio);
+int decide_preferred_atwd(calib_data *dom_calib);

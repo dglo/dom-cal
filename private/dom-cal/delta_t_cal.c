@@ -289,11 +289,11 @@ int delta_t_cal(calib_data *dom_calib) {
     int npeds, n_atwd[2];
     
     /* Which atwd to use for time reference */
-    /* For a consistent calibration, this has to match transit time calibration ATWD */
-    short atwd = DELTA_T_ATWD;
+    /* For a consistent calibration, whether or not this matches transit time calibration ATWD  must be taken into account*/
+    short atwd = dom_calib->preferred_atwd;
     
     /* Calculate offset for other atwd */
-    short atwd2 = DELTA_T_ATWD ^ 0x1;
+    short atwd2 = atwd ^ 0x1;
 
     /* ATWD and FADC baselines */
     float ch0_baseline_wf[2][128];

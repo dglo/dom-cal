@@ -9,8 +9,8 @@
 
 /* Version of calibration program */
 #define MAJOR_VERSION 7
-#define MINOR_VERSION 5
-#define PATCH_VERSION 3
+#define MINOR_VERSION 6
+#define PATCH_VERSION 0
 
 /* Default ATWD DAC settings */
 #ifdef DOMCAL_REV5
@@ -184,5 +184,7 @@ typedef struct {
     short pmt_disc_calib_valid;
     short pmt_disc_calib_num_pts;
 
+	/* WHich ATWD will be/was used for calibration */
+	short preferred_atwd;
 } calib_data;
 #endif

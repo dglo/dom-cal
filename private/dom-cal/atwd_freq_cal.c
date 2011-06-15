@@ -200,3 +200,37 @@ int atwd_get_frq(int trigger_mask, float *ratio) {
 
 }
 
+int decide_preferred_atwd(calib_data *dom_calib) {
+	//preferentially use ATWD 0:
+	if (dom_calib->atwd0_freq_calib.r_squared>.99) {
+#ifdef DEBUG    
+		printf( "ATWD 0 frequency calibration has r^2 better than .99, prefer using ATWD 0\r\n" );
+#endif
+		dom_calib->preferred_atwd = 0;
+		return 0;
+	}
+	//otherwise use ATWD 1:
+	if(dom_calib->atwd1_freq_calib.r_squared>.99){
+#ifdef DEBUG    
+		printf( "ATWD 1 frequency calibration has r^2 better than .99, prefer using ATWD 1\r\n" );
+#endif
+		dom_calib->preferred_atwd = 1;
+		return 0;
+	}
+	//neither calibration is as good as we would like, so use whichever is better
+	if (dom_calib->atwd0_freq_calib.r_squared >= dom_calib->atwd1_freq_calib.r_squared) {
+#ifdef DEBUG    
+		printf( "ATWD 0 frequency calibration has r^2 better than ATWD 1 (%F vs. %f), prefer using ATWD 0\r\n", 
+			   dom_calib->atwd0_freq_calib.r_squared, dom_calib->atwd1_freq_calib.r_squared );
+#endif
+		dom_calib->preferred_atwd = 0;
+		return 0; //return error code?
+	}
+	//otherwise ATWD 1 is better:
+#ifdef DEBUG    
+	printf( "ATWD 1 frequency calibration has r^2 better than ATWD 0 (%F vs. %f), prefer using ATWD 1\r\n", 
+		   dom_calib->atwd1_freq_calib.r_squared, dom_calib->atwd0_freq_calib.r_squared );
+#endif
+	dom_calib->preferred_atwd = 1;
+	return 0; //return error code?
+}

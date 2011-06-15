@@ -31,7 +31,7 @@ int hv_amp_cal(calib_data *dom_calib) {
     int hv;
     
     /* Which atwd to use */
-    short atwd = AMP_CAL_ATWD;
+    short atwd = dom_calib->preferred_atwd;
 
     /* Channel readout buffers for each channel and bin */
     /* This test only uses one ATWD */

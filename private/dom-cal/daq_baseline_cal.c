@@ -90,9 +90,13 @@ int daq_baseline_cal(calib_data *dom_calib) {
 #endif
         
         short hv = DAQ_BASELINE_HV;
+		//if possible use the voltage calibrated to give a gain of 10^7, as during data taking
+		if(dom_calib->hv_gain_valid && dom_calib->hv_gain_calib.r_squared>.99)
+			hv = pow(10.0,(7.0-dom_calib->hv_gain_calib.y_intercept)/dom_calib->hv_gain_calib.slope);
         
-        /* Check to make sure we're not exceeding max requested HV */
+        /* Check to make sure we're not exceeding min or max requested HV */
         hv = (hv > dom_calib->max_hv) ? dom_calib->max_hv : hv;
+		hv = (hv < dom_calib->min_hv) ? dom_calib->min_hv : hv;
 
 #ifdef DEBUG
         printf(" Setting HV to %d V\r\n", hv);

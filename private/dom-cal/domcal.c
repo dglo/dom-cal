@@ -257,6 +257,23 @@ int main(void) {
     /* Get the date and time from the user */
     /* Toroid query is also in here right now */
     get_date(&dom_calib);
+	
+	/* Ask the user which ATWD to use preferentially */
+	printf("Which ATWD chip should be used for calibrations (0/1, -1 or <return> to select automatically)? ");
+	fflush(stdout);
+    getstr(buf);
+    printf("\r\n");
+	
+	/* Sometimes when telnetting there is an extraneous newline */
+	if (buf[0]=='0' || (buf[0]=='\n' && buf[1]=='0'))
+		dom_calib.preferred_atwd = 0;
+	else if (buf[0]=='1' || (buf[0]=='\n' && buf[1]=='1'))
+		dom_calib.preferred_atwd = 1;
+	else if ((buf[0]=='-' && buf[1]=='1') 
+			 || (buf[0]=='\n' && buf[2]=='-' && buf[2]=='1'))
+		dom_calib.preferred_atwd = -1;
+	else
+		dom_calib.preferred_atwd = -1; //default to selecting automatically
     
     /* Ask user if they want an HV calibration */
     printf("Do you want to perform the HV portion of the calibration (y/n)? ");
@@ -264,7 +281,6 @@ int main(void) {
     getstr(buf);
     printf("\r\n");
 
-    /* Sometimes when telnetting there is an extraneous newline */
     doHVCal = ((buf[0] == 'y') || (buf[0] == 'Y') ||
                (buf[0] == '\n' && ((buf[1] == 'y') || (buf[1] == 'Y'))));
 
@@ -327,6 +343,8 @@ int main(void) {
 #ifdef DEBUG
     printf("Starting calibration: (v%d.%d.%d)\r\n", 
            MAJOR_VERSION, MINOR_VERSION, PATCH_VERSION);
+#warning Remove the following print statement
+	printf("May 25, 2011: 10^7 Gain daq_baseline\r\n");
 #endif
 
     /* Calibration modules:
@@ -348,6 +366,13 @@ int main(void) {
     atwd_cal(&dom_calib);
     baseline_cal(&dom_calib);
     atwd_freq_cal(&dom_calib);
+	
+	/* If it hasn't been specified by the user, use the frequency calibration 
+	 * to determine which ATWD should be used in subsequent calibrations 
+	 */
+	if (dom_calib.preferred_atwd == -1)
+		decide_preferred_atwd(&dom_calib);
+	
     amp_cal(&dom_calib);
     fadc_cal(&dom_calib);
     if (doHVCal) {
@@ -375,10 +400,11 @@ int main(void) {
     /* XML transmission gets slower with higher throttle */
     int throttle = 0;
 
-    printf("Send compressed XML (y/n)?\r\n");    
-    fflush(stdout);        
+    printf("Send compressed XML (y/n)?\r\n");
+    fflush(stdout);
     getstr(buf);        
     printf("\r\n");
+	fflush(stdout);
     compress = ((buf[0] == 'y') || (buf[0] == 'Y') ||
                 (buf[0] == '\n' && ((buf[1] == 'y') || (buf[1] == 'Y'))));        
 
