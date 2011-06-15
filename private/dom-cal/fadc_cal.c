@@ -29,7 +29,7 @@ int fadc_cal(calib_data *dom_calib) {
     int peak_idx;
     
     /* Which atwd to use for FADC comparison */
-    short atwd = FADC_CAL_ATWD;
+    short atwd = dom_calib->preferred_atwd;
 
     /* Channel readout buffers for each channel and bin */
     /* This test only uses one ATWD */

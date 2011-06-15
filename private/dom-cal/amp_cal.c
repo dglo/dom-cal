@@ -28,7 +28,7 @@ int amp_cal(calib_data *dom_calib) {
     float bias_v, peak_v, v;
     
     /* Which atwd to use */
-    short atwd = AMP_CAL_ATWD;
+    short atwd = dom_calib->preferred_atwd;
 
     /* Pulser amplitude settings for each channel */
     const int pulser_settings[3] = {AMP_CAL_PULSER_AMP_0, 

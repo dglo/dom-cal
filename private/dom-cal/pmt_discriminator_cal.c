@@ -44,7 +44,7 @@ int pmt_discriminator_cal(calib_data *dom_calib) {
     dom_calib->pmt_disc_calib_num_pts = 0;
 
     /* Which ATWD to use */
-    short atwd = GAIN_CAL_ATWD;
+    short atwd = dom_calib->preferred_atwd;
 
     /* Make sure pulser is off */
     hal_FPGA_TEST_disable_pulser();

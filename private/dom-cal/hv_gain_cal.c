@@ -36,7 +36,7 @@ int hv_gain_cal(calib_data *dom_calib, int iterHVGain) {
     int histo_range_adjustable = 1;
 
     /* Which ATWD to use */
-    short atwd = GAIN_CAL_ATWD;
+    short atwd = dom_calib->preferred_atwd;
 
     /* Charge arrays for each waveform */
     float charges[GAIN_CAL_TRIG_CNT];

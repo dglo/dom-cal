@@ -34,7 +34,7 @@ int transit_cal(calib_data *dom_calib) {
     int err = 0;
 
     /* Which atwd to use */
-    short atwd = TRANSIT_CAL_ATWD;
+    short atwd = dom_calib->preferred_atwd;
     dom_calib->transit_calib_atwd = atwd;
 
     /* Which channel to record light output */
@@ -587,7 +587,7 @@ int transit_cal(calib_data *dom_calib) {
 #endif
 
     /*---------------------------------------------------------------------------*/
-    /* Turn of MB LED */
+    /* Turn off MB LED */
     halDisableLEDPS();
     hal_FPGA_TEST_disable_LED();
     

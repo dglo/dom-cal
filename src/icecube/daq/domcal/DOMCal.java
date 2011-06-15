@@ -51,11 +51,12 @@ public class DOMCal implements Runnable {
     private boolean calibrateHv;
     private boolean iterateHv;
     private int maxHv, minHv;
+    private int calATWD;
     private String cid;
 
     public DOMCal( String host, int port, String outDir, boolean calibrate, 
                    boolean calibrateHv, boolean iterateHv, int maxHv,
-                   int minHv, String cid) {
+                   int minHv, int calATWD, String cid) {
         this.host = host;
         this.port = port;
         this.outDir = outDir;
@@ -67,6 +68,7 @@ public class DOMCal implements Runnable {
         this.iterateHv = iterateHv;
         this.maxHv = maxHv;
         this.minHv = minHv;
+		this.calATWD = calATWD;
         this.cid = cid;
     }
 
@@ -209,7 +211,16 @@ public class DOMCal implements Runnable {
                                 int yearInt = Integer.parseInt(yearStr);
                                 
                                 /* new toroids are in all doms produced >= 2006 */
-                                if (yearInt >= 6 || domid.equals("UP5P0970")) {  //Always an exception.......
+								// There are, however, six DOMs which have new toroids, despite 
+								// having IDs indicating production before year 6: 
+								// Alaska - UP5P0970
+								// Beren - UP5H9214
+								// Huddinge - TP4H0049
+								// Leukophobia - UP5P0672
+								// Pipe_Nebula - TP5P0901
+                                if (yearInt >= 6 || domid.equals("UP5P0970")
+									|| domid.equals("UP5H9214") || domid.equals("TP4H0049")
+									|| domid.equals("UP5P0672") || domid.equals("TP5P0901")) {
                                     toroidType = 1;
                                 } else {
                                     toroidType = 0;
@@ -276,6 +287,10 @@ public class DOMCal implements Runnable {
                 com.receive( ": " );
                 com.send( "" + toroidType + "\r" );
                 com.receive( "\r\n" );
+				// DOM asks which ATWD to use
+				com.send( "" + calATWD + "\r" );
+				com.receive( "\r\n" );
+				
                 // DOM asks if we want to calibrate the HV
                 if ( calibrateHv ) {
                     com.send( "y" + "\r" );
@@ -341,6 +356,8 @@ public class DOMCal implements Runnable {
                     xmlFinished = xmlData.endsWith("</domcal>\r\n");
                 } catch ( IOException e ) {
                     logger.error( "IO Error reading XML data from DOM" );
+					if( e.getMessage() != null )
+					  logger.error( e.getMessage() );
                     return;
                 }
                 xml.close();
@@ -403,6 +420,7 @@ public class DOMCal implements Runnable {
         boolean iterateHV = false;
         int maxHV = 1900;
         int minHV = 1020;
+		int calATWD = -1;
         if (args.length == 0) {
             usage();
             return;
@@ -416,6 +434,7 @@ public class DOMCal implements Runnable {
             else if (args[i].equals("-p") && i < args.length - 1) port = Integer.parseInt(args[++i]);
             else if (args[i].equals("-n") && i < args.length - 1) nPorts = Integer.parseInt(args[++i]);
             else if (args[i].equals("-h") && i < args.length - 1) host = args[++i];
+            else if (args[i].equals("-a") && i < args.length - 1) calATWD = Integer.parseInt(args[++i]);
             else if (args[i].equals("-m") && i < args.length - 1) maxHV = Integer.parseInt(args[++i]);
             else if (args[i].equals("-s") && i < args.length - 1) minHV = Integer.parseInt(args[++i]);
             else if (args[i].equals("-c") && i < args.length - 1) cid = args[++i];
@@ -446,7 +465,7 @@ public class DOMCal implements Runnable {
 
         try {
             for ( int i = 0; i < nPorts; i++ ) {
-                Thread t = new Thread( new DOMCal( host, port + i, outDir, true, calibrateHV, iterateHV, maxHV, minHV, cid), "" + ( port + i ) );
+                Thread t = new Thread( new DOMCal( host, port + i, outDir, true, calibrateHV, iterateHV, maxHV, minHV, calATWD, cid), "" + ( port + i ) );
                 threads.add( t );
                 t.start();
             }
@@ -454,7 +473,8 @@ public class DOMCal implements Runnable {
             for (Iterator it = descriptorList.iterator(); it.hasNext();) {
               DOMCalDescriptor d = (DOMCalDescriptor)it.next();
               boolean calibrateHVCurrent = calibrateHV && !(d.hvHi == 0 && d.hvLow == 0);
-              Thread t = new Thread( new DOMCal( d.host, d.port, outDir, true, calibrateHVCurrent, iterateHV, d.hvHi, d.hvLow, d.cid), d.string);
+				System.out.println("" + calibrateHV + ", " + d.hvHi + " " + d.hvLow);
+              Thread t = new Thread( new DOMCal( d.host, d.port, outDir, true, calibrateHVCurrent, iterateHV, d.hvHi, d.hvLow, d.calATWD, d.cid), d.string);
               threads.add( t );
               t.start();
             }
@@ -493,12 +513,13 @@ public class DOMCal implements Runnable {
                             "    -p [port]  default=5000\n" +
                             "    -n [number of ports] default=0\n" +
                             "    -d [output directory]  default=CWD\n" +
+                            "    -a [preferred ATWD chip] default=automatically chosen range 0-1" +
                             "    -m [maximum HV]  default=1900V range 0V-2000V\n" +
                             "    -s [starting HV] default=1020V range 0V-2000V\n" +
                             "    -v (calibrate HV)\n" +
                             "    -i (iterate HV)\n" +
                             "    -c [mbid] check if DOM mbid matches before beginning calibration\n" +
-                            "    -D [host:port:minHV:maxHV:<mbid>] add a DOM given a specific host, port, HV limits, and optionally check if DOM mbid matches before beginning calibration");
+                            "    -D [host:port:minHV:maxHV:calATWD:<mbid>] add a DOM given a specific host, port, HV limits, ATWD to use for calibration, and optionally check if DOM mbid matches before beginning calibration");
 
     }
 
@@ -507,7 +528,7 @@ public class DOMCal implements Runnable {
       DOMCalDescriptor d = new DOMCalDescriptor();
 
       StringTokenizer st = new StringTokenizer(s, ":");
-      if (st.countTokens() != 4 && st.countTokens() != 5) {
+      if (st.countTokens() != 5 && st.countTokens() != 6) {
         logger.error("Invalid DOM format string: " + s);
         throw new Exception();
       }
@@ -517,6 +538,7 @@ public class DOMCal implements Runnable {
       d.port = Integer.parseInt(st.nextToken());
       d.hvLow = Integer.parseInt(st.nextToken());
       d.hvHi = Integer.parseInt(st.nextToken());
+      d.calATWD = Integer.parseInt(st.nextToken());
       d.cid = null;
 
       if (st.hasMoreTokens()) {
@@ -539,6 +561,6 @@ public class DOMCal implements Runnable {
     private static class DOMCalDescriptor {
 
       private String string,host,cid;
-      private int port,hvLow,hvHi;
+      private int port,hvLow,hvHi,calATWD;
     }
 }
