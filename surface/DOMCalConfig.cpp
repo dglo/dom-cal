@@ -269,5 +269,17 @@ int main(int argc, char* argv[]){
 		
 		std::cout << mainboardID(domIt->first) << ' ' << minHV << ' ' << maxHV << ' ' << calATWD << '\n';
 	}
+	//sweep up any DOMs for which we found override information but no calibration
+	for(std::map<uint64_t,overrideSettings>::const_iterator overrideIt=overrides.begin(), end=overrides.end(); overrideIt!=end; overrideIt++){
+		if(data.count(overrideIt->first)) //if there is calibration data this DOM was already handled above
+			continue;
+		const overrideSettings& override=overrideIt->second;
+		if(!override.full()){
+			std::cerr << mainboardID(overrideIt->first) << " has a partial override but no calibration; "
+			 << "cannot generate settings" << std::endl;
+			continue;
+		}
+		std::cout << mainboardID(overrideIt->first) << ' ' << override.minHV << ' ' << override.maxHV << ' ' << override.atwd << '\n';
+	}
 	return(0);
 }
