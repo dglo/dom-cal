@@ -10,7 +10,7 @@
 #include "DOMCalParser.h"
 
 //never recommend voltage beyond this range
-const float minHVLimit=850;
+const float minHVLimit=900;
 const float maxHVLimit=1850;
 
 //try to use a range of voltages at least this large
@@ -162,12 +162,31 @@ void expandHVRange(float& minHV, float& maxHV, const overrideSettings& override)
 	//else nothing to do
 }
 
+void usage(){
+	std::cerr << "Usage: DOMCalConfig \n"
+	"   -L [DOM listing file] (providing mappings from mainboard IDs to DOM IDs)\n"
+	"   --override [override file] Specify a path to a file which contains configuration\n"
+	"     settings to be used instead of any which might be generated from existing\n"
+	"     calibration data.\n"
+	"     The file must contain whitespace separated data with the following columns:\n"
+	"      Mainboard ID, Minimum HV, Maximum HV, Preferred ATWD"
+	"     any of the latter fields may be '-', in which case that configuration\n"
+	"     parameter is not overridden. "
+	"   --assumeInIce Treat all DOMs as if they are in-ice"
+	<< std::endl;
+}
+
 int main(int argc, char* argv[]){
 	std::map<uint64_t,domIdentifier> knownDOMs; //the names and ID numbers of DOMs
 	std::map<uint64_t,DOMCalRecord> data;
 	std::map<uint64_t,overrideSettings> overrides;
 	errorListing errors;
 	bool assumeInIce=false;
+	
+	if(argc<=1){
+		usage();
+		return(1);
+	}
 	
 	for(unsigned int i=1; i<argc; i++){
 		std::string arg=argv[i];
@@ -198,6 +217,8 @@ int main(int argc, char* argv[]){
 			loadDOMListing(listingFile,knownDOMs);
 			listingFile.close();
 		}
+		else if(arg=="-h" || arg=="-help" || arg=="--help")
+			usage();
 		else
 			parseAllDOMCalFiles(arg,data,errors);
 	}
