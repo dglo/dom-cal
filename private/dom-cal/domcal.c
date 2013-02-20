@@ -343,8 +343,6 @@ int main(void) {
 #ifdef DEBUG
     printf("Starting calibration: (v%d.%d.%d)\r\n", 
            MAJOR_VERSION, MINOR_VERSION, PATCH_VERSION);
-#warning Remove the following print statement
-	printf("May 25, 2011: 10^7 Gain daq_baseline\r\n");
 #endif
 
     /* Calibration modules:
