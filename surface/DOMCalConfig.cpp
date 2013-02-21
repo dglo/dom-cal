@@ -8,6 +8,7 @@
 
 #include "DOMListing.h"
 #include "DOMCalParser.h"
+#include "DOMCalChecker.h"
 
 //never recommend voltage beyond this range
 const float minHVLimit=900;
@@ -228,6 +229,9 @@ int main(int argc, char* argv[]){
 		return(1);
 	}
 	
+	//run vetting checks on the HV-Gain portion of the calibrations
+	DOMCalChecker checker(errors);
+	
 	const overrideSettings noOverride;
 	for(std::map<uint64_t,DOMCalRecord>::const_iterator domIt=data.begin(), domEnd=data.end();
 		domIt!=domEnd; domIt++){
@@ -235,12 +239,31 @@ int main(int argc, char* argv[]){
 		std::map<uint64_t,overrideSettings>::const_iterator overrideIt=overrides.find(domIt->first);
 		const overrideSettings& override=((overrideIt!=overrides.end())?overrideIt->second:noOverride);
 		
+		checker.checkData(domIt->first,domIt->second);
 		//skip this DOM if the calibration has fatal errors _unless_ we have an override and that override
 		//specifies all necessary settings
 		if(errors.domHasFatalError(domIt->first) && !override.full()){
 			std::cerr << mainboardID(domIt->first)
 			<< " has fatal errors; cannot generate settings" << std::endl;
 			continue;
+		}
+		//this is suboptimal, but rummage around through the errors to find out if
+		//this DOM was flagged for anything related to its HV-Gain calibration
+		bool hvGainProblems=false;
+		if(errors.errors.count(domIt->first)){ //there are some errors on this DOM
+			const std::vector<error>& domErrors=errors.errors[domIt->first];
+			for(std::vector<error>::const_iterator errIt=domErrors.begin(), end=domErrors.end(); errIt!=end; errIt++){
+				if(errIt->message.find("Missing high voltage/gain calibration")!=std::string::npos)
+					hvGainProblems=true;
+				else if(errIt->message.find("HV Gain")!=std::string::npos)
+					hvGainProblems=true;
+				else if(errIt->message.find("HV for gain of 10^7 out of range")!=std::string::npos)
+					hvGainProblems=true;
+			}
+		}
+		if(hvGainProblems && (!override.minHVSet || !override.maxHVSet)){
+			std::cerr << mainboardID(domIt->first)
+			<< " has problems with the HV-Gain calibration; settings may be suspect" << std::endl;
 		}
 		
 		std::map<uint64_t,domIdentifier>::const_iterator idIt=knownDOMs.find(domIt->first);

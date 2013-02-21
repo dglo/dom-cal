@@ -23,8 +23,8 @@ DOMListing.o: DOMListing.cpp DOMListing.h
 DOMCal.o: DOMCal.cpp DOM.h DOMIOBuffer.h DOMListing.h
 	$(CXX) $(CXXFLAGS) -c -o DOMCal.o DOMCal.cpp
 
-verify_domcal: XMLUtils.o DOMListing.o DOMCalParser.o DOMCalChecker.o
-	$(CXX) $(CXXFLAGS) $(verify_domcal_LDFLAGS) -o verify_domcal XMLUtils.o DOMListing.o DOMCalParser.o DOMCalChecker.o
+verify_domcal: XMLUtils.o DOMListing.o DOMCalParser.o DOMCalChecker.o verify_domcal.o
+	$(CXX) $(CXXFLAGS) $(verify_domcal_LDFLAGS) -o verify_domcal XMLUtils.o DOMListing.o DOMCalParser.o DOMCalChecker.o verify_domcal.o
 
 XMLUtils.o: XMLUtils.cpp XMLUtils.h
 	$(CXX) $(CXXFLAGS) -c -o XMLUtils.o XMLUtils.cpp
@@ -34,6 +34,9 @@ DOMCalParser.o: DOMCalParser.cpp DOMCalParser.h XMLUtils.h
 
 DOMCalChecker.o: DOMCalChecker.cpp DOMCalChecker.cpp DOMListing.h
 	$(CXX) $(CXXFLAGS) -c -o DOMCalChecker.o DOMCalChecker.cpp
+
+verify_domcal.o: verify_domcal.cpp DOMCalChecker.h DOMListing.h
+	$(CXX) $(CXXFLAGS) -c -o verify_domcal.o verify_domcal.cpp
 
 DOMCalGrapher: DOMCalGrapher.o SimpleDrawing.o DOMCalParser.o XMLUtils.o DOMListing.o
 	$(CXX) $(CXXFLAGS) $(DOMCalGrapher_LDFLAGS) -o DOMCalGrapher DOMCalGrapher.o SimpleDrawing.o DOMCalParser.o XMLUtils.o DOMListing.o
@@ -47,5 +50,5 @@ SimpleDrawing.o: SimpleDrawing.cpp SimpleDrawing.h
 DOMCalConfig.o : DOMCalConfig.cpp DOMCalParser.h DOMListing.h XMLUtils.h
 	$(CXX) $(CXXFLAGS) -c -o DOMCalConfig.o DOMCalConfig.cpp
 
-DOMCalConfig : DOMCalConfig.o DOMCalParser.o XMLUtils.o
-	$(CXX) $(CXXFLAGS) $(DOMCalConfig_LDFLAGS) -o DOMCalConfig DOMCalConfig.o DOMCalParser.o DOMListing.o XMLUtils.o
+DOMCalConfig : DOMCalConfig.o DOMCalParser.o DOMCalChecker.o DOMListing.o XMLUtils.o
+	$(CXX) $(CXXFLAGS) $(DOMCalConfig_LDFLAGS) -o DOMCalConfig DOMCalConfig.o DOMCalParser.o DOMCalChecker.o DOMListing.o XMLUtils.o
