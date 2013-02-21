@@ -27,6 +27,12 @@ struct DOMCalSettings{
 	int calATWD;
 	std::string mbID;
 	int toroidType;
+	
+	DOMCalSettings():
+	doHVCal(false),
+	iterateHV(false),
+	minHV(0),maxHV(0)
+	{}
 };
 
 std::ostream& operator<<(std::ostream& os, const DOMCalSettings& settings){
@@ -99,7 +105,8 @@ std::map<uint64_t,DOMCalSettings> determineConnectedDOMs(){
 					std::cerr << "Unexpected data format in " << domDirPath << "/id: " << idData << std::endl;
 					continue;
 				}
-				std::string mbidStr=idData.substr(pos);
+				std::string mbidStr=idData.substr(pos+1);
+				trimWhitespace(mbidStr);
 				std::istringstream mbidStream(mbidStr);
 				uint64_t mbid=0;
 				mbidStream >> std::hex >> mbid;
@@ -160,7 +167,8 @@ void parseDOMSettingsFile(const std::string& settingFilePath, std::map<uint64_t,
 		throw std::runtime_error("Unable to read "+settingFilePath);
 	//read the file
 	uint64_t mbid;
-	int minHV, maxHV, calATWD;
+	double minHV, maxHV;
+	int calATWD;
 	while(settingsFile >> std::hex >> mbid >> std::dec >> minHV >> maxHV >> calATWD){
 		if(settingsFile.eof())
 			break;
@@ -172,8 +180,8 @@ void parseDOMSettingsFile(const std::string& settingFilePath, std::map<uint64_t,
 		settings.outputDir=outputDir;
 		settings.doHVCal=useHV;
 		settings.iterateHV=iterate;
-		settings.minHV=minHV;
-		settings.minHV=maxHV;
+		settings.minHV=(int)(minHV+0.5); //round floating point values to nearest integers
+		settings.maxHV=(int)(maxHV+0.5);
 		settings.calATWD=calATWD;
 		
 		validateCalibrationSettings(settings);
@@ -253,6 +261,16 @@ DOMCalSettings parseDOMSettingsArg(const std::string& argument, const std::strin
 	return(settings);
 }
 
+void trimWhitespace(std::string& s){
+	static const char* whitespace=" \n\r\t\v";
+	size_t pos;
+	if((pos=s.find_first_not_of(whitespace))!=0)
+		//if there are no non-whitespace characters pos==std::string::npos, so the entire line is erased
+		s.erase(0,pos);
+	if(!s.empty() && (pos=s.find_last_not_of(whitespace))!=s.size()-1)
+		s.erase(pos+1);
+}
+
 void* runDOMCal(void* arg){
 	DOMCalSettings& settings = *static_cast<DOMCalSettings*>(arg);
 	try{
@@ -266,6 +284,7 @@ void* runDOMCal(void* arg){
 		dom.receive("crlf domid type type\r\n");
 		std::string id;
 		dom >> id;
+		trimWhitespace(id);
 		if(id!=settings.mbID)
 			throw std::runtime_error("DOM reports non-matching mainboard ID number: "+id);
 		dom.receive(">");
@@ -439,7 +458,6 @@ int main(int argc, char* argv[]){
 	std::string outputDir;
 	bool useHV=false, iterateHV=false;
 	std::map<uint64_t,domIdentifier> knownDOMs; //the names and ID numbers of DOMs
-	std::map<uint64_t,DOMCalSettings> connectedDOMs; //the DOMs connected to this hub
 	std::vector<DOMCalSettings> settings;
 	
 	if(argc<=1){
@@ -489,9 +507,10 @@ int main(int argc, char* argv[]){
 				return(1);
 			}
 			i++;
-			if(connectedDOMs.empty())
-				connectedDOMs=determineConnectedDOMs();
+			std::map<uint64_t,DOMCalSettings> connectedDOMs=determineConnectedDOMs();; //the DOMs connected to this hub
 			parseDOMSettingsFile(argv[i],connectedDOMs,outputDir,useHV,iterateHV,knownDOMs);
+			for(std::map<uint64_t,DOMCalSettings>::iterator domIt=connectedDOMs.begin(), end=connectedDOMs.end(); domIt!=end; domIt++)
+				settings.push_back(domIt->second);
 		}
 	}
 	
