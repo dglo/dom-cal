@@ -72,6 +72,16 @@ bool endsWith(const std::string& str, const std::string& suffix){
 	return(str.rfind(suffix)==(str.size()-suffix.size()));
 }
 
+void trimWhitespace(std::string& s){
+	static const char* whitespace=" \n\r\t\v";
+	size_t pos;
+	if((pos=s.find_first_not_of(whitespace))!=0)
+		//if there are no non-whitespace characters pos==std::string::npos, so the entire line is erased
+		s.erase(0,pos);
+	if(!s.empty() && (pos=s.find_last_not_of(whitespace))!=s.size()-1)
+		s.erase(pos+1);
+}
+
 //Find all DOMs which are connected to this hub
 //In oreder for this function to have access to the DOM's mainboard IDs the DOMs must have gone from configboot to iceboot!
 //Returns a map of mainboard IDs to settings objects, where the settings will contain only
@@ -259,16 +269,6 @@ DOMCalSettings parseDOMSettingsArg(const std::string& argument, const std::strin
 		throw std::runtime_error("Unable to determine DOM's toroid type");
 	
 	return(settings);
-}
-
-void trimWhitespace(std::string& s){
-	static const char* whitespace=" \n\r\t\v";
-	size_t pos;
-	if((pos=s.find_first_not_of(whitespace))!=0)
-		//if there are no non-whitespace characters pos==std::string::npos, so the entire line is erased
-		s.erase(0,pos);
-	if(!s.empty() && (pos=s.find_last_not_of(whitespace))!=s.size()-1)
-		s.erase(pos+1);
 }
 
 void* runDOMCal(void* arg){
