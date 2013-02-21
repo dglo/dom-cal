@@ -1,8 +1,9 @@
-CXXFLAGS+= -Os -I../private/dom-cal -I/usr/include/libxml2
-DOMCal_LDFLAGS= $(LDFLAGS) -lz -pthread
-verify_domcal_LDFLAGS= $(LDFLAGS) -lxml2
-DOMCalGrapher_LDFLAGS=$(LDFLAGS) -lz -lpng -lxml2
-DOMCalConfig_LDFLAGS=$(LDFLAGS) -lxml2
+LD_FLAGS_XML=$(shell pkg-config --libs libxml-2.0)
+CXXFLAGS+=-Os -I../private/dom-cal $(shell pkg-config --cflags libxml-2.0)
+DOMCal_LDFLAGS=$(LDFLAGS) -lz -pthread
+verify_domcal_LDFLAGS=$(LDFLAGS) $(LD_FLAGS_XML)
+DOMCalGrapher_LDFLAGS=$(LDFLAGS) -lz -lpng $(LD_FLAGS_XML)
+DOMCalConfig_LDFLAGS=$(LDFLAGS) $(LD_FLAGS_XML)
 
 all: DOMCal verify_domcal DOMCalGrapher DOMCalConfig
 
@@ -19,6 +20,7 @@ DOM.o: DOM.cpp DOM.h DOMIOBuffer.h
 	$(CXX) $(CXXFLAGS) -c -o DOM.o DOM.cpp
 
 DOMListing.o: DOMListing.cpp DOMListing.h
+	$(CXX) $(CXXFLAGS) -c -o DOMListing.o DOMListing.cpp
 
 DOMCal.o: DOMCal.cpp DOM.h DOMIOBuffer.h DOMListing.h
 	$(CXX) $(CXXFLAGS) -c -o DOMCal.o DOMCal.cpp
