@@ -110,13 +110,6 @@ private:
 	DOMCalRecord& operator=(const DOMCalRecord& rec);
 };
 
-struct mainboardID{
-	uint64_t id;
-	mainboardID(uint64_t i):id(i){}
-};
-
-std::ostream& operator<<(std::ostream&, const mainboardID&);
-
 // Simple means of iterating over the filesystem
 // All default constructed instances are considered equivalent 'end' iterators
 struct directory_iterator{

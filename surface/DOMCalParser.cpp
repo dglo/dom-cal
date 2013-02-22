@@ -1,18 +1,9 @@
 #include "DOMCalParser.h"
 
 #include <iostream>
-#include <iomanip>
 #include <sstream>
 
 #include <sys/stat.h>
-
-std::ostream& operator<<(std::ostream& os, const mainboardID& m){
-	std::ios_base::fmtflags store=os.flags();
-	os.flags((std::ios::right | std::ios::hex) & ~std::ios::showbase);
-	os << std::setfill('0') << std::setw(12) << m.id;
-	os.flags(store); //restore all previous flags
-	return(os);
-}
 
 bool operator==(const directory_iterator& d1, const directory_iterator& d2){
 	if(d1.dirp==NULL && d2.dirp==NULL)

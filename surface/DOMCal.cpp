@@ -206,8 +206,11 @@ void parseDOMSettingsFile(const std::string& settingFilePath, std::map<uint64_t,
 		validateCalibrationSettings(settings);
 		
 		std::map<uint64_t,domIdentifier>::const_iterator nameIt=knownDOMs.find(it->first);
-		if(nameIt==knownDOMs.end())
-			throw std::runtime_error("DOM not found in mainboard ID/DOM ID listing");
+		if(nameIt==knownDOMs.end()){
+			std::ostringstream ss;
+			ss << "DOM " << settings.mbID << " not found in mainboard ID/DOM ID listing";
+			throw std::runtime_error(ss.str());
+		}
 		settings.toroidType=nameIt->second.toroidType();
 		if(settings.toroidType==-1)
 			throw std::runtime_error("Unable to determine DOM's toroid type");
@@ -218,7 +221,7 @@ void parseDOMSettingsFile(const std::string& settingFilePath, std::map<uint64_t,
 	for(std::map<uint64_t,DOMCalSettings>::iterator next=foundDOMs.begin(), end=foundDOMs.end(), it=(next==end?next:next++);
 		it!=end; it=(next==end?next:next++)){
 		if(it->second.calATWD==needSettings){
-			std::cerr << "Dropping DOM " << std::hex << std::setfill('0') << std::setw(12) << it->first << std::dec
+			std::cerr << "Dropping DOM " << mainboardID(it->first)
 			  << " from calibration list, no settings for it were found" << std::endl;
 			foundDOMs.erase(it);
 		}
@@ -253,7 +256,7 @@ DOMCalSettings parseDOMSettingsArg(const std::string& argument, const std::strin
 	if(!ss)
 		throw std::runtime_error("Missing or malformed mainboard ID number");
 	std::ostringstream mbStr;
-	mbStr << std::hex << std::noshowbase << std::setfill('0') << std::setw(12) << std::right << mbID;
+	mbStr << mainboardID(mbID);
 	settings.mbID=mbStr.str();
 	
 	ss >> settings.minHV >> dummy;
@@ -520,6 +523,8 @@ int main(int argc, char* argv[]){
 			for(std::map<uint64_t,DOMCalSettings>::iterator domIt=connectedDOMs.begin(), end=connectedDOMs.end(); domIt!=end; domIt++)
 				settings.push_back(domIt->second);
 		}
+		else
+			std::cerr << "Unrecognized argument/option: " << arg << std::endl;
 	}
 	
 	if(settings.empty()){

@@ -1,4 +1,5 @@
 #include "DOMListing.h"
+#include <iomanip>
 
 int domIdentifier::toroidType() const{
 	if(domID.size()<3)
@@ -34,4 +35,12 @@ void loadDOMListing(std::istream& is, domListing& knownDOMs){
 		getline(is,line); //ignore the rest of the line
 		knownDOMs.insert(p);
 	}
+}
+
+std::ostream& operator<<(std::ostream& os, const mainboardID& m){
+	std::ios_base::fmtflags store=os.flags();
+	os.flags((std::ios::right | std::ios::hex) & ~std::ios::showbase);
+	os << std::setfill('0') << std::setw(12) << m.id;
+	os.flags(store); //restore all previous flags
+	return(os);
 }
