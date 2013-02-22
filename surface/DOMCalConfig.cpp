@@ -290,7 +290,7 @@ int main(int argc, char* argv[]){
 		
 		int calATWD=(override.atwdSet?override.atwd:defaultCalATWD);
 		
-		std::cout << mainboardID(domIt->first) << ' ' << minHV << ' ' << maxHV << ' ' << calATWD << '\n';
+		std::cout << mainboardID(domIt->first) << ' ' << (int)(minHV+.5) << ' ' << (int)(maxHV+.5) << ' ' << calATWD << '\n';
 	}
 	//sweep up any DOMs for which we found override information but no calibration
 	for(std::map<uint64_t,overrideSettings>::const_iterator overrideIt=overrides.begin(), end=overrides.end(); overrideIt!=end; overrideIt++){
@@ -302,7 +302,7 @@ int main(int argc, char* argv[]){
 			 << "cannot generate settings" << std::endl;
 			continue;
 		}
-		std::cout << mainboardID(overrideIt->first) << ' ' << override.minHV << ' ' << override.maxHV << ' ' << override.atwd << '\n';
+		std::cout << mainboardID(overrideIt->first) << ' ' << (int)(override.minHV) << ' ' << (int)(override.maxHV) << ' ' << override.atwd << '\n';
 	}
 	return(0);
 }
