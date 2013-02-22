@@ -95,13 +95,13 @@ void trimWhitespace(std::string& s){
 std::map<uint64_t,DOMCalSettings> determineConnectedDOMs(){
 	std::map<uint64_t,DOMCalSettings> foundDOMs;
 	for(unsigned short cardNumber=0; cardNumber<8; cardNumber++){
+		//skip the card if it isn't plugged in
+		if(!fileExists(DOM::cardDirPath(cardNumber)))
+			continue;
+		
 		for(unsigned short pairNumber=0; pairNumber<4; pairNumber++){
-            //skip the card if it isn't plugged in
-            if(!fileExists(DOM::cardDirPath(cardNumber)))
-                continue;
-
-            //skip the pair if it isn't plugged in
-            if(!endsWith(getFileContents(DOM::pairDirPath(cardNumber,pairNumber)+"/is-plugged"),"is plugged in."))
+			//skip the pair if it isn't plugged in
+			if(!endsWith(getFileContents(DOM::pairDirPath(cardNumber,pairNumber)+"/is-plugged"),"is plugged in."))
 				continue;
 			
 			for(char domLabel='A'; domLabel<='B'; domLabel++){
