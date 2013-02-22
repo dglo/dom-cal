@@ -164,8 +164,13 @@ void expandHVRange(float& minHV, float& maxHV, const overrideSettings& override)
 }
 
 void usage(){
-	std::cerr << "Usage: DOMCalConfig \n"
+	std::cerr << "Usage: DOMCalConfig [calibration directory]\n"
+	"   One or more calibration directories containing DOMCal XML output files\n"
+	"   should be specified. Directories will be searched recrusively.\n"
+	"   \n"
+	"   Other options:\n"
 	"   -L [DOM listing file] (providing mappings from mainboard IDs to DOM IDs)\n"
+	"     This option is required unless --assumeInIce is used.\n"
 	"   --override [override file] Specify a path to a file which contains configuration\n"
 	"     settings to be used instead of any which might be generated from existing\n"
 	"     calibration data.\n"
