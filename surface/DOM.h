@@ -190,8 +190,8 @@ public:
 		return(receive(endlManipulator::endlStr,includeTerminator));
 	}
 	
-	//reads zlib compressed input until compressed stream ends or EOF is found
-	void zreceiveToStream(std::ostream& os, std::ostream& raw, const std::string& tag){
+	//reads zlib compressed input until compressed stream ends
+	void zreceiveToStream(std::ostream& os){
 		const std::streamsize readBlockSize=1024;
 		//we expect the data to decompress, so we allocate the 
 		//output buffer to be larger than the input buffer
@@ -228,50 +228,23 @@ public:
 			if(!zs.avail_in){
 				timespec sleepTime={0,10000};
 				nanosleep(&sleepTime,NULL);
-				//std::cout << '[' << tag << ']' << " need to fetch input" << std::endl;
 				zs.next_in = (unsigned char*)readBuffer;
-				//block until we can get at least one more byte. . . 
-				//(For the first read we need a substantial amount of data, 
-				//because zlib wants to see the entire stream header at one time)
-				/*recv.read(readBuffer,(firstBlock?readBlockSize:1));
-				zs.avail_in=recv.gcount();
-				std::cout << '[' << tag << ']' << " got " << zs.avail_in << (zs.avail_in==1?" byte":" bytes") << std::endl;
-				if(!zs.avail_in){ //no more data to read
-					std::cout << '[' << tag << ']' << " got no bytes; number available should be " << recv.rdbuf()->in_avail() << std::endl;
-					break;
-				}
-				firstBlock=false;*/
 				
+				//block until we can get at least one more byte. . .
+				//(For the first read we need a substantial amount of data,
+				//because zlib wants to see the entire stream header at one time)
 				while(zs.avail_in<(firstBlock?readBlockSize:1)){
 					recv.read(readBuffer,(firstBlock?readBlockSize:1)-zs.avail_in);
 					zs.avail_in+=recv.gcount();
 					if(recv.eof()) //eof!? This is a device driver!!!
 						recv.clear();
 				}
-				//std::cout << '[' << tag << ']' << " got " << zs.avail_in << (zs.avail_in==1?" byte":" bytes") << std::endl;
 				firstBlock=false;
 				
 				//. . . and then opportunistically take as much more as we can
-				if(readBlockSize-zs.avail_in){
-					//std::cout << '[' << tag << ']' << " trying for up to " << (readBlockSize-zs.avail_in) << " more" << std::endl;
+				if(readBlockSize-zs.avail_in)
 					zs.avail_in+=recv.readsome(readBuffer+zs.avail_in,readBlockSize-zs.avail_in);
-					//std::cout << '[' << tag << ']' << " got " << zs.avail_in << (zs.avail_in==1?" byte":" bytes") << std::endl;
-				}
-				//write whatever was read to the raw output stream
-				raw.write(readBuffer,zs.avail_in);
 			}
-			/*result=inflate(&zs,Z_SYNC_FLUSH);
-			std::streamsize availData = decompSize-zs.avail_out;
-			std::cout << " zlib reports " << availData << " bytes ready" << std::endl;
-			os.write(decompBuffer,availData);
-			zs.next_out = (unsigned char*)decompBuffer;
-			zs.avail_out = decompSize;
-			if(result==Z_STREAM_END){
-				std::cout << " zlib reported end of compressed data" << std::endl;
-				break; //done!
-			}
-			else if(result!=Z_OK)
-				throw std::runtime_error(std::string("Zlib decompression error: ")+zs.msg);*/
 			//hew closely to the zlib usage example
 			do{
 				zs.next_out = (unsigned char*)decompBuffer;
@@ -280,21 +253,16 @@ public:
 				if(result<Z_OK)
 					throw std::runtime_error(std::string("Zlib decompression error: ")+zs.msg);
 				std::streamsize availData = decompSize-zs.avail_out;
-				//std::cout << '[' << tag << ']' << " zlib reports " << availData << " bytes ready" << std::endl;
 				os.write(decompBuffer,availData);
 			} while(zs.avail_out==0);
-			if(result==Z_STREAM_END){
-				//std::cout << '[' << tag << ']' << " zlib reported end of compressed data" << std::endl;
+			if(result==Z_STREAM_END)
 				break; //done!
-			}
 		}
-		//if(recv.eof())
-		//	std::cout << '[' << tag << ']' << " stopped due to eof" << std::endl;
 	}
 	
 	std::string zreceive(){
-		std::ostringstream stream,dummy;
-		zreceiveToStream(stream,dummy,"");
+		std::ostringstream stream;
+		zreceiveToStream(stream);
 		return(stream.str());
 	}
 	

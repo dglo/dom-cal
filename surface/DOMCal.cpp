@@ -286,7 +286,7 @@ void* runDOMCal(void* arg){
 		DOM dom(settings.cardNumber,settings.pairNumber,settings.domLabel);
 		//touch the .running file
 		{
-			std::ofstream((settings.outputDir+"/domcal_"+settings.mbID+".running").c_str());
+			std::ofstream((settings.outputDir+"/domcal_"+settings.mbID+".xml.running").c_str());
 		}
 		dom.iceboot();
 		dom << "crlf domid type type" << DOM::endl;
@@ -422,11 +422,10 @@ void* runDOMCal(void* arg){
 		dom.receive(DOM::endl);
 		//get the XML and put it into a file
 		std::ofstream xmlFile((settings.outputDir+"/domcal_"+settings.mbID+".xml").c_str());
-		std::ofstream rawFile((settings.outputDir+"/domcal_"+settings.mbID+".raw").c_str());
-		dom.zreceiveToStream(xmlFile,rawFile,settings.mbID);
+		dom.zreceiveToStream(xmlFile);
 		
 		//remove the .running file
-		unlink((settings.outputDir+"/domcal_"+settings.mbID+".running").c_str());
+		unlink((settings.outputDir+"/domcal_"+settings.mbID+".xml.running").c_str());
 		std::cout << '[' << settings.mbID << ']' << " Done" << std::endl;
 	}catch(std::exception& err){
 		std::cerr << "Caught runtime error while calibrating DOM " << settings.mbID << ":\n"
