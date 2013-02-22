@@ -66,6 +66,11 @@ std::string getFileContents(const std::string& path){
 	return(data);
 }
 
+bool fileExists(const std::string& path){
+	std::ifstream file(path.c_str());
+	return file.good();
+}
+
 bool endsWith(const std::string& str, const std::string& suffix){
 	if(suffix.size()>str.size())
 		return(false);
@@ -91,8 +96,12 @@ std::map<uint64_t,DOMCalSettings> determineConnectedDOMs(){
 	std::map<uint64_t,DOMCalSettings> foundDOMs;
 	for(unsigned short cardNumber=0; cardNumber<8; cardNumber++){
 		for(unsigned short pairNumber=0; pairNumber<4; pairNumber++){
-			//skip the pair if it isn't plugged in
-			if(!endsWith(getFileContents(DOM::pairDirPath(cardNumber,pairNumber)+"/is-plugged"),"is plugged in."))
+            //skip the card if it isn't plugged in
+            if(!fileExists(DOM::cardDirPath(cardNumber)))
+                continue;
+
+            //skip the pair if it isn't plugged in
+            if(!endsWith(getFileContents(DOM::pairDirPath(cardNumber,pairNumber)+"/is-plugged"),"is plugged in."))
 				continue;
 			
 			for(char domLabel='A'; domLabel<='B'; domLabel++){
