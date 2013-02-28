@@ -97,6 +97,51 @@ public:
 			histogram_data=NULL;
 	}
 	
+	DOMCalRecord& operator=(const DOMCalRecord& rec){
+		if(this==&rec)
+			return(*this);
+		delete[] baseline_data;
+		for(unsigned int i=0; i<num_histos; i++){
+			delete[] histogram_data[i].x_data;
+			delete[] histogram_data[i].y_data;
+			delete[] histogram_data[i].fit;
+		}
+		delete[] histogram_data;
+		*((calib_data*)this)=(calib_data)rec;
+		read=rec.read;
+		calTime=rec.calTime;
+		runningTime=rec.runningTime;
+		if(rec.baseline_data){
+			baseline_data=new hv_baselines[rec.num_baselines];
+			memcpy(baseline_data,rec.baseline_data,num_baselines*sizeof(hv_baselines));
+		}
+		else
+			baseline_data=NULL;
+		if(rec.histogram_data){
+			histogram_data=new hv_histogram[rec.num_histos];
+			memcpy(histogram_data,rec.histogram_data,num_histos*sizeof(hv_histogram));
+			for(unsigned int i=0; i<num_histos; i++){
+				if(histogram_data[i].x_data!=NULL){
+					float* new_data=new float[histogram_data[i].bin_count];
+					memcpy(new_data,histogram_data[i].x_data,histogram_data[i].bin_count*sizeof(float));
+					histogram_data[i].x_data=new_data;
+				}
+				if(histogram_data[i].y_data!=NULL){
+					float* new_data=new float[histogram_data[i].bin_count];
+					memcpy(new_data,histogram_data[i].y_data,histogram_data[i].bin_count*sizeof(float));
+					histogram_data[i].y_data=new_data;
+				}
+				if(histogram_data[i].fit!=NULL){
+					float* new_data=new float[5];
+					memcpy(new_data,histogram_data[i].fit,5*sizeof(float));
+					histogram_data[i].fit=new_data;
+				}
+			}
+		}
+		else
+			histogram_data=NULL;
+	}
+	
 	~DOMCalRecord(){
 		delete[] baseline_data;
 		for(unsigned int i=0; i<num_histos; i++){
@@ -107,7 +152,6 @@ public:
 		delete[] histogram_data;
 	}
 private:
-	DOMCalRecord& operator=(const DOMCalRecord& rec);
 };
 
 // Simple means of iterating over the filesystem

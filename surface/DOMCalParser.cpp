@@ -682,7 +682,7 @@ void parseAllDOMCalFiles(const std::string& directory, std::map<uint64_t,DOMCalR
 			if(!extractMainboardID(it->path().stem(),mbID))
 				continue;
 			try{
-				data.insert(std::make_pair(mbID,parser.parseDOMCalFile(it->path().string(),mbID)));
+				data[mbID]=parser.parseDOMCalFile(it->path().string(),mbID);
 				data[mbID].calTime=getModificationTime(it->path().string());
 			} catch(xmlParseError& err){
 				std::cerr << "Bleh, uncaught xmlParseError: " << err.what() << std::endl;

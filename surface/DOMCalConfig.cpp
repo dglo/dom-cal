@@ -37,6 +37,21 @@ struct overrideSettings{
 	bool full() const{
 		return(minHVSet && maxHVSet && atwdSet);
 	}
+	
+	void merge(const overrideSettings& other){
+		if(other.minHVSet){
+			minHVSet=other.minHVSet;
+			minHV=other.minHV;
+		}
+		if(other.maxHVSet){
+			maxHVSet=other.maxHVSet;
+			maxHV=other.maxHV;
+		}
+		if(other.atwdSet){
+			atwdSet=other.atwdSet;
+			atwd=other.atwd;
+		}
+	}
 };
 
 std::istream& operator>>(std::istream& is, overrideSettings& s){
@@ -106,7 +121,7 @@ bool parseOverrideFile(const std::string& path, std::map<uint64_t,overrideSettin
 			std::cerr << "failure parsing at line " << lineNum << std::endl;
 			return(false);
 		}
-		overrides.insert(std::make_pair(mbID,s));
+		overrides[mbID].merge(s);
 	}
 	
 	return(true);
@@ -143,7 +158,7 @@ void expandHVRange(float& minHV, float& maxHV, const overrideSettings& override)
 		//if one end of the range was specified as an override or is already at the limit
 		//we shouldn't try to move that one
 		bool limitedBelow=(override.minHVSet || minHV<=minHVLimit);
-		bool limitedAbove=(override.maxHVSet || maxHV<=maxHVLimit);
+		bool limitedAbove=(override.maxHVSet || maxHV>=maxHVLimit);
 		
 		if(!limitedBelow && limitedAbove) //need to try to move the lower limit
 			minHV=limitHV(maxHV-minHVRange);
