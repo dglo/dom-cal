@@ -111,13 +111,29 @@ bool parseOverrideFile(const std::string& path, std::map<uint64_t,overrideSettin
 		return(false);
 	}
 	unsigned int lineNum=1;
-	while(true){
+	std::string line;
+	while(getline(file,line)){
+		size_t pos;
+		//eliminate data after first #
+		if((pos=line.find('#'))!=std::string::npos)
+			line.erase(pos);
+		//trim whitespace
+		const char* whitespace=" \n\r\t\v";
+		if((pos=line.find_first_not_of(whitespace))!=0)
+			//if there are no non-whitespace characters pos==std::string::npos, so the entire line is erased
+			line.erase(0,pos);
+		if(!line.empty() && (pos=line.find_last_not_of(whitespace))!=line.size()-1)
+			line.erase(pos+1);
+		if(line.empty())
+			continue;
+		
+		//now the real parsing work
+		std::istringstream ss(line);
+		
 		uint64_t mbID;
 		overrideSettings s;
-		file >> std::hex >> mbID >> std::dec >> s;
-		if(file.eof())
-			break;
-		if(file.fail()){
+		ss >> std::hex >> mbID >> std::dec >> s;
+		if(ss.fail()){
 			std::cerr << "failure parsing at line " << lineNum << std::endl;
 			return(false);
 		}
