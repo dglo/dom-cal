@@ -19,7 +19,7 @@ int domIdentifier::toroidType() const{
 	// Pipe_Nebula - TP5P0901
 	if(domID=="UP5P0970" || domID=="UP5H9214" || domID=="TP4H0049" || domID=="UP5P0672" || domID=="TP5P0901")
 		return(1);
-	char year=domID[3];
+	char year=domID[2];
 	if(year>='6')
 		return(1);
 	return(0);
