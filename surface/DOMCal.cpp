@@ -9,6 +9,11 @@
 #include "DOM.h"
 #include "DOMListing.h"
 
+//Surface software version
+const unsigned int surfaceMajorVersion = 1;
+const unsigned int surfaceMinorVersion = 0;
+const unsigned int surfacePatchVersion = 1;
+
 //The components of the version of the in-ice software
 //with which this version of the surface software expects to work
 const unsigned int expectedMajorVersion = 7;
@@ -445,6 +450,7 @@ void usage(){
 	"   -d [output directory] (where XML results and log files will be written)\n"
 	"   -v (allow high voltage to be activated)\n"
 	"   -i (iterate high voltage measurements)\n"
+    "   -V (print version and exit)\n"
 	"   -D[card]:[pair]:[dom]:[mbid]:[min HV]:[max HV]:[preferred ATWD]\n"
 	"     Specifies a DOM to calibrate by its DOR card number (0-7), \n"
 	"     wire pair number (0-7), and DOM label (A or B). The DOM's\n"
@@ -486,6 +492,13 @@ int main(int argc, char* argv[]){
 			i++;
 			outputDir=argv[i];
 		}
+        else if(arg=="-V") {
+            std::cerr << "DOMCal surface software version " << 
+              surfaceMajorVersion << "." <<
+              surfaceMinorVersion << "." <<
+              surfacePatchVersion << std::endl;
+            return(0);
+        }
 		else if(arg=="-v")
 			useHV=true;
 		else if(arg=="-i")
@@ -531,6 +544,9 @@ int main(int argc, char* argv[]){
 		std::cout << "No DOMs to calibrate, exiting" << std::endl;
 		return(1);
 	}
+
+    std::cout << "DOMCal surface software version " << surfaceMajorVersion << "." <<
+        surfaceMinorVersion << "." << surfacePatchVersion << std::endl;
 	
 	const int nDOMs=settings.size();
 	for(int i=0; i<nDOMs; i++)
