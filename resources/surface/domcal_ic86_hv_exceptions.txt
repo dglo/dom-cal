@@ -1,0 +1,7 @@
+44e218aa590c 0 0 - # Krabba, dead
+8b13cb959e23 0 0 - # Ear_Muffs, never triggers
+9ed5742a784d 0 0 - # Hydrogen, dead
+dd7b82733671 0 0 - # Blackberry, HV doesn't work
+bfce23980286 0 0 - # Schango, PMT is broken
+57bb7c43b042 900 1300 - # Phenol, "Sustained High Dark Rate", voltage kept low to avoid damage
+a20e4747248c 900 1300 - # Kokolik_River, "Sustained High Dark Rate", voltage kept low to avoid damage

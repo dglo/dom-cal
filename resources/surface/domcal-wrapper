@@ -1,0 +1,18 @@
+#!/bin/bash
+mkdir -p $HOME/domcal/new-files/
+cd $HOME/domcal/new-files/
+timestamp=$(date +%Y)$(date +%m)$(date +%d)-$(date +%H)$(date +%M)$(date +%S)
+mkdir $timestamp
+ln -sfn $timestamp latest
+cd $timestamp
+
+nohup DOMCal -d $HOME/domcal/new-files/$timestamp -v \
+-L $HOME/nicknames.txt \
+-S $HOME/domcal.config \
+&>nohup.out
+
+mkdir -p $HOME/domcal/new-files/$timestamp/histos
+# remove old files from the collection directory
+rm -f /mnt/data/testdaq/domcal/domcal_*.out /mnt/data/testdaq/domcal/domcal_*.xml /mnt/data/testdaq/domcal/domcal_*.xml.running /mnt/data/testdaq/domcal/nohup.out
+# copy new files to the collection directory
+scp -rp $HOME/domcal/new-files/$timestamp/* /mnt/data/testdaq/domcal/
