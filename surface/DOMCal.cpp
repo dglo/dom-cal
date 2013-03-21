@@ -12,7 +12,7 @@
 //Surface software version
 const unsigned int surfaceMajorVersion = 1;
 const unsigned int surfaceMinorVersion = 0;
-const unsigned int surfacePatchVersion = 1;
+const unsigned int surfacePatchVersion = 2;
 
 //The components of the version of the in-ice software
 //with which this version of the surface software expects to work
@@ -445,7 +445,7 @@ void* runDOMCal(void* arg){
 }
 
 void usage(){
-	std::cerr << "Usgae: DOMCal \n"
+	std::cerr << "Usage: DOMCal \n"
 	"   -L [DOM listing file] (providing mappings from mainboard IDs to DOM IDs)\n"
 	"   -d [output directory] (where XML results and log files will be written)\n"
 	"   -v (allow high voltage to be activated)\n"
