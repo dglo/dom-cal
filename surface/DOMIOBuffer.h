@@ -10,6 +10,8 @@
 #include <sys/select.h>
 #include <errno.h>
 
+#include <iostream>
+
 class DOMIOBuffer : public std::basic_streambuf<char, std::char_traits<char> >{
 public:
 	typedef char char_type;
@@ -19,6 +21,7 @@ private:
 	unsigned int minReadSize;
 	char_type* readBuffer;
 	bool readEOF;
+	std::string devicePath;
 	
 	enum rw{READ,WRITE};
 	
@@ -35,7 +38,7 @@ private:
 			writeset=&set;
 		while(true){
 			int result=select(maxfd,readset,writeset,NULL,NULL);
-			if(result==1) //ready!
+			/*if(result==1) //ready!
 				return;
 			if(errno==EAGAIN)
 				continue;
@@ -43,6 +46,13 @@ private:
 				throw std::runtime_error("Error waiting for file descriptor to be ready to read");
 			else
 				throw std::runtime_error("Error waiting for file descriptor to be ready to write");
+			*/
+			if(direction==READ && FD_ISSET(fd,readset))
+				return;
+			if(direction==WRITE && FD_ISSET(fd,writeset))
+				return;
+			if(errno)
+				std::cerr << devicePath << ": select gave error " << errno << std::endl;
 		}
 	}
 	
@@ -51,7 +61,8 @@ public:
 	fd(open(devPath.c_str(),O_RDWR|O_NONBLOCK)),
 	minReadSize(minReadSize),
 	readBuffer(new char_type[minReadSize]),
-	readEOF(false){
+	readEOF(false),
+	devicePath(devPath){
 		if(fd<0)
 			throw std::runtime_error("Failed to open DOR device "+devPath);
 		setg(readBuffer,readBuffer,readBuffer);
@@ -78,7 +89,8 @@ public:
 				if(errno==EAGAIN || errno==EWOULDBLOCK)
 					continue;
 				//TODO: include error code, etc
-				throw std::runtime_error("Write Error");
+				//throw std::runtime_error("Write Error");
+				std::cerr << devicePath << ": write gave error " << errno << std::endl;
 			}
 		}
 		return(amountWritten);
@@ -95,7 +107,8 @@ public:
 				if(errno==EAGAIN)
 					continue;
 				//TODO: include error code, etc
-				throw std::runtime_error("Read Error");
+				//throw std::runtime_error("Read Error");
+				std::cerr << devicePath << ": read gave error " << errno << std::endl;
 			}
 			if(result==0)
 				continue;
