@@ -9,7 +9,7 @@ cd $timestamp
 nohup DOMCal -d $HOME/domcal/new-files/$timestamp -v \
 -L $HOME/nicknames.txt \
 -S $HOME/domcal_ic86.config \
-2>domcal.err
+2>domcal.err 1>nohup.out
 
 mkdir -p $HOME/domcal/new-files/$timestamp/histos
 # remove old files from the collection directory
