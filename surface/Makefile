@@ -10,7 +10,7 @@ all: DOMCal verify_domcal DOMCalGrapher DOMCalConfig
 clean: 
 	rm -f DOM.o DOMListing.o DOMCal.o DOMCal
 	rm -f SimpleDrawing.o DOMCalGrapher.o DOMCalGrapher
-	rm -f XMLUtils.o DOMCalParser.o DOMCalChecker.o verify_domcal
+	rm -f XMLUtils.o DOMCalParser.o DOMCalChecker.o verify_domcal.o verify_domcal
 	rm -f DOMCalConfig.o DOMCalConfig
 
 DOMCal: DOMCal.o DOM.o DOMListing.o

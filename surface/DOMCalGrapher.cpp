@@ -205,13 +205,12 @@ int main(int argc, char* argv[]){
 	
 	if(histoDirPath.empty()){ //if we didn't already fnd the histogram directory we'll have to create it
 		size_t slashIdx = directory.rfind('/');
-		std::cout << directory << std::endl;
 		std::string suffix;
 		if(slashIdx!=std::string::npos && slashIdx<directory.size()-1)
 			suffix="."+directory.substr(slashIdx+1);
 		else
 			suffix=directory;
-		histoDirPath=directory+"/histos"+suffix;
+		histoDirPath=directory+"/histos."+suffix;
 		int err=mkdir(histoDirPath.c_str(),0755);
 		if(err){
 			std::cerr << "Error attempting to create histogram directory " << histoDirPath << "; unable to proceed" << std::endl;
