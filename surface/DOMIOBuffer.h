@@ -103,12 +103,14 @@ public:
 			waitReady(READ);
 			int result=read(fd,(void*)readBuffer,minReadSize);
 			//std::cout << "  read reports " << result << (result==1?" byte":" bytes") << " read" << std::endl;
-			if(result==-1){ //an error occurred
+			//if(result==-1){ //an error occurred
+			if(result<0){ //an error occurred
 				if(errno==EAGAIN)
 					continue;
 				//TODO: include error code, etc
 				//throw std::runtime_error("Read Error");
-				std::cerr << devicePath << ": read gave error " << errno << std::endl;
+				std::cerr << devicePath << ": read gave result " << result << " and error " << errno << std::endl;
+				throw std::runtime_error("Read Error");
 			}
 			if(result==0)
 				continue;
