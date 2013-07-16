@@ -22,8 +22,10 @@ struct DOMCalChecker{
 	static float transitTimeHigh;
 	static float ATWDDeltaTLow;
 	static float ATWDDeltaTHigh;
+	static float ATWDDeltaTMaxError;
 	static float FADCDeltaTLow;
 	static float FADCDeltaTHigh;
+	static float FADCDeltaTMaxError;
 	static unsigned int minHVPoints;
 	static unsigned int minTransitTimePoints;
 	static unsigned int minPMTDiscPoints;

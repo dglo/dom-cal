@@ -18,9 +18,11 @@ float DOMCalChecker::transitTimeHigh(156);
 
 float DOMCalChecker::ATWDDeltaTLow(-8.0);
 float DOMCalChecker::ATWDDeltaTHigh(8.0);
+float DOMCalChecker::ATWDDeltaTMaxError(.5);
 
 float DOMCalChecker::FADCDeltaTLow(-119.63);
 float DOMCalChecker::FADCDeltaTHigh(-108.3);
+float DOMCalChecker::FADCDeltaTMaxError(.5);
 
 unsigned int DOMCalChecker::minHVPoints(4);
 unsigned int DOMCalChecker::minTransitTimePoints(4);
@@ -226,12 +228,18 @@ void DOMCalChecker::checkATWDDeltaT(const DOMCalRecord& data){
 		if(data.atwd_delta_t[1].value<ATWDDeltaTLow || data.atwd_delta_t[1].value>ATWDDeltaTHigh)
 			addError(error(ERROR,"ATWD 1 delta T out of range: "
 						   +lexical_cast<std::string>(data.atwd_delta_t[1].value)));
+		if(data.atwd_delta_t[1].error>ATWDDeltaTMaxError)
+			addError(error(WARNING,"Abnormally large error on ATWD 1 delta T value: "
+						   +lexical_cast<std::string>(data.atwd_delta_t[1].error)));
 	}
 	else if(data.atwd_delta_t[1].value==0.0 && data.atwd_delta_t[1].error==0.0){
 		//chip 1 is the reference
 		if(data.atwd_delta_t[0].value<ATWDDeltaTLow || data.atwd_delta_t[0].value>ATWDDeltaTHigh)
 			addError(error(ERROR,"ATWD 1 delta T out of range: "
 						   +lexical_cast<std::string>(data.atwd_delta_t[0].value)));
+		if(data.atwd_delta_t[0].error>ATWDDeltaTMaxError)
+			addError(error(WARNING,"Abnormally large error on ATWD 0 delta T value: "
+						   +lexical_cast<std::string>(data.atwd_delta_t[0].error)));
 	}
 	else
 		addError(error(ERROR,"Neither ATWD delta T is zero; cannot determine which is time reference ("
@@ -245,6 +253,9 @@ void DOMCalChecker::checkFADCDeltaT(const DOMCalRecord& data){
 	if(data.fadc_delta_t.value<FADCDeltaTLow || data.fadc_delta_t.value>FADCDeltaTHigh)
 		addError(error(ERROR,"FADC delta T out of range: "
 					   +lexical_cast<std::string>(data.fadc_delta_t.value)));
+	if(data.fadc_delta_t.error>FADCDeltaTMaxError)
+		addError(error(WARNING,"Abnormally large error on FADC delta T value: "
+					   +lexical_cast<std::string>(data.fadc_delta_t.error)));
 }
 
 void DOMCalChecker::checkHVGainPoints(const DOMCalRecord& data){
