@@ -27,11 +27,11 @@ clean:
 	rm -f *.o *.i *.bin *.elf
 
 domcal.elf: domcal.o $(EXOBJS) $(CALOBJS) $(LIBHAL) $(SYSLIBS) $(KERNELX)
-	$(LD) --script=$(KERNELX) -o domcal.elf $(KOBJS) $(ICEOBJS) domcal.o $(CALOBJS) $(EXOBJS) $(LIBHAL) $(SYSLIBS) -lc
+	$(LD) --script=$(KERNELX) -o domcal.elf $(KOBJS) $(ICEOBJS) domcal.o $(CALOBJS) $(EXOBJS) $(LIBHAL) $(SYSLIBS) $(SYS_SEARCH) -lc 
 
 ../bin/%.bin.gz: %.bin; gzip -c $< > $@
 
 $(ALLOBJS): %.o : %.h
 
 ../bin/domcal: domcal.o $(CALOBJS) $(EXOBJS)
-	gcc -o domcal domcal.o $(CALOBJS) $(EXOBJS) $(LIBHAL) $(SYSLIBS) -lm
+	gcc -o domcal domcal.o $(CALOBJS) $(EXOBJS) $(LIBHAL) $(SYSLIBS) $(SYS_SEARCH) -lm
