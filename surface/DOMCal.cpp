@@ -12,7 +12,7 @@
 //Surface software version
 const unsigned int surfaceMajorVersion = 1;
 const unsigned int surfaceMinorVersion = 0;
-const unsigned int surfacePatchVersion = 2;
+const unsigned int surfacePatchVersion = 3;
 
 //The components of the version of the in-ice software
 //with which this version of the surface software expects to work
