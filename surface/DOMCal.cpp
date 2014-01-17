@@ -12,7 +12,7 @@
 //Surface software version
 const unsigned int surfaceMajorVersion = 1;
 const unsigned int surfaceMinorVersion = 0;
-const unsigned int surfacePatchVersion = 3;
+const unsigned int surfacePatchVersion = 4;
 
 //The components of the version of the in-ice software
 //with which this version of the surface software expects to work
@@ -353,7 +353,7 @@ void* runDOMCal(void* arg){
 			}
 			else if(response=="month"){
 				dom.receive(": ");
-				dom << now.tm_mon << DOM::endl;
+				dom << now.tm_mon+1 << DOM::endl;
 				dom.receive(DOM::endl);
 			}
 			else if(response=="day"){
