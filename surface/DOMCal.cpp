@@ -93,7 +93,7 @@ void trimWhitespace(std::string& s){
 }
 
 //Find all DOMs which are connected to this hub
-//In oreder for this function to have access to the DOM's mainboard IDs the DOMs must have gone from configboot to iceboot!
+//In order for this function to have access to the DOM's mainboard IDs the DOMs must have gone from configboot to iceboot!
 //Returns a map of mainboard IDs to settings objects, where the settings will contain only
 //the information necessary to logically locate the DOM (card number, pair number, and label);
 //all actual calibration settings will have to be filled in from another source.
@@ -531,7 +531,7 @@ int main(int argc, char* argv[]){
 				return(1);
 			}
 			i++;
-			std::map<uint64_t,DOMCalSettings> connectedDOMs=determineConnectedDOMs();; //the DOMs connected to this hub
+			std::map<uint64_t,DOMCalSettings> connectedDOMs=determineConnectedDOMs(); //the DOMs connected to this hub
 			parseDOMSettingsFile(argv[i],connectedDOMs,outputDir,useHV,iterateHV,knownDOMs);
 			for(std::map<uint64_t,DOMCalSettings>::iterator domIt=connectedDOMs.begin(), end=connectedDOMs.end(); domIt!=end; domIt++)
 				settings.push_back(domIt->second);
