@@ -8,11 +8,7 @@
 
 #include "DOM.h"
 #include "DOMListing.h"
-
-//Surface software version
-const unsigned int surfaceMajorVersion = 1;
-const unsigned int surfaceMinorVersion = 0;
-const unsigned int surfacePatchVersion = 4;
+#include "version.h"
 
 //The components of the version of the in-ice software
 //with which this version of the surface software expects to work
@@ -493,10 +489,8 @@ int main(int argc, char* argv[]){
 			outputDir=argv[i];
 		}
         else if(arg=="-V") {
-            std::cerr << "DOMCal surface software version " << 
-              surfaceMajorVersion << "." <<
-              surfaceMinorVersion << "." <<
-              surfacePatchVersion << std::endl;
+          std::cerr << "DOMCal surface software "  <<
+            SURFACE_VERSION << "." << std::endl;
             return(0);
         }
 		else if(arg=="-v")
@@ -545,8 +539,8 @@ int main(int argc, char* argv[]){
 		return(1);
 	}
 
-    std::cout << "DOMCal surface software version " << surfaceMajorVersion << "." <<
-        surfaceMinorVersion << "." << surfacePatchVersion << std::endl;
+    std::cout << "DOMCal surface software " << 
+      SURFACE_VERSION << "." << std::endl;
 	
 	const int nDOMs=settings.size();
 	for(int i=0; i<nDOMs; i++)
@@ -568,13 +562,14 @@ int main(int argc, char* argv[]){
 		pthread_join(threads[i],NULL);
 	
 	//let's print some statistics :)
-	std::string line;
+	/*
+    std::string line;
 	std::ostringstream statusPath;
 	statusPath << "/proc/" << getpid() << "/status";
 	std::ifstream statusFile(statusPath.str().c_str());
 	std::cout << "Process statistics:\n";
 	while(getline(statusFile,line))
 		std::cout << line << '\n';
-	
+    */
 	return(0);
 }

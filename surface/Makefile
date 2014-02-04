@@ -22,7 +22,7 @@ DOM.o: DOM.cpp DOM.h DOMIOBuffer.h
 DOMListing.o: DOMListing.cpp DOMListing.h
 	$(CXX) $(CXXFLAGS) -c -o DOMListing.o DOMListing.cpp
 
-DOMCal.o: DOMCal.cpp DOM.h DOMIOBuffer.h DOMListing.h
+DOMCal.o: DOMCal.cpp DOM.h DOMIOBuffer.h DOMListing.h version.h
 	$(CXX) $(CXXFLAGS) -c -o DOMCal.o DOMCal.cpp
 
 verify_domcal: XMLUtils.o DOMListing.o DOMCalParser.o DOMCalChecker.o verify_domcal.o
@@ -54,3 +54,7 @@ DOMCalConfig.o : DOMCalConfig.cpp DOMCalParser.h DOMListing.h XMLUtils.h
 
 DOMCalConfig : DOMCalConfig.o DOMCalParser.o DOMCalChecker.o DOMListing.o XMLUtils.o
 	$(CXX) $(CXXFLAGS) $(DOMCalConfig_LDFLAGS) -o DOMCalConfig DOMCalConfig.o DOMCalParser.o DOMCalChecker.o DOMListing.o XMLUtils.o
+
+rpm:
+	./dorpm version.h
+

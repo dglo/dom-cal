@@ -6,13 +6,23 @@ mkdir $timestamp
 ln -sfn $timestamp latest
 cd $timestamp
 
-nohup DOMCal -d $HOME/domcal/new-files/$timestamp -v \
+# Determine if we're running on an IceTop hub
+hostname=`hostname -s`
+extraargs=""
+if [[ "${hostname}" =~ .*ithub.* ]]; then
+    extraargs="-i"
+fi
+
+# Execute the calibration
+DOMCal -d $HOME/domcal/new-files/$timestamp -v \
 -L $HOME/nicknames.txt \
--S $HOME/domcal_ic86.config \
-2>domcal.err 1>nohup.out
+-S $HOME/domcal_ic86.config $extraargs\
+2>domcal.err 1>domcal.out
 
 mkdir -p $HOME/domcal/new-files/$timestamp/histos
+
 # remove old files from the collection directory
-rm -f /mnt/data/testdaq/domcal/domcal_*.out /mnt/data/testdaq/domcal/domcal_*.xml /mnt/data/testdaq/domcal/domcal_*.xml.running /mnt/data/testdaq/domcal/nohup.out
+rm -f $HOME/domcal/domcal_*.out $HOME/domcal/domcal_*.xml $HOME/domcal/domcal_*.xml.running $HOME/domcal/nohup.out $HOME/domcal/domcal.err $HOME/domcal/domcal.out
+
 # copy new files to the collection directory
-scp -rp $HOME/domcal/new-files/$timestamp/* /mnt/data/testdaq/domcal/
+scp -rp $HOME/domcal/new-files/$timestamp/* $HOME/domcal/
