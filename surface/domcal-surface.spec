@@ -24,7 +24,7 @@ install -d ${RPM_BUILD_ROOT}/mnt/data/testdaq
 install -d ${RPM_BUILD_ROOT}/mnt/data/testdaq/bin
 
 install surface/DOMCal ${RPM_BUILD_ROOT}/mnt/data/testdaq/bin/
-install resources/surface/domcal-wrapper ${RPM_BUILD_ROOT}/mnt/data/testdaq/bin/domcal-wrapper-cpp
+install resources/surface/domcal-wrapper ${RPM_BUILD_ROOT}/mnt/data/testdaq/bin/
 install resources/surface/domcal_ic86.config ${RPM_BUILD_ROOT}/mnt/data/testdaq/
 
 %clean
@@ -33,7 +33,7 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,testdaq,testdaq)
 /mnt/data/testdaq/bin/DOMCal
-/mnt/data/testdaq/bin/domcal-wrapper-cpp
+/mnt/data/testdaq/bin/domcal-wrapper
 /mnt/data/testdaq/domcal_ic86.config
 
 %changelog
