@@ -293,6 +293,7 @@ int main(void) {
     dom_calib.hv_baselines_valid = 0;
     dom_calib.daq_baselines_valid = 0;
     dom_calib.transit_calib_valid = 0;
+    dom_calib.pmt_disc_calib_valid = 0;
     dom_calib.max_hv = 0;
 
     /* Query user about multi-iteration runs */
