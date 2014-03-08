@@ -13,9 +13,6 @@
 #include <iostream>
 
 class DOMIOBuffer : public std::basic_streambuf<char, std::char_traits<char> >{
-public:
-	typedef char char_type;
-	typedef int int_type;
 private:
 	int fd;
 	unsigned int minReadSize;
@@ -96,9 +93,9 @@ public:
 		return(amountWritten);
 	}
 	
-	int underflow(){
+	traits_type::int_type underflow(){
 		if(readEOF)
-			return(std::char_traits<char>::eof());
+			return(traits_type::eof());
 		while(true){
 			waitReady(READ);
 			int result=read(fd,(void*)readBuffer,minReadSize);
@@ -108,7 +105,6 @@ public:
 				if(errno==EAGAIN)
 					continue;
 				//TODO: include error code, etc
-				//throw std::runtime_error("Read Error");
 				std::cerr << devicePath << ": read gave result " << result << " and error " << errno << std::endl;
 				throw std::runtime_error("Read Error");
 			}
@@ -117,7 +113,7 @@ public:
 			setg(readBuffer,readBuffer,readBuffer+result);
 			break;
 		}
-		return(*readBuffer);
+		return(traits_type::to_int_type(*readBuffer));
 	}
 };
 
