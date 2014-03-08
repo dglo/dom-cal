@@ -11,10 +11,12 @@
 #include "version.h"
 
 //The components of the version of the in-ice software
-//with which this version of the surface software expects to work
+//with which this version of the surface software expects to work.
+//The patch version can be bumped on the DOM, but major and minor
+//versions must match exactly.
 const unsigned int expectedMajorVersion = 7;
 const unsigned int expectedMinorVersion = 6;
-const unsigned int expectedPatchVersion = 0;
+const unsigned int minimumPatchVersion = 0;
 
 struct DOMCalSettings{
 	unsigned short cardNumber;
@@ -326,9 +328,11 @@ void* runDOMCal(void* arg){
 			int major=-1, minor=-1, patch=1;
 			char point;
 			dom >> major >> point >> minor >> point >> patch;
-			if(!(major==expectedMajorVersion && minor==expectedMinorVersion && patch==expectedPatchVersion)){
+            if(!((major==expectedMajorVersion) && 
+                 (minor==expectedMinorVersion) && 
+                 (patch>=minimumPatchVersion))) {
 				std::ostringstream ss;
-				ss << "Version mismatch! Expected version is " << expectedMajorVersion << '.' << expectedMinorVersion << '.' << expectedPatchVersion
+				ss << "Version mismatch! Expected version is " << expectedMajorVersion << '.' << expectedMinorVersion << '.' << minimumPatchVersion
 				  << " but installed version seems to be " << major << '.' << minor << '.' << patch;
 				throw std::runtime_error(ss.str());
 			}
@@ -359,7 +363,7 @@ void* runDOMCal(void* arg){
 			}
 			else if(response=="time"){
 				char buf[7];
-				strftime(&buf[0],6,"%H%M%S",&now);
+				strftime(buf,7,"%H%M%S",&now);
 				dom.receive(": ");
 				dom << buf << DOM::endl;
 				dom.receive(DOM::endl);
