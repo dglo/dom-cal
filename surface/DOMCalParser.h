@@ -140,6 +140,7 @@ public:
 		}
 		else
 			histogram_data=NULL;
+		return(*this);
 	}
 	
 	~DOMCalRecord(){
