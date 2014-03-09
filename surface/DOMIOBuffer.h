@@ -13,6 +13,9 @@
 #include <iostream>
 
 class DOMIOBuffer : public std::basic_streambuf<char, std::char_traits<char> >{
+public:
+	typedef char char_type;
+	typedef int int_type;
 private:
 	int fd;
 	unsigned int minReadSize;
@@ -54,16 +57,18 @@ private:
 	}
 	
 public:
-	DOMIOBuffer(const std::string& devPath, unsigned int minReadSize):
-	fd(open(devPath.c_str(),O_RDWR|O_NONBLOCK)),
-	minReadSize(minReadSize),
-	readBuffer(new char_type[minReadSize]),
-	readEOF(false),
-	devicePath(devPath){
-		if(fd<0)
-			throw std::runtime_error("Failed to open DOR device "+devPath);
-		setg(readBuffer,readBuffer,readBuffer);
-	}
+       DOMIOBuffer(const std::string& devPath, unsigned int minReadSize):
+       fd(open(devPath.c_str(),O_RDWR|O_NONBLOCK)),
+       minReadSize(minReadSize),
+       readBuffer(new char_type[minReadSize]),
+       readEOF(false),
+       devicePath(devPath){
+           if(fd<0) {
+               perror(devPath.c_str());
+               throw std::runtime_error("Failed to open DOR device "+devPath);
+           }
+           setg(readBuffer,readBuffer,readBuffer);
+        }
 	
 	~DOMIOBuffer(){
 		close(fd);
@@ -93,28 +98,29 @@ public:
 		return(amountWritten);
 	}
 	
-	traits_type::int_type underflow(){
-		if(readEOF)
-			return(traits_type::eof());
-		while(true){
-			waitReady(READ);
-			int result=read(fd,(void*)readBuffer,minReadSize);
-			//std::cout << "  read reports " << result << (result==1?" byte":" bytes") << " read" << std::endl;
-			//if(result==-1){ //an error occurred
-			if(result<0){ //an error occurred
-				if(errno==EAGAIN)
-					continue;
-				//TODO: include error code, etc
-				std::cerr << devicePath << ": read gave result " << result << " and error " << errno << std::endl;
-				throw std::runtime_error("Read Error");
-			}
-			if(result==0)
-				continue;
-			setg(readBuffer,readBuffer,readBuffer+result);
-			break;
-		}
-		return(traits_type::to_int_type(*readBuffer));
-	}
+    int underflow(){
+        if(readEOF)
+            return(std::char_traits<char>::eof());
+        if (gptr() < egptr()) // buffer not exhausted
+            return traits_type::to_int_type(*gptr());
+        while(true){
+            waitReady(READ);
+            int result=read(fd,(void*)readBuffer,minReadSize);
+            if(result<0){ //an error occurred
+                if(errno==EAGAIN)
+                    continue;
+                std::cerr << devicePath << ": read gave result " << result;
+                std::cerr << " and error " << errno << std::endl;
+                throw std::runtime_error("Read Error");
+            }
+            else if (result==0)
+                continue;
+            else
+                setg(readBuffer,readBuffer,readBuffer+result); // update the stream buffer
+            break;
+        }
+        return traits_type::to_int_type(*gptr());
+    }
 };
 
 #endif //include guard
