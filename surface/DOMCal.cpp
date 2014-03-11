@@ -4,7 +4,11 @@
 #include <iomanip>
 #include <vector>
 
+#ifdef DOMCAL_MULTIPROCESS
+#include <unistd.h>
+#else
 #include <pthread.h>
+#endif
 
 #include "DOM.h"
 #include "DOMListing.h"
@@ -438,8 +442,14 @@ void* runDOMCal(void* arg){
 	}catch(std::exception& err){
 		std::cerr << "Caught runtime error while calibrating DOM " << settings.mbID << ":\n"
 		<< err.what() << std::endl;
+#ifdef DOMCAL_MULTIPROCESS
+		exit(1);
+#endif
 	}catch(...){
 		std::cerr << "Caught unknown error while calibrating DOM " << settings.mbID << std::endl;
+#ifdef DOMCAL_MULTIPROCESS
+		exit(1);
+#endif
 	}
 	return(NULL);
 }
@@ -549,21 +559,78 @@ int main(int argc, char* argv[]){
 	const int nDOMs=settings.size();
 	for(int i=0; i<nDOMs; i++)
 		std::cout << settings[i] << std::endl;
-	//spawn a thread for each DOM being calibrated
-	std::vector<pthread_t> threads(nDOMs);
-	pthread_attr_t threadAttributes;
-	pthread_attr_init(&threadAttributes);
-	pthread_attr_setdetachstate(&threadAttributes, PTHREAD_CREATE_JOINABLE);
-	pthread_attr_setstacksize(&threadAttributes, 4*1024); //we don't need much stack space
-	for(int i=0; i<nDOMs; i++){
-		int err=pthread_create(&threads[i],&threadAttributes,&runDOMCal,&settings[i]);
-		if(err)
-			std::cerr << "failed to start thread for DOM " << settings[i].mbID << std::endl;
+
+#ifdef DOMCAL_MULTIPROCESS
+	//spawn a child process for each DOM being calibrated
+	{
+		std::vector<pid_t> processes;
+		bool isChild=false;
+		unsigned int domIdx; //if a child process, the index of the DOM to calibrate
+		for(int i=0; i<nDOMs; i++){
+			pid_t id=fork();
+			
+			if(id==-1){ //something bad happened
+				std::cerr << "Failed to create child process: errno=" << errno << std::endl;
+				return(1);
+			}
+			else if(id==0){ //we are the child,
+				isChild=true;
+				domIdx=i;
+				//make sure not to keep fork()ing!
+				break;
+			}
+			else{ //we are still the parent
+				std::cout << "Spawned child process " << id << std::endl;
+				processes.push_back(id);
+			}
+		}
+		
+		if(isChild){ //just calibrate and stop
+			runDOMCal(&settings[domIdx]);
+			return(0);
+		}
+		else{ //keep an eye on all of the children
+			for(int i=0; i<processes.size(); i++){
+				int status;
+				int result=waitpid(processes[i],&status,0);
+				if(result==-1){
+					std::cerr << "Call to wait() failed with error " << errno << std::endl;
+					continue;
+				}
+				//print diagnostic information
+				if(WIFEXITED(status)){
+					if(WEXITSTATUS(status)==0)
+						std::cout << "Process " << processes[i] << " exited cleanly" << std::endl;
+					else
+						std::cout << "Process " << processes[i] << " exited with status " << WEXITSTATUS(status) << std::endl;
+				}
+				else if(WIFSIGNALED(status)){
+					std::cout << "Process " << processes[i] << " exited due to signal " << WTERMSIG(status) << std::endl;
+					if(WCOREDUMP(status))
+						std::cout << " (A core dump was produced)" << std::endl;
+				}
+			}
+		}
 	}
-	pthread_attr_destroy(&threadAttributes);
-	//wait for all calibration threads to finish
-	for(int i=0; i<nDOMs; i++)
-		pthread_join(threads[i],NULL);
+#else
+	//spawn a thread for each DOM being calibrated
+	{
+		std::vector<pthread_t> threads(nDOMs);
+		pthread_attr_t threadAttributes;
+		pthread_attr_init(&threadAttributes);
+		pthread_attr_setdetachstate(&threadAttributes, PTHREAD_CREATE_JOINABLE);
+		pthread_attr_setstacksize(&threadAttributes, 4*1024); //we don't need much stack space
+		for(int i=0; i<nDOMs; i++){
+			int err=pthread_create(&threads[i],&threadAttributes,&runDOMCal,&settings[i]);
+			if(err)
+				std::cerr << "failed to start thread for DOM " << settings[i].mbID << std::endl;
+		}
+		pthread_attr_destroy(&threadAttributes);
+		//wait for all calibration threads to finish
+		for(int i=0; i<nDOMs; i++)
+			pthread_join(threads[i],NULL);
+	}
+#endif
 	
 	//let's print some statistics :)
 	/*

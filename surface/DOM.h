@@ -105,7 +105,7 @@ public:
 	}
 	
 	bool getline(std::string& s){
-		return(std::getline(recv,s));
+		return(std::getline(recv,s).good());
 	}
 	
 	bool checkDOMLocString(std::istream& is) const{
