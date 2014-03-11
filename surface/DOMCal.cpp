@@ -6,6 +6,8 @@
 
 #ifdef DOMCAL_MULTIPROCESS
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #else
 #include <pthread.h>
 #endif
@@ -477,7 +479,8 @@ void usage(){
 	"     The file must contain whitespace separated data with the following columns:\n"
 	"     Mainboard ID, Minimum HV, Maximum HV, Preferred ATWD\n"
 	"     The meanings of these values are the same as for -D\n"
-	" The L, d, v, and i options apply to all DOMs subsequently specified using -D or -S."
+	" The L, d, v, and i options apply to all DOMs subsequently specified using -D or -S.\n"
+	" Version: " SURFACE_VERSION
 	<< std::endl;
 }
 
@@ -580,7 +583,7 @@ int main(int argc, char* argv[]){
 				break;
 			}
 			else{ //we are still the parent
-				std::cout << "Spawned child process " << id << std::endl;
+				std::cout << "Spawned child process " << id << " to calibrate DOM " << settings[i].mbID << std::endl;
 				processes.push_back(id);
 			}
 		}
@@ -606,8 +609,10 @@ int main(int argc, char* argv[]){
 				}
 				else if(WIFSIGNALED(status)){
 					std::cout << "Process " << processes[i] << " exited due to signal " << WTERMSIG(status) << std::endl;
+#ifdef WCOREDUMP
 					if(WCOREDUMP(status))
 						std::cout << " (A core dump was produced)" << std::endl;
+#endif
 				}
 			}
 		}
