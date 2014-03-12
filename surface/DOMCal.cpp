@@ -5,6 +5,7 @@
 #include <vector>
 
 #ifdef DOMCAL_MULTIPROCESS
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
