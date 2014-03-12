@@ -14,9 +14,9 @@ if [[ "${hostname}" =~ .*ithub.* ]]; then
 fi
 
 # Execute the calibration
-DOMCal -d $HOME/domcal/new-files/$timestamp -v \
+DOMCal -d $HOME/domcal/new-files/$timestamp -v $extraargs\
 -L $HOME/nicknames.txt \
--S $HOME/domcal_ic86.config $extraargs\
+-S $HOME/domcal_ic86.config \
 2>domcal.err 1>domcal.out
 
 mkdir -p $HOME/domcal/new-files/$timestamp/histos
