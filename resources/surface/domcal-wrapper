@@ -8,13 +8,13 @@ cd $timestamp
 
 # Determine if we're running on an IceTop hub
 hostname=`hostname -s`
-extraargs=""
+iterate=""
 if [[ "${hostname}" =~ .*ithub.* ]]; then
-    extraargs="-i"
+    iterate="-i"
 fi
 
 # Execute the calibration
-DOMCal -d $HOME/domcal/new-files/$timestamp -v $extraargs\
+DOMCal -d $HOME/domcal/new-files/$timestamp -v $iterate \
 -L $HOME/nicknames.txt \
 -S $HOME/domcal_ic86.config \
 2>domcal.err 1>domcal.out
