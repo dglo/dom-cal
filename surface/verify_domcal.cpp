@@ -34,9 +34,10 @@ int main(int argc, char* argv[]){
 	for(std::map<uint64_t,DOMCalRecord>::const_iterator domIt=data.begin(), domEnd=data.end();
 		domIt!=domEnd; domIt++){
 		bool pass=true;
+		domListing::const_iterator nameIt=knownDOMs.find(domIt->first);
 		
 		if(!errors.domHasFatalError(domIt->first))
-			checker.checkData(domIt->first,domIt->second);
+			checker.checkData(domIt->first,domIt->second,(nameIt!=knownDOMs.end() ? nameIt->second.domID : ""));
 		std::map<uint64_t,std::vector<error> >::const_iterator errorEntry=errors.errors.find(domIt->first);
 		
 		if(errorEntry!=errors.errors.end()){
@@ -49,12 +50,9 @@ int main(int argc, char* argv[]){
 		
 		std::cout << mainboardID(domIt->first);
 		unsigned int nameLen=0;
-		//std::map<uint64_t,std::string>::const_iterator nameIt=nameMap.find(domIt->first);
-		//if(nameIt!=nameMap.end()){
-		domListing::const_iterator nameIt=knownDOMs.find(domIt->first);
 		if(nameIt!=knownDOMs.end()){
 			nameLen=3+nameIt->second.name.size();
-			std::cout << " (" << nameIt->second.name << ')';
+			std::cout << " (" << nameIt->second.omkey << ' ' << nameIt->second.name << ')';
 		}
 		std::cout << std::setfill('.') << std::right << std::setw(60-12-nameLen-4) << (pass?"PASS":"FAIL") << std::endl;
 		

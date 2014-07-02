@@ -3,6 +3,10 @@
 
 #include "DOMCalParser.h"
 
+///Attempts to determin whether a given DOM ID likely corresponds to a DOM which
+///actually has a PMT and an HV source installed.
+bool probablyHasPMT(const std::string& domID);
+
 struct DOMCalChecker{
 	errorListing& errors;
 	uint64_t currentMbID;
@@ -30,7 +34,13 @@ struct DOMCalChecker{
 	static unsigned int minTransitTimePoints;
 	static unsigned int minPMTDiscPoints;
 	
-	void checkData(uint64_t mbID, const DOMCalRecord& data);
+	///Check all of the calibration information in data
+	///\param mbID the ID number of the DOM being checked; used for error reporting
+	///\param data the data to check
+	///\param domID the production ID of the DOM being checked; if non-empty this will be parsed
+	///             in order to guess whether the DOM actually has a PMT and an HV source so that
+	///             checking portions of the calibration which depend on that hardware can be suppressed
+	void checkData(uint64_t mbID, const DOMCalRecord& data, std::string domID="");
 	void checkATWDAmplifier(const DOMCalRecord& data, unsigned int amp);
 	void checkHighVoltage(const DOMCalRecord& data);
 	void checkTransitTime(const DOMCalRecord& data);

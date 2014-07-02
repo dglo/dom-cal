@@ -28,7 +28,7 @@ unsigned int DOMCalChecker::minHVPoints(4);
 unsigned int DOMCalChecker::minTransitTimePoints(4);
 unsigned int DOMCalChecker::minPMTDiscPoints(4);
 
-void DOMCalChecker::checkData(uint64_t mbID, const DOMCalRecord& data){
+void DOMCalChecker::checkData(uint64_t mbID, const DOMCalRecord& data, std::string domID){
 	currentMbID = mbID;
 	
 	if(!data.read.exists){
@@ -169,31 +169,34 @@ void DOMCalChecker::checkData(uint64_t mbID, const DOMCalRecord& data){
 	if(!data.read.HVBaselines)
 		addError(error(ERROR,"Missing ATWD baselines as a function of high voltage"));
 	
-	if(!data.read.HVGainCalib)
-		addError(error(ERROR,"Missing high voltage/gain calibration"));
-	else{
-		checkFitQuality(data.hv_gain_calib,error(ERROR,"HV Gain"));
-		checkHighVoltage(data);
-	}
-	
-	if(!data.read.TransitTimeCalib)
-		addError(error(ERROR,"Missing transit time calibration"));
-	else{
-		checkFitQuality(data.transit_calib,error(ERROR,"transit time"));
-		if(data.read.HVGainCalib) //need to have an HV Gain calib to do this check
-			checkTransitTime(data);
-	}
-	
-	if(!data.read.HVHistograms)
-		addError(error(ERROR,"Missing charge histograms"));
-	else
-		checkHVGainPoints(data);
-	
-	if(!data.read.PMTDiscCalib)
-		addError(error(ERROR,"Missing PMT discriminator calibration"));
-	else{
-		checkFitQuality(data.pmt_disc_calib,error(ERROR,"PMT discriminator"));
-		checkPMTDiscPoints(data);
+	//Guess whether to check HV related quantities
+	if(domID.empty() || probablyHasPMT(domID)){
+		if(!data.read.HVGainCalib)
+			addError(error(ERROR,"Missing high voltage/gain calibration"));
+		else{
+			checkFitQuality(data.hv_gain_calib,error(ERROR,"HV Gain"));
+			checkHighVoltage(data);
+		}
+		
+		if(!data.read.TransitTimeCalib)
+			addError(error(ERROR,"Missing transit time calibration"));
+		else{
+			checkFitQuality(data.transit_calib,error(ERROR,"transit time"));
+			if(data.read.HVGainCalib) //need to have an HV Gain calib to do this check
+				checkTransitTime(data);
+		}
+		
+		if(!data.read.HVHistograms)
+			addError(error(ERROR,"Missing charge histograms"));
+		else
+			checkHVGainPoints(data);
+		
+		if(!data.read.PMTDiscCalib)
+			addError(error(ERROR,"Missing PMT discriminator calibration"));
+		else{
+			checkFitQuality(data.pmt_disc_calib,error(ERROR,"PMT discriminator"));
+			checkPMTDiscPoints(data);
+		}
 	}
 }
 
@@ -293,4 +296,16 @@ void DOMCalChecker::checkMainboardID(uint64_t mbID, const DOMCalRecord& data){
 	else if(dataID!=mbID)
 		addError(error(WARNING,"Mainboard ID does not match: "
 					   +std::string(data.dom_id)));
+}
+
+bool probablyHasPMT(const std::string& domID){
+	//DOMs with "Syn", "Sync", "Ref", or "Trig" are just mainboards.
+	if(domID.find("Syn")!=std::string::npos)
+		return(false);
+	if(domID.find("Ref")!=std::string::npos)
+		return(false);
+	if(domID.find("Trig")!=std::string::npos)
+		return(false);
+	//otherwise guess that it is a complete DOM
+	return(true);
 }
