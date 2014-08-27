@@ -14,13 +14,15 @@ if [ $# -eq 3 ]; then
 fi
 
 DATE=${YEAR}${MONTHDAY}
-if [ -d /net/data/testdaq/ ] ; then
+if hostname | grep -q 'access' ; then
 	# the system seems to be SPS
-	CALDIR=/net/data/testdaq/$YEAR/calibration/DOMCal
+	echo "This system appears to be SPS"
+	CALDIR=`pwd` # dump things in the current directory before copying them elsewhere
 	IS_SPS=1
 else
 	if [ -d /data/exp/IceCube/ ] ; then
 		# the system is not SPS
+		echo "This system appears _not_ to be SPS"
 		CALDIR=/data/exp/IceCube/$YEAR/calibration/DOMCal
 		IS_SPS='' # not SPS!
 	else
@@ -40,7 +42,7 @@ fi
 # figure out what the names of various things are going to be
 UNVETTED_TARBALL=domcal-${DATE}${SUFFIX}-unvetted.dat.tar
 if [ ! "$IS_SPS" ]; then
-	COMPRESSED_UNVETTED_TARBALL=domcal-${DATE}${SUFFIX}-unvetted.tar.gz	
+	COMPRESSED_UNVETTED_TARBALL=domcal-${DATE}${SUFFIX}-unvetted.tar.gz
 else
 	COMPRESSED_UNVETTED_TARBALL=""
 fi
@@ -186,7 +188,6 @@ if [ $ERR -ne 0 ]; then
 	exit 9
 fi
 
-echo "Cleaning up"
 #rename data directory
 mv ${UNVETTED_DIR} ${VETTED_DIR}
 ERR=$?
@@ -196,13 +197,36 @@ if [ $ERR -ne 0 -o ! -d ${VETTED_DIR} ]; then
 	exit 10
 fi
 
+# if on SPS we need to send the data to expcont
+if [ "$IS_SPS" ]; then
+	echo "Copying data to expcont"
+	scp -rp ${VETTED_DIR} ${PATCH_DIR} pdaq@expcont:~/domcals/
+
+	if [ $ERR -ne 0 ]; then
+		echo "Failed to copy data to final location"
+		exit 11
+	fi
+fi
+
+echo "Cleaning up"
 #erase tarballs
 rm -f $COMPRESSED_UNVETTED_TARBALL $UNVETTED_TARBALL $PATCH_TARBALL
 ERR=$?
 
 if [ $ERR -ne 0 ]; then
 	echo "Failed to remove tarballs"
-	exit 11
+	exit 12
+fi
+
+if [ "$IS_SPS" ]; then
+	#also need to erase local temporary copies of the final data
+	rm -rf ${VETTED_DIR} ${PATCH_DIR}
+	ERR=$?
+
+	if [ $ERR -ne 0 ]; then
+		echo "Failed to remove intermediate data"
+		exit 13
+	fi
 fi
 
 echo "Done"
