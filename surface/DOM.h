@@ -193,9 +193,12 @@ public:
 	//reads zlib compressed input until compressed stream ends
 	void zreceiveToStream(std::ostream& os){
 		const std::streamsize readBlockSize=1024;
-		//we expect the data to decompress, so we allocate the 
-		//output buffer to be larger than the input buffer
-		const std::streamsize decompSize=16*readBlockSize;
+		//We expect the data to decompress, so we allocate the
+		//output buffer to be larger than the input buffer.
+		//According to Mark Adler (http://www.zlib.net/zlib_tech.html
+		//retrieved August 29, 2014) zlib has a theoretical maximum
+		//compression factor of 1032.
+		const std::streamsize decompSize=1032*readBlockSize;
 		char* readBuffer=new char[readBlockSize];
 		char* decompBuffer=new char[decompSize];
 		//for approximate exception safety
@@ -250,8 +253,13 @@ public:
 				zs.next_out = (unsigned char*)decompBuffer;
 				zs.avail_out = decompSize;
 				result=inflate(&zs,Z_NO_FLUSH);
-				if(result<Z_OK)
-					throw std::runtime_error(std::string("Zlib decompression error: ")+zs.msg);
+				if(result<Z_OK){
+					std::ostringstream ss;
+					ss << "Zlib decompression error: " << result;
+					if(zs.msg!=Z_NULL)
+						ss << " (" << zs.msg << ')';
+					throw std::runtime_error(ss.str());
+                }
 				std::streamsize availData = decompSize-zs.avail_out;
 				os.write(decompBuffer,availData);
 			} while(zs.avail_out==0);
