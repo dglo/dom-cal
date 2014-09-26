@@ -1,5 +1,7 @@
 LD_FLAGS_XML=$(shell pkg-config --libs libxml-2.0)
 CXXFLAGS+=-DDOMCAL_MULTIPROCESS -Os -I../private/dom-cal $(shell pkg-config --cflags libxml-2.0)
+# Debug version
+# CXXFLAGS+=-DDOMCAL_MULTIPROCESS -O0 -g -I../private/dom-cal $(shell pkg-config --cflags libxml-2.0)
 DOMCal_LDFLAGS=$(LDFLAGS) -lz -pthread
 verify_domcal_LDFLAGS=$(LDFLAGS) $(LD_FLAGS_XML)
 DOMCalGrapher_LDFLAGS=$(LDFLAGS) -lz -lpng $(LD_FLAGS_XML)
