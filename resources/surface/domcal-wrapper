@@ -13,6 +13,9 @@ if [[ "${hostname}" =~ .*ithub.* ]]; then
     iterate="-i"
 fi
 
+# Allow generation of core files
+ulimit -c unlimited
+
 # Execute the calibration
 DOMCal -d $HOME/domcal/new-files/$timestamp -v $iterate \
 -L $HOME/nicknames.txt \
@@ -22,7 +25,8 @@ DOMCal -d $HOME/domcal/new-files/$timestamp -v $iterate \
 mkdir -p $HOME/domcal/new-files/$timestamp/histos
 
 # remove old files from the collection directory
-rm -f $HOME/domcal/domcal_*.out $HOME/domcal/domcal_*.xml $HOME/domcal/domcal_*.xml.running $HOME/domcal/nohup.out $HOME/domcal/domcal.err $HOME/domcal/domcal.out
+rm -f $HOME/domcal/domcal_*.out $HOME/domcal/domcal_*.xml $HOME/domcal/domcal_*.xml.running 
+rm -f $HOME/domcal/nohup.out $HOME/domcal/domcal.err $HOME/domcal/domcal.out $HOME/domcal/core.*
 
 # copy new files to the collection directory
 scp -rp $HOME/domcal/new-files/$timestamp/* $HOME/domcal/
