@@ -165,8 +165,8 @@ int hv_gain_cal(calib_data *dom_calib, int iterHVGain) {
         /* Set discriminator */
         /* Three different discriminator settings based on HV setting */
         int disc_dac;
-        if (hv < 1250) disc_dac = getDiscDAC(GAIN_CAL_PC_LOW, *dom_calib);
-        else if (hv < 1580) disc_dac = getDiscDAC(GAIN_CAL_PC_MED, *dom_calib);
+        if (hv < GAIN_CAL_HV_LOW) disc_dac = getDiscDAC(GAIN_CAL_PC_LOW, *dom_calib);
+        else if (hv < GAIN_CAL_HV_MED) disc_dac = getDiscDAC(GAIN_CAL_PC_MED, *dom_calib);
         else disc_dac = getDiscDAC(GAIN_CAL_PC_HIGH, *dom_calib);
         halWriteDAC(DOM_HAL_DAC_SINGLE_SPE_THRESH, disc_dac);
 #ifdef DEBUG
@@ -368,7 +368,7 @@ int hv_gain_cal(calib_data *dom_calib, int iterHVGain) {
                       log_gain[spe_cnt] = log10(fit_params[hv_idx][3] / Q_E) - 12.0;
 
                       /* If gain < 2.5e6, discriminator effects are problematic */
-                      if (log_gain[spe_cnt] > 6.4) {
+                      if (log_gain[spe_cnt] > GAIN_CAL_GAIN_MIN) {
 #ifdef DEBUG
                         printf("New gain point: log(V) %.6g log(gain) %.6g\r\n", 
                                log_hv[spe_cnt], log_gain[spe_cnt]);

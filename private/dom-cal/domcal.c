@@ -344,8 +344,9 @@ int main(void) {
 #ifdef DEBUG
     printf("Starting calibration: (v%d.%d.%d)\r\n", 
            MAJOR_VERSION, MINOR_VERSION, PATCH_VERSION);
-#warning Remove the following print statement
-	printf("May 25, 2011: 10^7 Gain daq_baseline\r\n");
+#ifdef DOMCAL_SCINT
+    printf("Hamamatsu R1924A tuning for scintillator modules.\r\n");
+#endif
 #endif
 
     /* Calibration modules:
@@ -378,16 +379,20 @@ int main(void) {
     fadc_cal(&dom_calib);
     if (doHVCal) {
         hv_baseline_cal(&dom_calib);
+
+#ifndef DOMCAL_SCINT
         hv_amp_cal(&dom_calib);
 
-        /* WAIT ~10min for amp cal to finish on neighboring DOMs */
 #ifdef DEBUG
         printf(" Waiting 10m for neighbors to settle...\r\n");
 #endif
-		int i;
+        /* WAIT ~10min for amp cal to finish on neighboring DOMs */
+	int i;
         for (i = 0; i < 600; i++) halUSleep(1000000);
 
         transit_cal(&dom_calib);
+#endif
+
         hv_gain_cal(&dom_calib, iterHVGain);
         pmt_discriminator_cal(&dom_calib);
         /* Switches out FPGA design */
