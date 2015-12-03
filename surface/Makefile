@@ -1,7 +1,18 @@
-LD_FLAGS_XML=$(shell pkg-config --libs libxml-2.0)
-CXXFLAGS+=-DDOMCAL_MULTIPROCESS -Os -I../private/dom-cal $(shell pkg-config --cflags libxml-2.0)
+CXXFLAGS+=-DDOMCAL_MULTIPROCESS -Os -I../private/dom-cal
 # Debug version
-# CXXFLAGS+=-DDOMCAL_MULTIPROCESS -O0 -g -I../private/dom-cal $(shell pkg-config --cflags libxml-2.0)
+# CXXFLAGS+=-DDOMCAL_MULTIPROCESS -O0 -g -I../private/dom-cal
+
+OS_NAME=$(shell uname -s)
+
+ifeq ($(OS_NAME),Linux)
+CXXFLAGS+=$(shell pkg-config --cflags libxml-2.0)
+LD_FLAGS_XML+=$(shell pkg-config --libs libxml-2.0)
+endif
+ifeq ($(OS_NAME),Darwin)
+CXXFLAGS+=-I/usr/include/libxml2/
+LD_FLAGS_XML+=-lxml2
+endif
+
 DOMCal_LDFLAGS=$(LDFLAGS) -lz -pthread
 verify_domcal_LDFLAGS=$(LDFLAGS) $(LD_FLAGS_XML)
 DOMCalGrapher_LDFLAGS=$(LDFLAGS) -lz -lpng $(LD_FLAGS_XML)
