@@ -9,8 +9,8 @@ CXXFLAGS+=$(shell pkg-config --cflags libxml-2.0)
 LD_FLAGS_XML+=$(shell pkg-config --libs libxml-2.0)
 endif
 ifeq ($(OS_NAME),Darwin)
-CXXFLAGS+=-I/usr/include/libxml2/
-LD_FLAGS_XML+=-lxml2
+CXXFLAGS+=-I$(shell xcrun --show-sdk-path)/usr/include/libxml2
+LD_FLAGS_XML+=-L$(shell xcrun --show-sdk-path)/usr/lib -lxml2
 endif
 
 DOMCal_LDFLAGS=$(LDFLAGS) -lz -pthread
