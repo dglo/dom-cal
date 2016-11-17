@@ -21,7 +21,8 @@ float DOMCalChecker::ATWDDeltaTHigh(8.0);
 float DOMCalChecker::ATWDDeltaTMaxError(.5);
 
 float DOMCalChecker::FADCDeltaTLow(-119.63);
-float DOMCalChecker::FADCDeltaTHigh(-108.3);
+//float DOMCalChecker::FADCDeltaTHigh(-108.3); //old value
+float DOMCalChecker::FADCDeltaTHigh(-100.0);   // new value - 2015.03.04 
 float DOMCalChecker::FADCDeltaTMaxError(.5);
 
 unsigned int DOMCalChecker::minHVPoints(4);

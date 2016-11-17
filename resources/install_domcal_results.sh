@@ -112,7 +112,7 @@ else
 	echo "Fetching patch data"
 	#Note that this assumes that the patch data was prepared by the same user
 	#as the one running this script
-	PATCH_TARBALL_PATH=/net/user/${USER}/vetting/patches/${PATCH_TARBALL}
+	PATCH_TARBALL_PATH=/data/user/${USER}/vetting/patches/${PATCH_TARBALL}
 	
 	if [ "$IS_SPS" ] ; then
 		REMOTE_PATCH_TARBALL=cobalt.icecube.wisc.edu:${PATCH_TARBALL_PATH}
