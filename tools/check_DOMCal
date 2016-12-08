@@ -1,0 +1,30 @@
+#!/bin/bash
+YEAR=`date +%Y`
+DOMCALDIR="/data/exp/IceCube/$YEAR/calibration/DOMCal-compressed/"
+while [ ! -d "$DOMCALDIR" ]
+do
+	YEAR=`echo "$YEAR-1" | bc`
+	if [ ! -d "/data/exp/IceCube/$YEAR" ]
+	then
+		exit 1
+	fi
+	DOMCALDIR="/data/exp/IceCube/$YEAR/calibration/DOMCal-compressed/"
+done
+DIRS=`ls -1 $DOMCALDIR | grep -v 'meta'`
+IGNORE=`cat ~/.DOMCal_done`
+for ITEM in $DIRS
+do
+	MISSING=1
+	for OLDITEM in $IGNORE
+	do
+		if [ "$YEAR$ITEM" == "$OLDITEM" ]
+		then
+			MISSING=0
+			break
+		fi
+	done
+	if [ "$MISSING" -eq 1 ]
+	then
+		echo "Need to vet $DOMCALDIR$ITEM"
+	fi
+done
