@@ -37,6 +37,8 @@ rm -rf $RPM_BUILD_ROOT
 /mnt/data/testdaq/domcal_ic86.config
 
 %changelog
+* Fri Dec 8 2016 John Kelley <jkelley@icecube.wisc.edu>
+- Add DM-ice mainboards to configuration file
 * Mon Feb 3 2014 John Kelley <jkelley@icecube.wisc.edu>
 - Initial RPM build.
 
