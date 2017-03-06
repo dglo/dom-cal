@@ -424,12 +424,14 @@ void* runDOMCal(void* arg){
 		std::cout << '[' << settings.mbID << ']' << " Waiting for domcal to finish..." << std::endl;
 		//open log file
 		std::ofstream logFile((settings.outputDir+"/domcal_"+settings.mbID+".out").c_str());
-		while(true){
+		while(dom.recv_ok()){
 			response=dom.receive(DOM::endl,false);
 			logFile << response << std::endl;
 			if(response=="Send compressed XML (y/n)?")
 				break;
 		}
+		if(!dom.recv_ok())
+			throw std::runtime_error("Failure on receive stream from DOM");
 		
 		std::cout << '[' << settings.mbID << ']' << " Receiving XML..." << std::endl;
 		//we want compressed xml

@@ -108,6 +108,14 @@ public:
 		return(std::getline(recv,s).good());
 	}
 	
+	bool recv_ok() const{
+		return(recv.good());
+	}
+	
+	bool send_ok() const{
+		return(send.good());
+	}
+	
 	bool checkDOMLocString(std::istream& is) const{
 		std::string dummy;
 		unsigned short card, pair;
