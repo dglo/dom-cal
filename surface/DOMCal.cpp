@@ -312,13 +312,35 @@ void* runDOMCal(void* arg){
 		dom.receive(">");
 		
 		//attempt to locate the domcal program
+		bool found,compressed;
 		dom << "s\" domcal\" find if ls endif" << DOM::endl;
 		std::string domcalLoc=dom.receive(">");
-		if(domcalLoc=="s\" domcal\" find if ls endif\r\n>")
-			throw std::runtime_error("domcal binary not found");
+		trimWhitespace(domcalLoc);
+		if(domcalLoc=="s\" domcal\" find if ls endif\r\n>") {
+		  dom << "s\" domcal.gz\" find if ls endif" << DOM::endl;
+		  domcalLoc=dom.receive(">");
+		  trimWhitespace(domcalLoc);
+		  if(domcalLoc=="s\" domcal.gz\" find if ls endif\r\n>")
+		    found=false;
+		  else {
+		    found=true;
+		    compressed=true;
+		  }
+		}
+		else {
+		  found=true;
+		  compressed=false;
+		}
+
+		if (!found)
+		  throw std::runtime_error("domcal binary not found");
 		
 		std::cout << '[' << settings.mbID << ']' << " Starting domcal..." << std::endl;
 		//start domcal
+		if (compressed) {
+		  dom << "gunzip" << DOM::endl;
+		  dom.receive("gunzip\r\n>");
+		}
 		dom << "exec" << DOM::endl;
 		dom.receive("exec");
 		
@@ -335,17 +357,20 @@ void* runDOMCal(void* arg){
 			int major=-1, minor=-1, patch=1;
 			char point;
 			dom >> major >> point >> minor >> point >> patch;
-            if(!((major==expectedMajorVersion) && 
-                 (minor==expectedMinorVersion) && 
-                 (patch>=minimumPatchVersion))) {
-				std::ostringstream ss;
-				ss << "Version mismatch! Expected version is " << expectedMajorVersion << '.' << expectedMinorVersion << '.' << minimumPatchVersion
-				  << " but installed version seems to be " << major << '.' << minor << '.' << patch;
-				throw std::runtime_error(ss.str());
+			if(!((major==expectedMajorVersion) && 
+			     (minor==expectedMinorVersion) && 
+			     (patch>=minimumPatchVersion))) {
+			  std::ostringstream ss;
+			  ss << "Version mismatch! Expected version is " << expectedMajorVersion << '.' << expectedMinorVersion << '.' << minimumPatchVersion
+			     << " but installed version seems to be " << major << '.' << minor << '.' << patch;
+			  throw std::runtime_error(ss.str());
 			}
 			dom >> response;
 		}
-		
+		else {
+		  throw std::runtime_error("Unexpected DOMCal welcome string:"+response);
+		}
+
 		//get date and time
 		time_t rawtime=time(NULL);
 		tm now = *gmtime(&rawtime);
