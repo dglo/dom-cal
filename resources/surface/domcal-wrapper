@@ -1,0 +1,32 @@
+#!/bin/bash
+mkdir -p $HOME/domcal/new-files/
+cd $HOME/domcal/new-files/
+timestamp=$(date +%Y)$(date +%m)$(date +%d)-$(date +%H)$(date +%M)$(date +%S)
+mkdir $timestamp
+ln -sfn $timestamp latest
+cd $timestamp
+
+# Determine if we're running on an IceTop hub
+hostname=`hostname -s`
+iterate=""
+if [[ "${hostname}" =~ .*ithub.* ]]; then
+    iterate="-i"
+fi
+
+# Allow generation of core files
+ulimit -c unlimited
+
+# Execute the calibration
+DOMCal -d $HOME/domcal/new-files/$timestamp -v $iterate \
+-L $HOME/nicknames.txt \
+-S $HOME/domcal_ic86.config \
+2>domcal.err 1>domcal.out
+
+mkdir -p $HOME/domcal/new-files/$timestamp/histos
+
+# remove old files from the collection directory
+rm -f $HOME/domcal/domcal_*.out $HOME/domcal/domcal_*.xml $HOME/domcal/domcal_*.xml.running 
+rm -f $HOME/domcal/nohup.out $HOME/domcal/domcal.err $HOME/domcal/domcal.out $HOME/domcal/core.*
+
+# copy new files to the collection directory
+scp -rp $HOME/domcal/new-files/$timestamp/* $HOME/domcal/

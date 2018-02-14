@@ -23,9 +23,13 @@ public class DOMCalRecord {
     public static final int MAX_AMPLIFIER = 3;
     public static final int MAX_ADC = 24;
     public static final int MAX_DAC = 16;
-    public static final int MAX_FADC = 2;
 
-    private LinearFit pulserCalibration;
+    private short majorVersion;
+    private short minorVersion;
+    private short patchVersion;
+
+    private LinearFit speDiscriminatorCalibration;
+    private LinearFit mpeDiscriminatorCalibration;
     private LinearFit[][][] atwdCalibration;
     private QuadraticFit[] atwdFrequencyCalibration;
 
@@ -33,18 +37,24 @@ public class DOMCalRecord {
     private float[] amplifierCalibrationError;
 
     private float temperature;
+    private float feImpedance;
 
     private short year;
     private short month;
     private short day;
 
+    private short hour;
+    private short minute;
+    private short second;
+
     private String domId;
 
     private short[] dacValues;
     private short[] adcValues;
-    private short[] fadcValues;
 
-    private short version;
+    private LinearFit fadcFit;
+    private float[] fadcGain;
+    private float[] fadcDeltaT;
 
     private boolean hvCalValid;
     private boolean transitCalValid;
@@ -58,13 +68,22 @@ public class DOMCalRecord {
     private HVHistogram[] hvHistos;
 
     private Baseline baseline;
+    private short numHVBaselines;
     private Baseline[] hvBaselines;
 
     private DOMCalRecord() {
     }
 
-    public short getVersion() {
-        return version;
+    public short getMajorVersion() {
+        return majorVersion;
+    }
+
+    public short getMinorVersion() {
+        return minorVersion;
+    }
+
+    public short getPatchVersion() {
+        return patchVersion;
     }
 
     public short getYear() {
@@ -79,6 +98,18 @@ public class DOMCalRecord {
         return day;
     }
 
+    public short getHour() {
+        return hour;
+    }
+
+    public short getMinute() {
+        return minute;
+    }
+
+    public short getSecond() {
+        return second;
+    }
+
     public String getDomId() {
         return domId;
     }
@@ -87,11 +118,28 @@ public class DOMCalRecord {
         return temperature;
     }
 
-    public short getFadcValue( int val ) {
-        if ( val < 0 || val >= MAX_FADC ) {
-            throw new IndexOutOfBoundsException( "" + val );
-        }
-        return fadcValues[val];
+    public float getFEImpedance() {
+        return feImpedance;
+    }
+
+    public float getFadcGain() {
+        return fadcGain[0];
+    }
+
+    public float getFadcGainError() {
+        return fadcGain[1];
+    }
+
+    public float getFadcDeltaT() {
+        return fadcDeltaT[0];
+    }
+
+    public float getFadcDeltaTError() {
+        return fadcDeltaT[1];
+    }    
+
+    public LinearFit getFadcFit() {
+        return fadcFit;
     }
 
     public short getAdcValue( int val ) {
@@ -122,8 +170,12 @@ public class DOMCalRecord {
         return amplifierCalibrationError[amp];
     }
 
-    public LinearFit getPulserCalibration() {
-        return pulserCalibration;
+    public LinearFit getSpeDiscriminatorCalibration() {
+        return speDiscriminatorCalibration;
+    }
+
+    public LinearFit getMpeDiscriminatorCalibration() {
+        return mpeDiscriminatorCalibration;
     }
 
     public QuadraticFit getATWDFrequencyCalibration( int atwd ) {
@@ -180,11 +232,11 @@ public class DOMCalRecord {
     }
 
     public short getNumHVBaselines() {
-        return numHVHistograms;
+        return numHVBaselines;
     }
 
     public Baseline getHVBaseline(int iter) {
-        if (iter >= numHVHistograms || iter < 0) {
+        if (iter >= numHVBaselines || iter < 0) {
             throw new IndexOutOfBoundsException("" + iter);
         }
         return hvBaselines[iter];
@@ -198,20 +250,26 @@ public class DOMCalRecord {
 
         DOMCalRecord rec = new DOMCalRecord();
 
+        // Figure out endianness from major version
         bb.order( ByteOrder.BIG_ENDIAN );
-        rec.version = bb.getShort();
-        if ( rec.version >= 256 || rec.version < 0 ) {
+        rec.majorVersion = bb.getShort();
+        if ( rec.majorVersion >= 256 || rec.majorVersion < 0 ) {
             bb.order( ByteOrder.LITTLE_ENDIAN );
-            rec.version = ( short )( rec.version >> 8 );
+            rec.majorVersion = ( short )( rec.majorVersion >> 8 );
         }
+        rec.minorVersion = bb.getShort();
+        rec.patchVersion = bb.getShort();
 
+        // Record length
         bb.getShort();
 
         rec.day = bb.getShort();
         rec.month = bb.getShort();
         rec.year = bb.getShort();
 
-        bb.getShort();
+        rec.hour = bb.getShort();
+        rec.minute = bb.getShort();
+        rec.second = bb.getShort();
 
         String domId = "";
         String s1 = Integer.toHexString( bb.getInt() );
@@ -235,7 +293,6 @@ public class DOMCalRecord {
 
         rec.dacValues = new short[MAX_DAC];
         rec.adcValues = new short[MAX_ADC];
-        rec.fadcValues = new short[MAX_FADC];
 
         for ( int i = 0; i < MAX_DAC; i++ ) {
             rec.dacValues[i] = bb.getShort();
@@ -245,11 +302,20 @@ public class DOMCalRecord {
             rec.adcValues[i] = bb.getShort();
         }
 
-        for ( int i = 0; i < MAX_FADC; i++ ) {
-            rec.fadcValues[i] = bb.getShort();
+        rec.feImpedance = bb.getFloat();
+
+        rec.fadcFit = LinearFit.parseLinearFit(bb);
+        rec.fadcGain = new float[2];
+        for ( int i = 0; i < 2; i++ ) {
+            rec.fadcGain[i] = bb.getFloat();
+        }
+        rec.fadcDeltaT = new float[2];
+        for ( int i = 0; i < 2; i++ ) {
+            rec.fadcDeltaT[i] = bb.getFloat();
         }
 
-        rec.pulserCalibration = LinearFit.parseLinearFit( bb );
+        rec.speDiscriminatorCalibration = LinearFit.parseLinearFit( bb );
+        rec.mpeDiscriminatorCalibration = LinearFit.parseLinearFit( bb );
 
         rec.atwdCalibration = new LinearFit[MAX_ATWD][MAX_ATWD_CHANNEL][MAX_ATWD_BIN];
         for ( int i = 0; i < MAX_ATWD_CHANNEL; i++ ) {
@@ -286,6 +352,7 @@ public class DOMCalRecord {
             rec.transitTimeFit = LinearFit.parseLinearFit(bb);
         }
 
+        rec.numHVBaselines  = bb.getShort();
         rec.numHVHistograms = bb.getShort();
 
         short hvBaselinesValidShort = bb.getShort();
@@ -293,8 +360,8 @@ public class DOMCalRecord {
 
         rec.hvBaselines = null;
         if (rec.hvBaselineCalValid) {
-            rec.hvBaselines = new Baseline[rec.numHVHistograms];
-            for (int i = 0; i < rec.numHVHistograms; i++) rec.hvBaselines[i] = Baseline.parseHvBaseline(bb);
+            rec.hvBaselines = new Baseline[rec.numHVBaselines];
+            for (int i = 0; i < rec.numHVBaselines; i++) rec.hvBaselines[i] = Baseline.parseHvBaseline(bb);
         }
 
         short hvCalValidShort = bb.getShort();

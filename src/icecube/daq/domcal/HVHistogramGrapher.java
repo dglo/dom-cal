@@ -3,7 +3,8 @@
  Class:  	HVHistogramGrapher
 
  @author 	Jim Braun
- @author     jbraun@amanda.wisc.edu
+ @author    John Kelley
+ @author    jbraun@icecube.wisc.edu
 
  ICECUBE Project
  University of Wisconsin - Madison
@@ -59,6 +60,10 @@ public class HVHistogramGrapher implements Runnable {
     public static final double SCALE_FACTOR = 5.0;
 
     public static void main( String[] args) {
+        if (args.length != 3) {
+            usage();
+            System.exit(0);
+        }
         try {
             //Disable X support while app is running
             System.setProperty("java.awt.headless", "true");
@@ -67,7 +72,8 @@ public class HVHistogramGrapher implements Runnable {
             String htmlRoot = args[2];
             (new HVHistogramGrapher(inDir, outDir, htmlRoot)).run();
         } catch (Exception e) {
-            usage();
+            e.printStackTrace();
+            //usage();
             System.exit(-1);
         }
     }
@@ -103,11 +109,11 @@ public class HVHistogramGrapher implements Runnable {
 
         File[] domcalFiles = inFile.listFiles(new FilenameFilter() {
 
-                                  public boolean accept(File dir, String name) {
-                                      return (name.startsWith("domcal_") && name.endsWith(".xml"));
-                                  }
-                              });
-
+                public boolean accept(File dir, String name) {
+                    return (name.startsWith("domcal_") && name.endsWith(".xml"));
+                }
+            });
+        
         Hashtable histTable = new Hashtable();
         for (int i = 0; i < domcalFiles.length; i++) {
             String id = domcalFiles[i].getName().substring(7);
@@ -120,9 +126,12 @@ public class HVHistogramGrapher implements Runnable {
 
         HTMLDoc doc = new HTMLDoc(outDir + (outDir.endsWith("/") ? "" : "/") + "hv.html");
         HTMLDoc sumDoc = new HTMLDoc(outDir + (outDir.endsWith("/") ? "" : "/") + "hvsummary.html");
+        HTMLDoc fitDoc = new HTMLDoc(outDir + (outDir.endsWith("/") ? "" : "/") + "hvfits.html");
+        int fits = 0;
         try {
             doc.open();
             sumDoc.open();
+            fitDoc.open();
         } catch (IOException e) {
             System.out.println("IOException opening output HTML file " + e);
             return;
@@ -132,8 +141,8 @@ public class HVHistogramGrapher implements Runnable {
         doc.add("DOM Id");
         sumDoc.add("DOM Id");
         for (int i = 0; i < VOLTAGES.length; i++) {
-            doc.add(VOLTAGES[i] + "V");
-            sumDoc.add(VOLTAGES[i] + "V");
+            doc.add("HV Iter. " + i);
+            sumDoc.add("HV Iter. " + i);
         }
         doc.add("Gain vs HV");
         doc.addBr();
@@ -153,79 +162,137 @@ public class HVHistogramGrapher implements Runnable {
         }
         for (Iterator it = histTable.keySet().iterator(); it.hasNext();) {
             String domId = (String)it.next();
-            Hashtable hTable = (Hashtable)histTable.get(domId);
+            Hashtable hTableArr[] = (Hashtable [])histTable.get(domId);
             StringTokenizer st = new StringTokenizer(domId, ".xml");
             String id = st.nextToken();
+            String name = "???";                
             if (jdbc != null) {
+                // Get DOM name
                 try {
                     Statement stmt = jdbc.createStatement();
                     String sql = "select * from doms where mbid='" + id + "';";
                     ResultSet s = stmt.executeQuery(sql);
-                    s.first();
-                    String name = s.getString("name");
-                    if (name != null) {
-                        doc.addNew(name);
-                        sumDoc.addNew(name);
-                    } else throw new Exception();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    doc.addNew("N/A");
-                    sumDoc.addNew("N/A");
+                    boolean found = s.first();
+                    if (found)
+                        name = s.getString("name");
+                } 
+                catch (Exception e) {
+                    name = "???";
                 }
-            } else {
-                doc.addNew("N/A");
-                sumDoc.addNew("N/A");
+                // Get location from domtune
+                try {
+                    Statement stmt = jdbc.createStatement();
+                    String sql = "select location from domtune where mbid='" + id + "';";
+                    ResultSet s = stmt.executeQuery(sql);
+                    boolean found = s.first();
+                    if (found)
+                        name = s.getString("location")+" "+name;
+                } 
+                catch (Exception e) {}
             }
+            doc.addNew(name);
+            sumDoc.addNew(name);
             doc.add(id);
             sumDoc.add(id);
-            for (int i = 0; i < VOLTAGES.length; i++) {
-                HVHistogram currentHisto = (HVHistogram)hTable.get(new Short(VOLTAGES[i]));
-                if (currentHisto == null) {
-                    System.out.println("Error -- " + domId + " histogram for " + VOLTAGES[i] + "V not found");
-                    doc.add("Not produced");
-                } else if (!currentHisto.isFilled()) {
-                    System.out.println(domId + " Histogram for " + VOLTAGES[i] + "V is not filled");
-                    doc.add("N/A");
-                } else {
-                    try {
-                        String loc = graphHistogram(currentHisto, domId);
-                        doc.addImg(loc);
-                        sumDoc.addSizedImg(loc, 100, 100);
-                    } catch (IOException e) {
-                        System.out.println("Failed encoding histogram " + e);
+            for (int set = 0; set < hTableArr.length; set++) {
+
+                Hashtable hTable = hTableArr[set];
+                if (hTable == null)
+                    continue;
+
+                if (set > 0) {
+                    doc.addNew("  ");
+                    doc.add("  ");
+                    sumDoc.addNew("  ");
+                    sumDoc.add("  ");
+                }
+                int vldcnt = 0;
+                for (short i = 0; i < 2000; i++) {
+                    HVHistogram currentHisto = (HVHistogram)hTable.get(new Short(i));
+                    if (currentHisto == null) {
+                        //System.out.println("Error -- " + domId + " histogram for " + VOLTAGES[i] + "V not found");
+                        //doc.add("Not produced");
+                        //sumDoc.add("N/A");
+                    } else if (!currentHisto.isFilled()) {
+                        System.out.println(domId + " Histogram for " + i + "V is not filled");
+                        doc.add("N/A");
+                        sumDoc.add("N/A");
+                        vldcnt++;
+                    } else {
+                        try {
+                            String loc = graphHistogram(currentHisto, domId, set);
+                            doc.addImg(loc);
+                            sumDoc.addSizedImg(loc, 100, 100);
+                        } catch (IOException e) {
+                            System.out.println("Failed encoding histogram " + e);
+                        }
+                        vldcnt++;
                     }
                 }
+                for (; vldcnt < 12; vldcnt++) {
+                  doc.add("Not produced");
+                  sumDoc.add("N/A");
+                }
+
+                // Put summary graph at end of first set
+                if (set == 0) {
+                    try {
+                        String loc = graphHV(hTableArr, domId);
+                        doc.addImg(loc);
+                        sumDoc.addSizedImg(loc, 100, 100);
+                        String title = id + " (" + name + ")";
+                        fitDoc.addLabeledImg(loc, title);
+                        fits++;
+                    } catch (IOException e) {
+                        System.out.println("Failed encoding hv summary " + e);
+                    }
+                }
+                else {
+                    doc.add("  ");
+                    sumDoc.add("  ");
+                }
+                doc.addBr();
+                sumDoc.addBr();
+                if (fits % 4 == 0) fitDoc.addNew();
             }
-            try {
-                String loc = graphHV(hTable, domId);
-                doc.addImg(loc);
-                sumDoc.addSizedImg(loc, 100, 100);
-            } catch (IOException e) {
-                System.out.println("Failed encoding hv summary " + e);
-            }
-            doc.addBr();
-            sumDoc.addBr();
         }
         doc.close();
         sumDoc.close();
+        fitDoc.close();
     }
 
-    public Hashtable processDomcal(File domcalFile) throws ParserConfigurationException, SAXException, IOException {
+    public Hashtable[] processDomcal(File domcalFile) throws ParserConfigurationException, SAXException, IOException {
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         dbf.setNamespaceAware(true);
         DocumentBuilder db = dbf.newDocumentBuilder();
         Document doc = db.parse(domcalFile);
         NodeList histos = doc.getElementsByTagName("histo");
-        Hashtable hTable = new Hashtable();
+        Hashtable hTableArr[] = new Hashtable[10];
+        hTableArr[0] = new Hashtable();
         for (int i = 0; i < histos.getLength(); i++) {
             HVHistogram current = (HVHistogram.parseHVHistogram((Element)histos.item(i)));
-            hTable.put(new Short(current.getVoltage()), current);
+            boolean stored = false;
+            int histoSetIdx = 0;
+            while (!stored) {
+                Short v = current.getVoltage();
+
+                if (hTableArr[histoSetIdx] == null)
+                    hTableArr[histoSetIdx] = new Hashtable();
+                // Check to see if voltage is already stored for this set of histos
+                // If so, increment to next set
+                if (hTableArr[histoSetIdx].get(v) != null) 
+                    histoSetIdx++;
+                else {
+                    hTableArr[histoSetIdx].put(v, current);
+                    stored = true;
+                }
+            }
         }
-        return hTable;
+        return hTableArr;
     }
 
-    private String graphHistogram(HVHistogram histo, String domId) throws IOException {
-        String outName = domId + histo.getVoltage() + ".png";
+    private String graphHistogram(HVHistogram histo, String domId, int set) throws IOException {
+        String outName = domId + histo.getVoltage() + "." + set + ".png";
         String outFile = outDir + (outDir.endsWith("/") ? "" : "/") + outName;
         String outHttp = htmlRoot + (htmlRoot.endsWith("/") ? "" : "/") + outName;
         BufferedImage bi = createImage(histo);
@@ -235,11 +302,11 @@ public class HVHistogramGrapher implements Runnable {
         return outHttp;
     }
 
-    private String graphHV(Hashtable histos, String domId) throws IOException {
+    private String graphHV(Hashtable histTableArr[], String domId) throws IOException {
         String outName = domId + "_hv" + ".png";
         String outFile = outDir + (outDir.endsWith("/") ? "" : "/") + outName;
         String outHttp = htmlRoot + (htmlRoot.endsWith("/") ? "" : "/") + outName;
-        BufferedImage bi = createSummaryImage(histos);
+        BufferedImage bi = createSummaryImage(histTableArr);
         JPEGImageEncoder jout = JPEGCodec.createJPEGEncoder(new FileOutputStream(outFile));
         JPEGEncodeParam ep = jout.getDefaultJPEGEncodeParam(bi);
         ep.setQuality(2, false);
@@ -249,10 +316,26 @@ public class HVHistogramGrapher implements Runnable {
         return outHttp;
     }
 
-    private BufferedImage createSummaryImage(Hashtable histTable) {
-        Object[] obj = histTable.values().toArray();
-        HVHistogram[] histos = new HVHistogram[obj.length];
-        for (int i = 0; i < obj.length; i++) histos[i] = (HVHistogram)obj[i];
+    private BufferedImage createSummaryImage(Hashtable histTableArr[]) {
+
+        // Flatten histograms into a single array
+        int set;
+        for (set = 0; set < histTableArr.length; set++) {
+            if (histTableArr[set] == null)
+                break;
+        }        
+        // This is really ugly, admittedly
+        Object[] obj = histTableArr[0].values().toArray();
+        int totalLen = obj.length * set;
+        HVHistogram[] histos = new HVHistogram[obj.length * set];
+        int idx = 0;
+        for (int i = 0; i < set; i++) {
+            obj = histTableArr[i].values().toArray();            
+            for (int j = 0; j < obj.length; j++) {                
+                histos[idx] = (HVHistogram)obj[j];
+                idx++;
+            }
+        }
 
         BufferedImage bi = new BufferedImage(300, 300, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = bi.createGraphics();
@@ -267,15 +350,15 @@ public class HVHistogramGrapher implements Runnable {
         g.drawLine(50, 0, 50, 249);
 
         //draw X tick marks
-        int[] xTicks = {1100, 1300, 1500, 1700, 1900};
+        int[] xTicks = {800, 1100, 1400, 1700, 2000};
         for (int i = 0; i < xTicks.length; i ++) {
             int x = getXPixel(xTicks[i]);
             g.drawLine(x, 247, x, 251);
         }
 
         //draw Y tick marks
-        int[] yTicks = {1000000, 3000000, 10000000, 30000000, 100000000};
-        String[] yTickStr = {"1e6", "3e6", "1e7", "3e7", "1e8"};
+        int[] yTicks = {1000000, 10000000, 100000000, 1000000000};
+        String[] yTickStr = {"1e6", "1e7", "1e8", "1e9"};
         for (int i = 0; i < yTicks.length; i++) {
             int y = getYPixel(yTicks[i]);
             g.drawLine(48, y, 52, y);
@@ -297,7 +380,9 @@ public class HVHistogramGrapher implements Runnable {
         //count number of good fits
         int conv = 0;
         for (int i = 0; i < histos.length; i++) {
-            if (histos[i].isConvergent()) conv++;
+            if (histos[i] != null) {
+                if (histos[i].isFilled() && histos[i].isConvergent()) conv++;
+            }
         }
 
         //allocate arrays for linear fit
@@ -308,16 +393,18 @@ public class HVHistogramGrapher implements Runnable {
         int convIndx = 0;
         g.setColor(Color.RED);
         for (int i = 0; i < histos.length; i++) {
-            if (histos[i].isConvergent()) {
-                int xCenter = getXPixel(histos[i].getVoltage());
-                int yCenter = getYPixel((int)(1e-12 * histos[i].getFitParams()[3] / EC));
-                if (!(xCenter > 296 || xCenter < 53 || yCenter > 246 || yCenter < 3)) {
-                    g.drawLine(xCenter - 3, yCenter, xCenter + 3, yCenter);
-                    g.drawLine(xCenter, yCenter - 3, xCenter, yCenter + 3);
+            if (histos[i] != null) {
+                if (histos[i].isFilled() && histos[i].isConvergent()) {
+                    int xCenter = getXPixel(histos[i].getVoltage());
+                    int yCenter = getYPixel((int)(1e-12 * histos[i].getFitParams()[3] / EC));
+                    if (!(xCenter > 296 || xCenter < 53 || yCenter > 246 || yCenter < 3)) {
+                        g.drawLine(xCenter - 3, yCenter, xCenter + 3, yCenter);
+                        g.drawLine(xCenter, yCenter - 3, xCenter, yCenter + 3);
+                    }
+                    xData[convIndx] = xCenter;
+                    yData[convIndx] = yCenter;
+                    convIndx++;
                 }
-                xData[convIndx] = xCenter;
-                yData[convIndx] = yCenter;
-                convIndx++;
             }
         }
 
@@ -354,15 +441,15 @@ public class HVHistogramGrapher implements Runnable {
 
     private int getXPixel(int val) {
         double logVal = Math.log(val);
-        double staticHVal = Math.log(1900);
-        double staticLVal = Math.log(1000);
+        double staticHVal = Math.log(1800);
+        double staticLVal = Math.log(800);
 
         return 50 + (int)(200 * ((logVal - staticLVal)/(staticHVal - staticLVal)));
     }
 
     private int getYPixel(int val) {
         double logVal = Math.log(val);
-        double staticHVal = Math.log(1e8);
+        double staticHVal = Math.log(1e9);
         double staticLVal = Math.log(1e6);
 
         return 249 - (int)(220 * ((logVal - staticLVal)/(staticHVal - staticLVal)));
@@ -443,12 +530,14 @@ public class HVHistogramGrapher implements Runnable {
         String meanString = "Mean=" + mean + "pC";
         String pvString = "PV=" + pv;
         String noiseString = "Noise=" + noise + "Hz";
+        String HVString = "HV=" + (int)histo.getVoltage() + "V";
         String maxStr = (pvString.length() > noiseString.length()) ? pvString : noiseString;
         if (meanString.length() > maxStr.length()) maxStr = meanString;
 
         g.drawString(pvString, 295 - g.getFontMetrics().stringWidth(maxStr), 5 + charHeight );
         g.drawString(noiseString, 295 - g.getFontMetrics().stringWidth(maxStr), 8 + 2*charHeight );
         g.drawString(meanString, 295 - g.getFontMetrics().stringWidth(maxStr), 11 + 3*charHeight );
+        g.drawString(HVString, 295 - g.getFontMetrics().stringWidth(maxStr), 14 + 4*charHeight );
         return bi;
     }
 
@@ -553,6 +642,11 @@ public class HVHistogramGrapher implements Runnable {
             out.println("<tr align=\"center\"><td>" + line + "</td>");
         }
 
+        public void addNew() {
+            if (out == null) throw new IllegalStateException("Output is null");
+            out.println("<tr align=\"center\">");
+        }
+
         public void addBr() {
             if (out == null) throw new IllegalStateException("Output is null");
             out.println("</tr>");
@@ -560,6 +654,10 @@ public class HVHistogramGrapher implements Runnable {
 
         public void addImg(String path) {
             add("<a href=\"" + path + "\"><img src=" + path + "></a>");
+        }
+
+        public void addLabeledImg(String path, String title) {
+            add("<a href=\"" + path + "\"><img src=" + path + "></a><br>"+title);            
         }
 
         public void addSizedImg(String path, int height, int width) {

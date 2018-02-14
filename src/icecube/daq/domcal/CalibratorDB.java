@@ -6,20 +6,21 @@ import icecube.daq.db.domprodtest.DOMProdTestUtil;
 import icecube.daq.db.domprodtest.DOMProduct;
 import icecube.daq.db.domprodtest.Laboratory;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 
+import java.math.BigDecimal;
+
 import java.sql.Connection;
-import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import java.text.FieldPosition;
 import java.text.SimpleDateFormat;
 
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Properties;
@@ -35,6 +36,38 @@ public class CalibratorDB
     /** Log message handler. */
     private static Logger logger = Logger.getLogger(CalibratorDB.class);
 
+    private static SimpleDateFormat sqlDateFormat =
+        new SimpleDateFormat("yyyy-MM-dd");
+    private static SimpleDateFormat sqlTimeFormat =
+        new SimpleDateFormat("HH:mm:ss");
+    private static SimpleDateFormat humanFormat =
+        new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S");
+
+    /** List of all tables containing calibration data. */
+    private static final String[] ALL_TABLES = new String[] {
+        "DOMCal_ADC",
+        "DOMCal_ATWD",
+        "DOMCal_ATWDFreq",
+        "DOMCal_ATWDFreqParam",
+        "DOMCal_ATWDParam",
+        "DOMCal_AmpGain",
+        "DOMCal_Baseline",
+        "DOMCal_ChargeData",
+        "DOMCal_ChargeMain",
+        "DOMCal_ChargeParam",
+        "DOMCal_DAC",
+        "DOMCal_Discriminator",
+        "DOMCal_FADC",
+        "DOMCal_HvGain",
+        "DOMCal_PmtTransit",
+        "DOMCal_Pulser",
+        "DOMCal_PulserParam",
+        // delete() expected DOMCalibration to be last entry in list
+        "DOMCalibration",
+    };
+
+    /** List of discriminator types. */
+    private static DiscriminatorType discrimType;
     /** List of model types. */
     private static ModelType modelType;
     /** List of parameter types. */
@@ -76,43 +109,154 @@ public class CalibratorDB
      */
     public static void clearStatic()
     {
+        discrimType = null;
         modelType = null;
         paramType = null;
     }
 
     /**
-     * Return a formatted creation date string.
+     * Delete the calibration data from the database.
      *
      * @param cal calibration data
+     * @param testOnly <tt>true</tt> if SQL statements should be
+     *                 printed but not run
      *
-     * @return formatted creation date
+     * @throws SQLException if there is a database problem
      */
-    private static final String formatDate(Calibrator cal)
+    public void delete(Calibrator cal, boolean testOnly)
+        throws SQLException
     {
-        SimpleDateFormat dateFmt = new SimpleDateFormat("MMM-dd-yyyy");
-        StringBuffer dateBuf = new StringBuffer();
-        FieldPosition fldPos = new FieldPosition(0);
+        Connection conn;
+        Statement stmt;
 
-        dateFmt.format(cal.getCalendar().getTime(), dateBuf, fldPos);
+        conn = getConnection();
+        stmt = getStatement(conn);
 
-        return dateBuf.toString();
+        try {
+            delete(stmt, cal, testOnly);
+        } finally {
+            try {
+                stmt.close();
+            } catch (SQLException se) {
+                // ignore errors on close
+            }
+
+            try {
+                conn.close();
+            } catch (SQLException se) {
+                // ignore errors on close
+            }
+        }
+    }
+
+    /**
+     * Delete the calibration data from the database.
+     *
+     * @param stmt SQL statement
+     * @param cal calibration data
+     * @param testOnly <tt>true</tt> if SQL statements should be
+     *                 printed but not run
+     *
+     * @throws SQLException if there is a database problem
+     */
+    public void delete(Statement stmt, Calibrator cal, boolean testOnly)
+        throws SQLException
+    {
+        final String mainTable = "DOMCalibration";
+
+        SQLException delayedEx = null;
+        for (int i = 0; i < ALL_TABLES.length; i++) {
+            final String dStr = "delete from " + ALL_TABLES[i] +
+                " where domcal_id=" + cal.getDOMCalId();
+
+            if (testOnly) {
+                System.err.println(dStr);
+            } else {
+                int rows;
+                try {
+                    rows = stmt.executeUpdate(dStr);
+                } catch (SQLException se) {
+                    delayedEx = new SQLException(dStr + ": " +
+                                                 se.getMessage());
+                }
+            }
+        }
+
+        if (delayedEx != null) {
+            throw delayedEx;
+        }
     }
 
     /**
      * Return a formatted temperature string.
      *
-     * @param cal calibration data
+     * @param temp temperature
      *
      * @return formatted temperature
      */
-    private static final String formatTemperature(Calibrator cal)
+    private static String formatTemperature(double temp)
     {
-        final String dblStr = Double.toString(cal.getTemperature());
+        final String dblStr =
+            Double.toString(temp + (temp < 0 ? -0.005 : 0.005));
         final int dotIdx = dblStr.indexOf('.');
         if (dblStr.length() <= dotIdx + 3) {
             return dblStr;
         }
         return dblStr.substring(0, dotIdx + 3);
+    }
+
+    /**
+     * Combine date and time into a single entity.
+     *
+     * @param date date value
+     * @param time time value
+     */
+    private static Date getCombinedDate(Date date, Date time)
+    {
+        Date combined;
+        if (date == null) {
+            combined = null;
+        } else if (time == null) {
+            combined = date;
+        } else {
+            Calendar calTime = Calendar.getInstance();
+            calTime.setTime(time);
+
+            long timeMS = calTime.get(Calendar.HOUR_OF_DAY) * 3600000 +
+                calTime.get(Calendar.MINUTE) * 60000 +
+                calTime.get(Calendar.SECOND) * 1000;
+
+            combined = new Date(date.getTime() + timeMS);
+        }
+
+        return combined;
+    }
+
+    /**
+     * Get discriminator type ID.
+     *
+     * @param stmt SQL statement
+     * @param name discriminator name
+     *
+     * @return ID associated with discriminator name
+     *
+     * @throws DOMCalibrationException if there is a problem with the data
+     * @throws SQLException if there is a database problem
+     */
+    private static int getDiscrimId(Statement stmt, String name)
+        throws DOMCalibrationException, SQLException
+    {
+        if (discrimType == null) {
+            discrimType = new DiscriminatorType(stmt);
+        }
+
+        int id = discrimType.getId(name);
+        if (id == DOMProdTestUtil.ILLEGAL_ID) {
+            throw new DOMCalibrationException("Discriminator \"" + name +
+                                              "\" not found");
+        }
+
+        return id;
     }
 
     /**
@@ -126,7 +270,7 @@ public class CalibratorDB
      * @throws DOMCalibrationException if there is a problem with the data
      * @throws SQLException if there is a database problem
      */
-    private static final int getModelId(Statement stmt, String model)
+    private static int getModelId(Statement stmt, String model)
         throws DOMCalibrationException, SQLException
     {
         if (modelType == null) {
@@ -153,7 +297,7 @@ public class CalibratorDB
      * @throws DOMCalibrationException if there is a problem with the data
      * @throws SQLException if there is a database problem
      */
-    private static final int getParamId(Statement stmt, String param)
+    private static int getParamId(Statement stmt, String param)
         throws DOMCalibrationException, SQLException
     {
         if (paramType == null) {
@@ -209,9 +353,29 @@ public class CalibratorDB
     /**
      * Load calibration data.
      *
+     * @param domcalId DOMCalibration ID
+     *
+     * @return loaded data
+     *
+     * @throws DOMCalibrationException if an argument is invalid
+     * @throws SQLException if there is a database problem
+     */
+    public Calibrator load(int domcalId)
+        throws DOMCalibrationException, SQLException
+    {
+        Calibrator cal = new Calibrator();
+        load(cal, domcalId);
+        return cal;
+    }
+
+    /**
+     * Load calibration data.
+     *
      * @param mbSerial mainboard serial number of DOM being loaded
      * @param date date of data being loaded
+     *                     (<tt>null</tt> if date should not be used)
      * @param temp temperature of data being loaded
+     *                     (<tt>NaN</tt> if temperature should not be used)
      *
      * @return loaded data
      *
@@ -221,8 +385,37 @@ public class CalibratorDB
     public Calibrator load(String mbSerial, java.util.Date date, double temp)
         throws DOMCalibrationException, SQLException
     {
+        return load(mbSerial, date, temp, (short) -1, (short) -1, (short) -1);
+    }
+
+    /**
+     * Load calibration data.
+     *
+     * @param mbSerial mainboard serial number of DOM being loaded
+     * @param date date of data being loaded
+     *                     (<tt>null</tt> if date should not be used)
+     * @param temp temperature of data being loaded
+     *                     (<tt>NaN</tt> if temperature should not be used)
+     * @param majorVersion major version number of data being loaded
+     *                     (<tt>-1</tt> if version number should not be used)
+     * @param minorVersion minor version number of data being loaded
+     *                     (<tt>-1</tt> if minor version should not be used)
+     * @param patchVersion patch version number of data being loaded
+     *                     (<tt>-1</tt> if patch version should not be used)
+     *
+     * @return loaded data
+     *
+     * @throws DOMCalibrationException if an argument is invalid
+     * @throws SQLException if there is a database problem
+     */
+    public Calibrator load(String mbSerial, java.util.Date date, double temp,
+                           short majorVersion, short minorVersion,
+                           short patchVersion)
+        throws DOMCalibrationException, SQLException
+    {
         Calibrator cal = new Calibrator();
-        load(cal, mbSerial, date, temp);
+        load(cal, mbSerial, date, temp, majorVersion, minorVersion,
+             patchVersion);
         return cal;
     }
 
@@ -232,13 +425,42 @@ public class CalibratorDB
      * @param cal calibration object to be filled
      * @param mbSerial mainboard serial number of DOM being loaded
      * @param date date of data being loaded
+     *                     (<tt>null</tt> if date should not be used)
      * @param temp temperature of data being loaded
+     *                     (<tt>NaN</tt> if temperature should not be used)
      *
      * @throws DOMCalibrationException if an argument is invalid
      * @throws SQLException if there is a database problem
      */
     public void load(Calibrator cal, String mbSerial, java.util.Date date,
                      double temp)
+        throws DOMCalibrationException, SQLException
+    {
+        load(cal, mbSerial, date, temp, (short) -1, (short) -1, (short) -1);
+    }
+
+    /**
+     * Load calibration data.
+     *
+     * @param cal calibration object to be filled
+     * @param mbSerial mainboard serial number of DOM being loaded
+     * @param date date of data being loaded
+     *                     (<tt>null</tt> if date should not be used)
+     * @param temp temperature of data being loaded
+     *                     (<tt>NaN</tt> if temperature should not be used)
+     * @param majorVersion major version number of data being loaded
+     *                     (<tt>-1</tt> if version number should not be used)
+     * @param minorVersion minor version number of data being loaded
+     *                     (<tt>-1</tt> if minor version should not be used)
+     * @param patchVersion patch version number of data being loaded
+     *                     (<tt>-1</tt> if patch version should not be used)
+     *
+     * @throws DOMCalibrationException if an argument is invalid
+     * @throws SQLException if there is a database problem
+     */
+    public void load(Calibrator cal, String mbSerial, java.util.Date date,
+                     double temp, short majorVersion, short minorVersion,
+                     short patchVersion)
         throws DOMCalibrationException, SQLException
     {
         Connection conn;
@@ -248,13 +470,18 @@ public class CalibratorDB
         stmt = getStatement(conn);
 
         try {
-            loadMain(stmt, cal, mbSerial, date, temp);
+            loadMain(stmt, cal, mbSerial, date, temp, majorVersion,
+                     minorVersion, patchVersion);
             loadADCs(stmt, cal);
             loadDACs(stmt, cal);
             loadPulser(stmt, cal);
+            loadFADC(stmt, cal);
+            loadDiscrim(stmt, cal);
             loadATWDs(stmt, cal);
             loadAmpGain(stmt, cal);
             loadATWDFreqs(stmt, cal);
+            loadBaselines(stmt, cal);
+            loadPmtTransit(stmt, cal);
             loadHvGain(stmt, cal);
             loadHvHisto(stmt, cal);
         } finally {
@@ -269,6 +496,62 @@ public class CalibratorDB
             } catch (SQLException se) {
                 // ignore errors on close
             }
+        }
+    }
+
+    /**
+     * Load calibration data.
+     *
+     * @param cal calibration object to be filled
+     * @param id calibration ID
+     *
+     * @throws DOMCalibrationException if an argument is invalid
+     * @throws SQLException if there is a database problem
+     */
+    public void load(Calibrator cal, int id)
+        throws DOMCalibrationException, SQLException
+    {
+        Connection conn;
+        Statement stmt;
+
+        conn = getConnection();
+        stmt = getStatement(conn);
+
+        DOMCalibrationException delayedEx = null;
+        try {
+            loadMain(stmt, cal, id);
+            loadADCs(stmt, cal);
+            loadDACs(stmt, cal);
+            loadPulser(stmt, cal);
+            try {
+                loadFADC(stmt, cal);
+            } catch (DOMCalibrationException dce) {
+                delayedEx = dce;
+            }
+            loadDiscrim(stmt, cal);
+            loadATWDs(stmt, cal);
+            loadAmpGain(stmt, cal);
+            loadATWDFreqs(stmt, cal);
+            loadBaselines(stmt, cal);
+            loadPmtTransit(stmt, cal);
+            loadHvGain(stmt, cal);
+            loadHvHisto(stmt, cal);
+        } finally {
+            try {
+                stmt.close();
+            } catch (SQLException se) {
+                // ignore errors on close
+            }
+
+            try {
+                conn.close();
+            } catch (SQLException se) {
+                // ignore errors on close
+            }
+        }
+
+        if (delayedEx != null) {
+            throw delayedEx;
         }
     }
 
@@ -514,6 +797,46 @@ public class CalibratorDB
     }
 
     /**
+     * Load baseline data.
+     *
+     * @param stmt SQL statement
+     * @param cal calibration data
+     *
+     * @throws SQLException if there is a database problem
+     */
+    private void loadBaselines(Statement stmt, Calibrator cal)
+        throws SQLException
+    {
+        final String qStr = "select voltage,atwd0_chan0,atwd0_chan1" +
+            ",atwd0_chan2,atwd1_chan0,atwd1_chan1,atwd1_chan2" +
+            " from DOMCal_Baseline where domcal_id=" + cal.getDOMCalId() +
+            " order by voltage desc";
+
+        ResultSet rs = stmt.executeQuery(qStr);
+
+        cal.clearBaselines();
+        while (rs.next()) {
+            final short voltage = rs.getShort(1);
+            float[][] values = new float[2][3];
+
+            for (int i = 0; i < values.length; i++) {
+                for (int j = 0; j < values[i].length; j++) {
+                    values[i][j] =
+                        (float) rs.getDouble((i * values[0].length) + j + 2);
+                }
+            }
+
+            cal.addBaseline(voltage, values);
+        }
+
+        try {
+            rs.close();
+        } catch (SQLException se) {
+            // ignore errors on close
+        }
+    }
+
+    /**
      * Load DAC data from database.
      *
      * @param stmt SQL statement
@@ -552,6 +875,112 @@ public class CalibratorDB
         if (dacs != null) {
             cal.setDACs(dacs);
         }
+    }
+
+    /**
+     * Load SPE and/or MPE discriminator data.
+     *
+     * @param stmt SQL statement
+     * @param cal calibration data
+     *
+     * @throws SQLException if there is a database problem
+     */
+    private void loadDiscrim(Statement stmt, Calibrator cal)
+        throws DOMCalibrationException, SQLException
+    {
+        loadDiscrim(stmt, cal, "SPE");
+        loadDiscrim(stmt, cal, "MPE");
+    }
+
+    /**
+     * Load individual discriminator data.
+     *
+     * @param stmt SQL statement
+     * @param cal calibration data
+     * @param name discriminator name (<tt>SPE</tt> or <tt>MPE</tt>)
+     *
+     * @throws SQLException if there is a database problem
+     */
+    private void loadDiscrim(Statement stmt, Calibrator cal, String name)
+        throws DOMCalibrationException, SQLException
+    {
+        final int discrimId = getDiscrimId(stmt, name);
+
+        final String qStr = "select dc_model_id,slope,intercept,regression" +
+            " from DOMCal_Discriminator where domcal_id=" + cal.getDOMCalId() +
+            " and dc_discrim_id=" + discrimId;
+
+        ResultSet rs = stmt.executeQuery(qStr);
+
+        if (!rs.next()) {
+            return;
+        }
+
+        final int modelId = rs.getInt(1);
+        final double slope = rs.getDouble(2);
+        final double intercept = rs.getDouble(3);
+        final double regression = rs.getDouble(4);
+
+        try {
+            rs.close();
+        } catch (SQLException se) {
+            // ignore errors on close
+        }
+
+        if (modelType == null) {
+            modelType = new ModelType(stmt);
+        }
+
+        String modelName = modelType.getName(modelId);
+        if (modelName == null) {
+            throw new DOMCalibrationException("Model #" + modelId +
+                                              " not found");
+        }
+
+        cal.setDiscriminatorFitModel(modelName, name);
+        cal.setDiscriminatorFitParam("slope", name, slope);
+        cal.setDiscriminatorFitParam("intercept", name, intercept);
+        cal.setDiscriminatorFitParam("r", name, regression);
+    }
+
+    /**
+     * Load FADC data.
+     *
+     * @param stmt SQL statement
+     * @param cal calibration data
+     *
+     * @throws SQLException if there is a database problem
+     */
+    private void loadFADC(Statement stmt, Calibrator cal)
+        throws DOMCalibrationException, SQLException
+    {
+        final String qStr =
+            "select slope,intercept,regression,gain,gain_error" +
+            ",delta_t,delta_t_error from DOMCal_FADC where domcal_id=" +
+            cal.getDOMCalId();
+
+        ResultSet rs = stmt.executeQuery(qStr);
+
+        if (!rs.next()) {
+            return;
+        }
+
+        final float slope = (float) rs.getDouble(1);
+        final float intercept = (float) rs.getDouble(2);
+        final float regression = (float) rs.getDouble(3);
+        final float gain = (float) rs.getDouble(4);
+        final float gainErr = (float) rs.getDouble(5);
+        final float deltaT = (float) rs.getDouble(6);
+        final float deltaTErr = (float) rs.getDouble(7);
+
+        try {
+            rs.close();
+        } catch (SQLException se) {
+            // ignore errors on close
+        }
+
+        cal.setFADC(slope, intercept, regression, gain, gainErr,
+                    deltaT, deltaTErr);
     }
 
     /**
@@ -624,8 +1053,8 @@ public class CalibratorDB
             if (rs.next()) {
                 voltage = rs.getShort(1);
                 convergent = rs.getBoolean(2);
-                pv = rs.getFloat(3);
-                noiseRate = rs.getFloat(4);
+                pv = (float) rs.getDouble(3);
+                noiseRate = (float) rs.getDouble(4);
                 isFilled = rs.getBoolean(5);
                 found = true;
             }
@@ -651,7 +1080,7 @@ public class CalibratorDB
             rs = stmt.executeQuery(pStr);
             while (rs.next()) {
                 final String name = rs.getString(1);
-                final float value = rs.getFloat(2);
+                final float value = (float) rs.getDouble(2);
 
                 boolean foundParam = false;
                 for (int j = 0; !foundParam && j < params.length; j++) {
@@ -686,8 +1115,8 @@ public class CalibratorDB
             float[] count = null;
             while (rs.next()) {
                 final int bin = rs.getInt(1);
-                final float chg = rs.getFloat(2);
-                final float cnt = rs.getFloat(3);
+                final float chg = (float) rs.getDouble(2);
+                final float cnt = (float) rs.getDouble(3);
 
                 if (charge == null) {
                     charge = new float[bin + 1];
@@ -722,13 +1151,22 @@ public class CalibratorDB
      * @param cal calibration object to be filled
      * @param mbSerial mainboard serial number of DOM being loaded
      * @param date date of data being loaded
+     *                     (<tt>null</tt> if date should not be used)
      * @param temp temperature of data being loaded
+     *                     (<tt>NaN</tt> if temperature should not be used)
+     * @param majorVersion major version number of data being loaded
+     *                     (<tt>-1</tt> if version number should not be used)
+     * @param minorVersion minor version number of data being loaded
+     *                     (<tt>-1</tt> if minor version should not be used)
+     * @param patchVersion patch version number of data being loaded
+     *                     (<tt>-1</tt> if patch version should not be used)
      *
      * @throws DOMCalibrationException if there is a problem with the data
      * @throws SQLException if there is a database problem
      */
     public void loadMain(Statement stmt, Calibrator cal, String mbSerial,
-                         java.util.Date date, double temp)
+                         Date date, double temp, short majorVersion,
+                         short minorVersion, short patchVersion)
         throws DOMCalibrationException, SQLException
     {
         DOMProduct dcProd;
@@ -740,20 +1178,34 @@ public class CalibratorDB
                                               dpte.getMessage());
         }
 
-        java.sql.Date sqlDate;
+        String dateStr;
+        String timeStr;
         if (date == null) {
-            sqlDate = null;
+            dateStr = null;
+            timeStr = null;
         } else {
-            sqlDate = new java.sql.Date(date.getTime());
+            dateStr = sqlDateFormat.format(date);
+            timeStr = sqlTimeFormat.format(date);
         }
 
         final String qStr =
-            "select domcal_id,date,temperature from DOMCalibration" +
+            "select domcal_id,date,time,temperature" +
+            ",major_version,minor_version,patch_version" +
+            " from DOMCalibration" +
             " where prod_id=" + dcProd.getId() +
-            (sqlDate == null ? "" : " and date<=" +
-             DOMProdTestUtil.quoteString(sqlDate.toString())) +
-            (Double.isNaN(temp) ? "" : " and temperature>=" + (temp - 5.0) +
-             " and temperature<=" + (temp + 5.0)) +
+            (dateStr == null ? "" : " and (date<" +
+             DOMProdTestUtil.quoteString(dateStr) + " or (date=" +
+             DOMProdTestUtil.quoteString(dateStr) + " and time<=" +
+             DOMProdTestUtil.quoteString(timeStr) + "))") +
+            (Double.isNaN(temp) ? "" :
+             " and temperature>=" + formatTemperature((double) temp - 5.0) +
+             " and temperature<=" + formatTemperature((double) temp + 5.0)) +
+            (majorVersion < 0 ? "" :
+             " and major_version=" + majorVersion +
+             (minorVersion < 0 ? "" :
+              " and minor_version=" + minorVersion +
+              (patchVersion < 0 ? "" :
+               " and patch_version=" + patchVersion))) +
             " order by date desc";
 
         ResultSet rs = stmt.executeQuery(qStr);
@@ -762,16 +1214,28 @@ public class CalibratorDB
 
         final int domcalId;
         final Date dcDate;
+        final Date dcTime;
         final double dcTemp;
+        final short dcMajor;
+        final short dcMinor;
+        final short dcPatch;
 
         if (!hasNext) {
             domcalId = Integer.MIN_VALUE;
             dcDate = null;
+            dcTime = null;
             dcTemp = 0.0;
+            dcMajor = 0;
+            dcMinor = 0;
+            dcPatch = 0;
         } else {
             domcalId = rs.getInt(1);
             dcDate = rs.getDate(2);
-            dcTemp = rs.getDouble(3);
+            dcTime = rs.getTime(3);
+            dcTemp = rs.getDouble(4);
+            dcMajor = rs.getShort(5);
+            dcMinor = rs.getShort(6);
+            dcPatch = rs.getShort(7);
         }
 
         try {
@@ -787,7 +1251,118 @@ public class CalibratorDB
             throw new DOMCalibrationException(errMsg);
         }
 
-        cal.setMain(domcalId, mbSerial, dcProd, dcDate, dcTemp);
+        Date combined = getCombinedDate(dcDate, dcTime);
+
+        cal.setMain(domcalId, mbSerial, dcProd, combined, dcTemp,
+                    dcMajor, dcMinor, dcPatch);
+    }
+
+    /**
+     * Load main calibration data.
+     *
+     * @param stmt SQL statement
+     * @param cal calibration object to be filled
+     * @param domcalId calibration ID
+     *
+     * @throws DOMCalibrationException if there is a problem with the data
+     * @throws SQLException if there is a database problem
+     */
+    public void loadMain(Statement stmt, Calibrator cal, int domcalId)
+        throws DOMCalibrationException, SQLException
+    {
+        final String qStr =
+            "select prod_id,date,time,temperature" +
+            ",major_version,minor_version,patch_version" +
+            " from DOMCalibration" +
+            " where domcal_id=" + domcalId;
+
+        ResultSet rs = stmt.executeQuery(qStr);
+
+        boolean hasNext = rs.next();
+
+        final int prodId;
+        final Date dcDate;
+        final Date dcTime;
+        final double dcTemp;
+        final short dcMajor;
+        final short dcMinor;
+        final short dcPatch;
+
+        if (!hasNext) {
+            prodId = Integer.MIN_VALUE;
+            dcDate = null;
+            dcTime = null;
+            dcTemp = 0.0;
+            dcMajor = 0;
+            dcMinor = 0;
+            dcPatch = 0;
+        } else {
+            prodId = rs.getInt(1);
+            dcDate = rs.getDate(2);
+            dcTime = rs.getTime(3);
+            dcTemp = rs.getDouble(4);
+            dcMajor = rs.getShort(5);
+            dcMinor = rs.getShort(6);
+            dcPatch = rs.getShort(7);
+        }
+
+        try {
+            rs.close();
+        } catch (SQLException se) {
+            // ignore errors on close
+        }
+
+        if (!hasNext) {
+            final String errMsg = "No calibration information for DOM #" +
+                domcalId;
+            throw new DOMCalibrationException(errMsg);
+        }
+
+        Date combined = getCombinedDate(dcDate, dcTime);
+
+        DOMProduct dcProd;
+        try {
+            dcProd = new DOMProduct(stmt, prodId);
+        } catch (DOMProdTestException dpte) {
+            throw new DOMCalibrationException("Couldn't get DOM data: " +
+                                              dpte.getMessage());
+        }
+
+        cal.setMain(domcalId, dcProd.getHardwareSerial(), dcProd, combined,
+                    dcTemp, dcMajor, dcMinor, dcPatch);
+    }
+
+    /**
+     * Load PMT transit fit data.
+     *
+     * @param stmt SQL statement
+     * @param cal calibration data
+     *
+     * @throws SQLException if there is a database problem
+     */
+    private void loadPmtTransit(Statement stmt, Calibrator cal)
+        throws SQLException
+    {
+        final String qStr = "select num_points,slope,intercept,regression" +
+            " from DOMCal_PmtTransit where domcal_id=" + cal.getDOMCalId();
+
+        ResultSet rs = stmt.executeQuery(qStr);
+        if (!rs.next()) {
+            return;
+        }
+
+        final short numPts = (short) rs.getInt(1);
+        final double slope = rs.getDouble(2);
+        final double intercept = rs.getDouble(3);
+        final double regression = rs.getDouble(4);
+
+        try {
+            rs.close();
+        } catch (SQLException se) {
+            // ignore errors on close
+        }
+
+        cal.setPmtTransit(numPts, slope, intercept, regression);
     }
 
     /**
@@ -806,21 +1381,29 @@ public class CalibratorDB
             " from DOMCal_Pulser dp,DOMCal_Model dm where dp.domcal_id=" +
             cal.getDOMCalId() + " and dp.dc_model_id=dm.dc_model_id";
 
+        final boolean isValid;
+        final String model;
+        final double regression;
+
         ResultSet rs = stmt.executeQuery(qStr);
         if (!rs.next()) {
-            final String errMsg = "No Pulser data for DOM " + cal.getDOMId() +
-                ", date " + cal.getCalendar() +
-                ", temperature " + cal.getTemperature();
-            throw new DOMCalibrationException(errMsg);
+            isValid = false;
+            model = null;
+            regression = Double.NaN;
+        } else {
+            isValid = true;
+            model = rs.getString(1);
+            regression = rs.getDouble(2);
         }
-
-        final String model = rs.getString(1);
-        final double regression = rs.getDouble(2);
 
         try {
             rs.close();
         } catch (SQLException se) {
             // ignore errors on close
+        }
+
+        if (!isValid) {
+            return;
         }
 
         cal.setPulserFitModel(model);
@@ -851,7 +1434,7 @@ public class CalibratorDB
      * @param fileName file name
      * @param logger error logger
      *
-     * @throws DOMProdTestException if there is a problem creating the object
+     * @throws DOMCalibrationException if there is a problem creating the object
      * @throws IOException if there is a problem reading the properties.
      * @throws SQLException if there is a problem initializing the database.
      */
@@ -870,7 +1453,7 @@ public class CalibratorDB
      *              is not <code>null</code>
      * @param verbose <code>true</code> for verbose comparison
      *
-     * @throws DOMProdTestException if there is a problem creating the object
+     * @throws DOMCalibrationException if there is a problem creating the object
      * @throws IOException if there is a problem reading the properties.
      * @throws SQLException if there is a problem initializing the database.
      */
@@ -891,22 +1474,28 @@ public class CalibratorDB
         Calibrator dbCal;
         try {
             dbCal = new Calibrator(cal.getDOMId(), cal.getCalendar().getTime(),
-                                   cal.getTemperature(), calDB);
+                                   cal.getTemperature(), cal.getMajorVersion(),
+                                   cal.getMinorVersion(), cal.getPatchVersion(),
+                                   calDB);
         } catch (DOMCalibrationException dce) {
             dbCal = null;
         }
+
+        final String formatStr = "MMM-dd-yyyy HH:mm:ss";
 
         if (dbCal != null &&
             CalibratorComparator.compare(cal, dbCal, verbose) == 0)
         {
             logger.info("Calibration data for DOM " + cal.getDOMId() +
-                        "/" + formatDate(cal) + "/" +
-                        formatTemperature(cal) + " degrees already in DB");
+                        "/" + humanFormat.format(cal.getCalendar().getTime()) +
+                        "/" + formatTemperature(cal.getTemperature()) +
+                        " degrees already in DB");
         } else {
             cal.save();
             cal.close();
             logger.info("Saved calibration data for DOM " + cal.getDOMId() +
-                        "/" + formatDate(cal) + "/" + formatTemperature(cal) +
+                        "/" + humanFormat.format(cal.getCalendar().getTime()) +
+                        formatTemperature(cal.getTemperature()) +
                         " degrees");
         }
 
@@ -949,10 +1538,14 @@ public class CalibratorDB
             int domcalId = saveMain(stmt, cal);
             saveADCs(stmt, cal, domcalId);
             saveDACs(stmt, cal, domcalId);
+            saveFADC(stmt, cal, domcalId);
             savePulser(stmt, cal, domcalId);
+            saveDiscrim(stmt, cal, domcalId);
             saveATWDs(stmt, cal, domcalId);
             saveAmpGain(stmt, cal, domcalId);
             saveATWDFreqs(stmt, cal, domcalId);
+            saveBaselines(stmt, cal, domcalId);
+            savePmtTransit(stmt, cal, domcalId);
             saveHvGain(stmt, cal, domcalId);
             saveHvHisto(stmt, cal, domcalId);
 
@@ -1014,6 +1607,7 @@ public class CalibratorDB
             }
 
             final int numBins = cal.getNumberOfATWDBins(ch);
+
             for (int bin = 0; bin < numBins; bin++) {
                 Iterator iter = cal.getATWDFitKeys(ch, bin);
                 if (iter == null) {
@@ -1232,6 +1826,43 @@ public class CalibratorDB
     }
 
     /**
+     * Save baseline data.
+     *
+     * @param stmt SQL statement
+     * @param cal calibration data
+     * @param domcalId ID of main calibration row in database
+     *
+     * @throws SQLException if there is a database problem
+     */
+    private void saveBaselines(Statement stmt, Calibrator cal, int domcalId)
+        throws SQLException
+    {
+        Iterator iter = cal.getBaselines();
+        while (iter.hasNext()) {
+            Baseline bl = (Baseline) iter.next();
+
+            final String iStr = "insert into DOMCal_Baseline(domcal_id" +
+                ",voltage,atwd0_chan0,atwd0_chan1,atwd0_chan2,atwd1_chan0" +
+                ",atwd1_chan1,atwd1_chan2)values(" + domcalId + "," +
+                bl.getVoltage() + "," + bl.getBaseline(0, 0) + "," +
+                bl.getBaseline(0, 1) + "," + bl.getBaseline(0, 2) + "," +
+                bl.getBaseline(1, 0) + "," + bl.getBaseline(1, 1) + "," +
+                bl.getBaseline(1, 2) + ")";
+
+            int rows;
+            try {
+                rows = stmt.executeUpdate(iStr);
+            } catch (SQLException se) {
+                throw new SQLException(iStr + ": " + se.getMessage());
+            }
+
+            if (rows != 1) {
+                throw new SQLException("Expected to insert 1 row, not " + rows);
+            }
+        }
+    }
+
+    /**
      * Save channel/value row.
      *
      * @param stmt SQL statement
@@ -1277,6 +1908,100 @@ public class CalibratorDB
         final int len = cal.getNumberOfDACs();
         for (int i = 0; i < len; i++) {
             saveChanValueRow(stmt, "DOMCal_DAC", domcalId, i, cal.getDAC(i));
+        }
+    }
+
+    /**
+     * Save SPE and/or MPE discriminator data.
+     *
+     * @param stmt SQL statement
+     * @param cal calibration data
+     * @param domcalId ID of main calibration row in database
+     *
+     * @throws SQLException if there is a database problem
+     */
+    private void saveDiscrim(Statement stmt, Calibrator cal, int domcalId)
+        throws DOMCalibrationException, SQLException
+    {
+        saveDiscrim(stmt, cal, domcalId, "SPE");
+        saveDiscrim(stmt, cal, domcalId, "MPE");
+    }
+
+    /**
+     * Save individual discriminator data.
+     *
+     * @param stmt SQL statement
+     * @param cal calibration data
+     * @param domcalId ID of main calibration row in database
+     * @param name discriminator name (<tt>SPE</tt> or <tt>MPE</tt>)
+     *
+     * @throws SQLException if there is a database problem
+     */
+    private void saveDiscrim(Statement stmt, Calibrator cal, int domcalId,
+                             String name)
+        throws DOMCalibrationException, SQLException
+    {
+        final int discrimId = getDiscrimId(stmt, name);
+
+        String modelName = cal.getDiscriminatorFitModel(name);
+        if (modelName == null || modelName.length() == 0) {
+            modelName = "linear";
+        }
+
+        final int modelId = getModelId(stmt, modelName);
+        final double slope = cal.getDiscriminatorFitParam("slope", name);
+        final double intercept =
+            cal.getDiscriminatorFitParam("intercept", name);
+        final double regression =
+            cal.getDiscriminatorFitParam("r", name);
+
+        final String iStr =
+            "insert into DOMCal_Discriminator(domcal_id,dc_discrim_id" +
+            ",dc_model_id,slope,intercept,regression)values(" + domcalId + "," +
+            discrimId + "," + modelId + "," + slope + "," + intercept + "," +
+            regression + ")";
+
+        int rows;
+        try {
+            rows = stmt.executeUpdate(iStr);
+        } catch (SQLException se) {
+            throw new SQLException(iStr + ": " + se.getMessage());
+        }
+
+        if (rows != 1) {
+            throw new SQLException("Expected to insert 1 row, not " + rows);
+        }
+    }
+
+    /**
+     * Save FADC data.
+     *
+     * @param stmt SQL statement
+     * @param cal calibration data
+     * @param domcalId ID of main calibration row in database
+     *
+     * @throws SQLException if there is a database problem
+     */
+    private void saveFADC(Statement stmt, Calibrator cal, int domcalId)
+        throws SQLException
+    {
+        final String iStr =
+            "insert into DOMCal_FADC(domcal_id,slope,intercept,regression" +
+            ",gain,gain_error,delta_t,delta_t_error)values(" + domcalId + "," +
+            cal.getFadcSlope() + "," + cal.getFadcIntercept() + "," +
+            cal.getFadcRegression() + "," + cal.getFadcGain() + "," +
+            cal.getFadcGainError() + "," + cal.getFadcDeltaT() + "," +
+            cal.getFadcDeltaTError() + ")";
+
+        int rows;
+        try {
+            rows = stmt.executeUpdate(iStr);
+        } catch (SQLException se) {
+            throw new SQLException(iStr + ": " + se.getMessage());
+        }
+
+        if (rows != 1) {
+            throw new SQLException("Expected to insert 1 row, not " + rows);
         }
     }
 
@@ -1467,18 +2192,65 @@ public class CalibratorDB
     private int saveMain(Statement stmt, Calibrator cal)
         throws DOMCalibrationException, SQLException
     {
+        final long millis = cal.getCalendar().getTimeInMillis();
+
         String[] cols = new String[] {
-            "prod_id", "date", "temperature",
+            "prod_id", "date", "time", "temperature", "major_version",
+            "minor_version", "patch_version",
         };
+
+        BigDecimal bigTemp = new BigDecimal(cal.getTemperature());
+        bigTemp = bigTemp.setScale(4, BigDecimal.ROUND_UP);
+
         Object[] vals = new Object[] {
             new Integer(getProductId(stmt, cal)),
-            new java.sql.Date(cal.getCalendar().getTimeInMillis()).toString(),
-            new Double(cal.getTemperature()),
+            new java.sql.Date(millis).toString(),
+            new java.sql.Time(millis).toString(),
+            new Double(bigTemp.doubleValue()),
+            new Short(cal.getMajorVersion()),
+            new Short(cal.getMinorVersion()),
+            new Short(cal.getPatchVersion()),
         };
 
         return DOMProdTestUtil.addId(stmt, "DOMCalibration", "domcal_id",
                                      cols, vals,
                                      lab.getMinimumId(), lab.getMaximumId());
+    }
+
+    /**
+     * Save PMT transit fit data.
+     *
+     * @param stmt SQL statement
+     * @param cal calibration data
+     * @param domcalId ID of main calibration row in database
+     *
+     * @throws SQLException if there is a database problem
+     */
+    private void savePmtTransit(Statement stmt, Calibrator cal, int domcalId)
+        throws SQLException
+    {
+        if (!cal.hasPmtTransit()) {
+            return;
+        }
+
+        final String iStr =
+            "insert into DOMCal_PmtTransit(domcal_id,num_points,slope" +
+            ",intercept,regression)values(" + domcalId + "," +
+            cal.getNumberOfTransitPoints() + "," +
+            cal.getPmtTransitSlope() + "," +
+            cal.getPmtTransitIntercept() + "," +
+            cal.getPmtTransitRegression() + ")";
+
+        int rows;
+        try {
+            rows = stmt.executeUpdate(iStr);
+        } catch (SQLException se) {
+            throw new SQLException(iStr + ": " + se.getMessage());
+        }
+
+        if (rows != 1) {
+            throw new SQLException("Expected to insert 1 row, not " + rows);
+        }
     }
 
     /**
@@ -1495,6 +2267,10 @@ public class CalibratorDB
         throws DOMCalibrationException, SQLException
     {
         final String model = cal.getPulserFitModel();
+        if (model == null || model.length() == 0) {
+            return;
+        }
+
         final int modelId = getModelId(stmt, model);
 
         double regression = cal.getPulserFitParam("r");

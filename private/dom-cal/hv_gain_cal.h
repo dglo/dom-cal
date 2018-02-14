@@ -2,11 +2,39 @@
  * hv_gain_cal header file
  */
 
-/* Specific DAC values for this test */
-#ifdef DOMCAL_REV5
-#define GAIN_CAL_DISC_DAC       556
+/* Tuned for Hamamatsu R1924A PMT */
+#ifdef DOMCAL_SCINT
+/* Discriminator charge thresholds */
+#define GAIN_CAL_PC_LOW   0.14
+#define GAIN_CAL_PC_MED   0.28
+#define GAIN_CAL_PC_HIGH  0.4
+
+/* Voltage levels for each charge threshold */
+#define GAIN_CAL_HV_LOW    850
+#define GAIN_CAL_HV_MED   1100
+
+/* Minimum acceptable noise level to fill histogram */
+#define MIN_NOISE            8
+
+/* Minimum log10(gain) considered reasonable */
+#define GAIN_CAL_GAIN_MIN  5.5
+
 #else
-#define GAIN_CAL_DISC_DAC       505
+/* Tuned for IceCube PMT (R7081-02) */
+/* Discriminator charge thresholds */
+#define GAIN_CAL_PC_LOW   0.12
+#define GAIN_CAL_PC_MED   0.25
+#define GAIN_CAL_PC_HIGH  1.0
+
+/* Voltage levels for each charge threshold */
+#define GAIN_CAL_HV_LOW   1250
+#define GAIN_CAL_HV_MED   1580
+
+/* Minimum acceptable noise level to fill histogram */
+#define MIN_NOISE          250
+
+/* Minimum log10(gain) considered reasonable */
+#define GAIN_CAL_GAIN_MIN  6.4
 #endif
 
 /* Which ATWD to use */
@@ -21,9 +49,13 @@
 
 /* HV settings for gain calibration (in V) */
 /* Starting value, amount to increment, and number of settings */
-#define GAIN_CAL_HV_LOW        1020
-#define GAIN_CAL_HV_INC          80
+//#define GAIN_CAL_HV_LOW        1020
+//#define GAIN_CAL_HV_INC          80
 #define GAIN_CAL_HV_CNT          12
+
+/* In the case of multiple iterations of HV/gain calibration, */
+/* iterate this many times */
+#define GAIN_CAL_MULTI_ITER       4
 
 /* Histogram info */
 #define GAIN_CAL_BINS           250
@@ -39,14 +71,18 @@
 /* Number of noise readings to take before determining if noise level is sane */
 #define NOISE_CNT                10
 
-/* Minimum acceptable noise level to fill histogram */
-#define MIN_NOISE                400
-
 /* Number of PMT baseline ATWD readouts to take */
 #define BASELINE_TRIG_CNT      10
 
 /* bin to start looking for disc pulse */
 #define GAIN_CAL_START_BIN     96
 
+/* Minimum acceptable R^2 */
+#define GAIN_CAL_MIN_R2        0.99
+
+/* Decrease points in fit until you have this many or fewer */
+#define GAIN_CAL_MIN_R2_PTS    4
+
+
 /* Prototypes */
-int hv_gain_cal(calib_data *dom_calib);
+int hv_gain_cal(calib_data *dom_calib, int iterHVGain);
