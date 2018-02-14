@@ -18,6 +18,7 @@ private:
 	unsigned int minReadSize;
 	char_type* readBuffer;
 	bool readEOF;
+	bool retry;
 	std::string devicePath;
 	
 	enum rw{READ,WRITE};
@@ -35,15 +36,6 @@ private:
 			writeset=&set;
 		while(true){
 			int result=select(maxfd,readset,writeset,NULL,NULL);
-			/*if(result==1) //ready!
-				return;
-			if(errno==EAGAIN)
-				continue;
-			if(direction==READ)
-				throw std::runtime_error("Error waiting for file descriptor to be ready to read");
-			else
-				throw std::runtime_error("Error waiting for file descriptor to be ready to write");
-			*/
 			if(direction==READ && FD_ISSET(fd,readset))
 				return;
 			if(direction==WRITE && FD_ISSET(fd,writeset))
@@ -59,6 +51,7 @@ public:
 	minReadSize(minReadSize),
 	readBuffer(new char_type[minReadSize]),
 	readEOF(false),
+	retry(true),
 	devicePath(devPath){
 		if(fd<0) {
 			perror(devPath.c_str());
@@ -107,7 +100,18 @@ public:
 				if(errno==EAGAIN)
 					continue;
 				std::cerr << devicePath << ": read gave result " << result;
-				std::cerr << " and error " << errno << std::endl;
+				std::cerr << " and error " << errno << std::endl;                    
+				if(retry) { //try recovering from DOM drop
+					std::cerr << devicePath << ": retrying..." << std::endl;
+					retry = false;
+					close(fd);
+					fd = open(devicePath.c_str(),O_RDWR|O_NONBLOCK);
+					if(fd<0) {
+						perror(devicePath.c_str());
+						throw std::runtime_error("Failed to open DOR device "+devicePath);
+					}
+					continue;
+				}
 				throw std::runtime_error("Read Error");
 			}
 			else if (result==0)
