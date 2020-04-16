@@ -37,6 +37,8 @@ rm -rf $RPM_BUILD_ROOT
 /mnt/data/testdaq/domcal_ic86.config
 
 %changelog
+* Thu Apr 16 2020 John Kelley <jkelley@icecube.wisc.edu>
+- Config file change (disable 06-59 chip B)
 * Tue Mar 17 2020 John Kelley <jkelley@icecube.wisc.edu>
 - Config file changes only (added DOMs)
 * Wed Feb 14 2018 John Kelley <jkelley@icecube.wisc.edu>
