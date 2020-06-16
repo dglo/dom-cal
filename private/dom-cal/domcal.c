@@ -270,7 +270,7 @@ int main(void) {
 	else if (buf[0]=='1' || (buf[0]=='\n' && buf[1]=='1'))
 		dom_calib.preferred_atwd = 1;
 	else if ((buf[0]=='-' && buf[1]=='1') 
-			 || (buf[0]=='\n' && buf[2]=='-' && buf[2]=='1'))
+			 || (buf[0]=='\n' && buf[1]=='-' && buf[2]=='1'))
 		dom_calib.preferred_atwd = -1;
 	else
 		dom_calib.preferred_atwd = -1; //default to selecting automatically
