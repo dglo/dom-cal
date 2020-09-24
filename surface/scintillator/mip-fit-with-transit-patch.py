@@ -7,8 +7,11 @@ Updated and maintained by Matt Kauer and Delia Tosi
 
 ############################################################
 #
-# version: 2016-11-02
+# version: 2020-09-24
 # ----------------------------------------------------------
+# + now works with python3
+#     - change print to print()
+#     - something changed with lxml or py3 so added \r\n
 # + added scint string-positions to the plot titles
 # + now patching transit times since domcal-20161007
 # ~ fixed issue with giant whitespace around plots
@@ -46,7 +49,7 @@ from scipy.optimize import leastsq, curve_fit
 transit = 1
 
 # print out a bunch of stuff
-debug = 1
+debug = 0
 
 def _myself_(argv):
 
@@ -55,7 +58,7 @@ def _myself_(argv):
         if os.path.isdir(each):
             directories.append(os.path.realpath(each)+'/')
         else:
-            if debug: print 'Invalid directory given: %s' % each
+            if debug: print('Invalid directory given: %s' % each)
     if len(directories) < 1:
         sys.exit()
     
@@ -87,19 +90,19 @@ def _myself_(argv):
         if '0d654a32652c' in afile:
             name = 'English_Muffin'
             position = '62-66'
-            if debug: print name
+            print('patching '+name)
         elif '76333fb8d615' in afile:
             name = 'Grilled_Cheese'
             position = '62-65'
-            if debug: print name
+            print('patching '+name)
         elif '0f8bea7ac17e' in afile:
             name = 'Pizza_Margherita'
             position = '12-65'
-            if debug: print name
+            print('patching '+name)
         elif '29a2ab1e6a93' in afile:
             name = 'Banana_Pancake'
             position = '12-66'
-            if debug: print name
+            print('patching '+name)
         else:
             #if debug: print 'Unknown DOM. Skipping...'
             continue
@@ -157,7 +160,7 @@ def _myself_(argv):
                                            max_count_charge,
                                            0.2])
             except:
-                if debug: print "Gaussian fit failed for %s" % name
+                if debug: print("Gaussian fit failed for %s" % name)
                 continue
             else:
                 popt = np.append(popt,mopt)
@@ -265,7 +268,7 @@ def _myself_(argv):
             fit_intercept = QvHV_opt[1]
             fit_intercept_err = np.sqrt(QvHV_cov[1][1])
         except:
-            if debug: print "Gain vs HV fit failed"
+            if debug: print("Gain vs HV fit failed")
 
         results.append(domcal
                        +'   '+strpad(name, 16)
@@ -282,7 +285,7 @@ def _myself_(argv):
         #    if debug: print "Gain vs HV fit failed"
 
         # output a plot of all histograms and Gain vs HV curve
-        if debug: print 'plot hists'
+        if debug: print('plot hists')
         patched_dir = os.path.dirname(afile)+'-patched'
         if not os.path.isdir(patched_dir):
             os.mkdir(patched_dir)
@@ -298,7 +301,7 @@ def _myself_(argv):
         
         for i,voltage in enumerate(voltages):
             str_voltage = "%04d" % voltage
-            if debug: print str_voltage, 'volts'
+            if debug: print(str_voltage, 'volts')
             plt.sca(ax[i])
             for j in data:
                 if data[j]['voltage'] == voltage:
@@ -327,7 +330,7 @@ def _myself_(argv):
                     plt.title(str_voltage+" Volts  -  "+name+'  '+position)
 
         # add in the Gain vs HV curve with fit linear scale
-        if debug: print 'plot GvHV'
+        if debug: print('plot GvHV')
         plt.sca(ax[-2])
         plt.errorbar(voltages,
                      mean_gains,
@@ -387,14 +390,13 @@ def _myself_(argv):
                 skip_line = False
                 continue
             if '</daq_baseline>' in line:
-                f_new_xml.write(line)
-                indent = line.replace('</daq_baseline>\r\n','')
+                # 2020-09-24 - strip and re-add \n\r for py3 compatibility
+                f_new_xml.write(line.strip('\n').strip('\r')+'\r\n')
 
+                indent = '  '
                 if transit:
                     # insert the PMT transit time
-                    print '---------------------------------------'
-                    print ' INFO : patching the PMT transit time!'
-                    print '---------------------------------------'
+                    if debug: print(' INFO : patching the PMT transit time!')
                     f_new_xml.write(indent+'<pmtTransitTime num_pts="10">'+'\r\n')
                     f_new_xml.write(indent+indent+'<fit model="linear">'+'\r\n')
                     f_new_xml.write(indent+indent+indent+'<param name="slope">595.0</param>'+'\r\n')
@@ -418,35 +420,31 @@ def _myself_(argv):
                 f_new_xml.write(indent+indent+'</fit>'+'\r\n')
                 f_new_xml.write(indent+'</hvGainCal>'+'\r\n')
                 continue
+            
             if not skip_line:
-                f_new_xml.write(line)
+                # 2020-09-24 - strip and re-add \n\r for py3 compatibility
+                f_new_xml.write(line.strip('\n').strip('\r')+'\r\n')
 
         f_xml.close()
         f_new_xml.close()
 
     if debug:
-        print "Finished..."
-        print ''
-        
-        print 'DOMCal            Name               Pos     Slope   err     Interc    err     G(e6)   err     volts   temp(C)'
-        print '----------------  ----------------   -----   -----   -----   -------   -----   -----   -----   -----   -------'
-
+        print("Finished...")
+        print('')
+        print('DOMCal            Name               Pos     Slope   err     Interc    err     G(e6)   err     volts   temp(C)')
+        print('----------------  ----------------   -----   -----   -----   -------   -----   -----   -----   -----   -------')
         for result in results:
-            print result
+            print(result)
 
     if debug:
-        print ''
-        print ''
-        
-        print 'DOMCal            Name               Pos     SPE(pC)   err   MIP(pC)   err   MIP(pe)   err   temp(C)'
-        print '----------------  ----------------   -----   -----   -----   -----   -----   -----   -----   -------'
-        
+        print('')
+        print('DOMCal            Name               Pos     SPE(pC)   err   MIP(pC)   err   MIP(pe)   err   temp(C)')
+        print('----------------  ----------------   -----   -----   -----   -----   -----   -----   -----   -------')
         for number in numbers:
-            print number
-
-    print ''
+            print(number)
+        print('')
     
-    return results,numbers
+    return results, numbers
 
 
 ######################################################################
