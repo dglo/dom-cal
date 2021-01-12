@@ -420,7 +420,14 @@ int hv_gain_cal(calib_data *dom_calib, int iterHVGain) {
     dom_calib->histogram_data = hv_hist_data;
 
     /* Make sure we have enough points, and that they are at different HV */
-    if ((spe_cnt >= 2) && (log_hv[0] != log_hv[1])) {
+    int pts_ok = 0;
+    i = 0;
+    while ((i < spe_cnt-1) && (!pts_ok)) {
+        pts_ok = (log_hv[i] != log_hv[i+1]);
+        i++;
+    }
+    
+    if (pts_ok) {
 
         /* Fit log(hv) vs. log(gain) */
         linearFitFloat(log_hv, log_gain, spe_cnt, &(dom_calib->hv_gain_calib)); 
@@ -448,7 +455,7 @@ int hv_gain_cal(calib_data *dom_calib, int iterHVGain) {
     }
     else {
 #ifdef DEBUG
-        printf("Error: too few gain data points to do the regression!\r\n");
+        printf("Error: too few distinct gain data points to do the regression!\r\n");
 #endif
         dom_calib->hv_gain_valid = 0;
     }
