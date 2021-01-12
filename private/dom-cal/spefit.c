@@ -49,32 +49,32 @@ void f_spe(float x, float *a, float *y, float *dyda, int nparam) {
 void get_fit_initialization( float *x, float *y, int num, float *params, int profile ) {
 	    
     /* Find mean and variance */
-    float sum = 0;
+    int sum = 0;
     float histmax = y[0];
     float histmax_x = x[0];
     int i;
     for ( i = 0; i < num; i++ ) {
         /* we know y values are actually integers */
-        sum += y[i];
+        sum += (int)(y[i]+0.5);
         if (y[i] > histmax) {
             histmax = y[i];
             histmax_x = x[i];
         }
     }
 
-    float xvals[(int)sum];
+    float *xvals = malloc(sum * sizeof(float));
 
     int j;
     int indx = 0;
     for ( i = 0; i < num; i++ ) {
-        for ( j = 0; j < y[i]; j++ ) {
+        for ( j = 0; j < (int)(y[i]+0.5); j++ ) {
             xvals[indx] = x[i];
             indx++;
         }
     }
 
     float mean, variance;
-    meanVarFloat( xvals, ( int )sum , &mean, &variance );
+    meanVarFloat( xvals, sum, &mean, &variance );
 
     /* Gaussian amplitude */
     params[2] = histmax;
@@ -112,6 +112,7 @@ void get_fit_initialization( float *x, float *y, int num, float *params, int pro
     /* Gaussian width */
     params[4] = 1.0 / ( 2 * variance );
 
+    free(xvals);
 }
 
 /*--------------------------------------------------------------------------*/
@@ -231,7 +232,7 @@ int spe_fit(float *xdata, float *ydata, int pts,
     int nonzero_found = 0;
     float head_int = 0.;
 
-    for (;;) {
+    for (start_bin = 0; start_bin < pts; start_bin++) {
 
         head_int += ydata[start_bin];
         
@@ -242,8 +243,6 @@ int spe_fit(float *xdata, float *ydata, int pts,
         }
 
         if (head_int > num_samples * SPE_BAD_HEAD_FRACTION) break;
-
-        start_bin++;
     }
 
     /* if start_bin is too high, we're better off starting at first nonzero */
