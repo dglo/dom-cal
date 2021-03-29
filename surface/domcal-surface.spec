@@ -39,6 +39,8 @@ rm -rf $RPM_BUILD_ROOT
 /mnt/data/testdaq/domcal_ic86.config
 
 %changelog
+* Mon Mar 29 2021 John Kelley <jkelley@icecube.wisc.edu>
+- Add DOMs from 2018 to config file (hadn't made it to SVN)
 * Tue Dec 15 2020 John Kelley <jkelley@icecube.wisc.edu>
 - Make spec file compatible with CentOS8
 - Add PCTS DOMs to configuration file
